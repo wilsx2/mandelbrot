@@ -1,0 +1,7 @@
+[ ] Make an image
+[ ] Plot a Mandelbrot
+[ ] Make video
+[ ] Append to video using metadata
+[ ] Precision (bignum, perterbations)
+[ ] Speed (SYCL)
+[ ] Distribute (Asio)
