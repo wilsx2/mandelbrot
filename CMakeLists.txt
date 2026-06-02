@@ -13,4 +13,5 @@ add_compile_options(-Wall -Wextra -Werror)
 # pkg_check_modules(ffmpeg REQUIRED IMPORTED_TARGET ffmpeg)
 
 add_executable(naive "src/naive.c")
+target_link_libraries(naive PRIVATE m)
 # target_link_libraries(naive PRIVATE PkgConfig::ffmpeg)
