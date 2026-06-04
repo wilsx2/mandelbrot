@@ -1,5 +1,5 @@
-[ ] Make an image
-[ ] Plot a Mandelbrot
+[X] Make an image
+[X] Plot a Mandelbrot
 [ ] Make video
 [ ] Append to video using metadata
 [ ] Precision (bignum, perterbations)
