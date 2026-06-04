@@ -1,25 +1,37 @@
 #pragma once
 
-/**
- * @brief Calculate iterations of z until it is determined z will diverge to infinity
- * @param dx The real component of c
- * @param dy The imaginary component of c 
- * @return The number of iterations it took for z_n to determine z_n will diverge to infinity
- */
-unsigned int mandelbrot(double dx, double dy, unsigned int max_iterations) {
-    // z_0 = 0
-    double x = 0; // Real component of z_n
-    double y = 0; // Imaginary component of z_n
-    
-    unsigned int iterations = 0;
-    while (x*x + y*y <= 2*2 && iterations < max_iterations) {
-        // z_n = z_{n-1}^2 + c
-        double x_next = x*x - y*y + dx;
-        y = 2*x*y + dy;
-        x = x_next;
-        
-        ++iterations;
+#include <math.h>
+
+unsigned int escape_time(double creal, double cimag, unsigned int max_iterations) {
+    double zreal = 0.0;
+    double zimag = 0.0;
+    unsigned int n = 0;
+
+    while (zreal*zreal + zimag*zimag <= 2*2 && n < max_iterations) {
+        double zreal_next;
+        zreal_next  = zreal*zreal - zimag*zimag + creal;
+        zimag       = 2*zreal*zimag + cimag;
+        zreal = zreal_next;
+
+        ++n;
     }
 
-    return iterations;
+    return n;
+}
+
+void hue_to_rgb(float h, char *r, char *g, char *b) {
+    int i = floor(h);
+    float f = h - i;
+    
+    float q = 1.0 - f;
+    float t = f;
+
+    switch (i % 6) {
+        case 0: *r = 255,    *g = t*255,  *b = 0;      break;
+        case 1: *r = q*255,  *g = 255,    *b = 0;      break;
+        case 2: *r = 0,      *g = 255,    *b = t*255;  break;
+        case 3: *r = 0,      *g = q*255,  *b = 255;    break;
+        case 4: *r = t*255,  *g = 0,      *b = 255;    break;
+        case 5: *r = 255,    *g = 0,      *b = q*255;  break;
+    }
 }
