@@ -5,6 +5,15 @@
 
 #define MAX_ITERATIONS 255
 
+struct pixel colorize(double complex c) {
+    int i = escape_time(c, MAX_ITERATIONS);
+    int is_in = i == MAX_ITERATIONS;
+    if (is_in) {
+        return (struct pixel){0, 0, 0};
+    }
+    return hue_to_rgb(i / (float)MAX_ITERATIONS);
+}
+
 int main(int argc, char *argv[]) {
     if (argc != 8) {
         fprintf(stderr, "Expected 7 arguments, received %d\n", argc - 1);
@@ -21,41 +30,10 @@ int main(int argc, char *argv[]) {
     double imag_max = atof(argv[6]);
     double imag_min = atof(argv[7]);
 
-    // Open target file
-    FILE *fp = fopen(filename, "wb");
-    if (!fp) {
-        perror("fopen()");
-        exit(EXIT_FAILURE);
-    }
-
-    // PPM header
-    fprintf(fp, "P6\n%d %d\n255\n", width, height);
-    
-    // Pixel Data
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            int i = escape_time (
-                (x / (double)height) * (real_max - real_min) + real_min,
-                (y / (double)height) * (imag_max - imag_min) + imag_min,
-                MAX_ITERATIONS
-            );
-            int is_in = i == MAX_ITERATIONS;
-            char r, g, b;
-            if (is_in) {
-                r = g = b = 0;
-            } else {
-                hue_to_rgb(i / (float)MAX_ITERATIONS,
-                    &r,
-                    &g,
-                    &b
-                );
-            }
-
-            fputc(r, fp);
-            fputc(g, fp);
-            fputc(b, fp);
-        }
-    }
-
-    return 0;
+    // Save
+    struct axis_limits lim = {
+        real_min + imag_min*I,
+        real_max + imag_max*I
+    };
+    return !save_to_ppm(filename, width, height, &lim, colorize);
 }
