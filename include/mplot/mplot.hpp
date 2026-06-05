@@ -38,9 +38,11 @@ struct axis_limits {
     std::complex<double> min;
     std::complex<double> max;
 
-    void zoom(std::complex<double> focus, double factor) {
-        min = (1/factor) * min + (1 - 1/factor) * focus;
-        max = (1/factor) * max + (1 - 1/factor) * focus;
+    auto at_zoom(std::complex<double> focus, double factor) -> axis_limits {
+        return {
+            {(1/factor) * min + (1 - 1/factor) * focus},
+            {(1/factor) * max + (1 - 1/factor) * focus}
+        };
     }
     auto sample(size_t x, size_t y, size_t width, size_t height) const -> std::complex<double> {
         return {
