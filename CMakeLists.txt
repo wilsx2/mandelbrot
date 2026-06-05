@@ -13,5 +13,11 @@ add_compile_options("$<$<CONFIG:Release>:-O3>")
 # find_package(PkgConfig REQUIRED)
 # pkg_check_modules(ffmpeg REQUIRED IMPORTED_TARGET ffmpeg)
 
+find_package(Argumentum CONFIG REQUIRED)
+
 add_executable(mplot "src/main.cpp")
+target_link_libraries(mplot
+   PRIVATE
+   Argumentum::argumentum
+)
 # target_link_libraries(naive PRIVATE PkgConfig::ffmpeg)
