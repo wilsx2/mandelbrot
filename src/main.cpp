@@ -22,9 +22,16 @@ int main(int argc, char *argv[]) {
     params.add_parameter(filepath, "--output", "-o")
           .nargs(1)
           .absent("mandelbrot")
-          .help("Path to output file (ommit file extension)");
+          .help("Path to output file (default: output)");
 
-    std::vector<int> dimensions;
+    unsigned int max_iterations;
+    params.add_parameter(max_iterations, "--max-iterations", "-n")
+          .nargs(1)
+          .absent(255)
+          .help("Maximum number of iterations per orbit");
+
+
+    std::vector<std::size_t> dimensions;
     params.add_parameter(dimensions, "--dimensions", "-d")
           .nargs(2)
           .absent({1920,1080})
@@ -74,8 +81,8 @@ int main(int argc, char *argv[]) {
         auto final_filepath = std::format("{}{:05}.ppm", filepath, index);
 
         bool success = mplot::save_to_ppm(final_filepath, dimensions[0], dimensions[1], lim.at_zoom({focus[0], focus[1]}, factor),
-            [](std::complex<double> c) -> mplot::pixel {
-                auto percent = mplot::escape_time_percent(c, MAX_ITERATIONS); 
+            [max_iterations](std::complex<double> c) -> mplot::pixel {
+                auto percent = mplot::escape_time_percent(c, max_iterations); 
                 if (percent == 1.0)
                     return {0, 0, 0};
                 return mplot::hsv_to_rgb(percent, 1.0, 1.0);
