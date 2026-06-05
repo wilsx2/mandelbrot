@@ -1,7 +1,18 @@
-[X] Make an image
-[X] Plot a Mandelbrot
-[ ] Make video
-[ ] Append to video using metadata
-[ ] Precision (bignum, perterbations)
-[ ] Speed (SYCL)
-[ ] Distribute (Asio)
+[X] Basic Plotting
+    [X] Make an image
+    [X] Plot a Mandelbrot
+    [ ] Zoom Parameter
+    [ ] Argument Parsing
+[ ] Precision
+    [ ] Calculate orbit of arbitrary precision w/ GMP
+    [ ] Calculate escape time using perterbation of a reference orbit
+[ ] Parallelize
+    [ ] Google Benchmark
+    [ ] CUDA rendering using reference orbit computed on the CPU
+[ ] Video Generation
+    [ ] Video target specification
+    [ ] Compute information to render arbitrary frame
+    [ ] Encode rendered frames as images/video segments w/ ffmpeg
+    [ ] Compose frames/segments into complete videos w/ ffmpeg
+[ ] Distribute (OpenMPI)
+[ ] Cloud Compute

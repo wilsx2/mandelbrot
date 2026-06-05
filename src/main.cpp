@@ -1,4 +1,4 @@
-#include "mandelbrot.hpp"
+#include "mplot/mplot.h"
 #include <print>
 #include <format>
 #include <string>
@@ -25,11 +25,12 @@ int main(int argc, char *argv[]) {
     // Plot and render
     mplot::axis_limits lim {{real_min, imag_min}, {real_max, imag_max}};
     bool success = mplot::save_to_ppm(filename, width, height, lim,
-    [](std::complex<double> c) -> mplot::pixel {
-        auto percent = mplot::escape_time_percent(c, MAX_ITERATIONS); 
-        if (percent == 1.0)
-            return {0, 0, 0};
-        return mplot::hsv_to_rgb(percent, 1.0, 1.0);
-    });
+        [](std::complex<double> c) -> mplot::pixel {
+            auto percent = mplot::escape_time_percent(c, MAX_ITERATIONS); 
+            if (percent == 1.0)
+                return {0, 0, 0};
+            return mplot::hsv_to_rgb(percent, 1.0, 1.0);
+        }
+    );
     std::exit(success ? EXIT_SUCCESS : EXIT_FAILURE);
 }
