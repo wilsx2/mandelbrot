@@ -1,8 +1,15 @@
 [X] Basic Plotting
     [X] Make an image
     [X] Plot a Mandelbrot
-    [ ] Zoom Parameter
-    [ ] Argument Parsing
+    [X] Zoom Parameter
+    [X] Argument Parsing
+[ ] Scripting
+    [ ] Scripting w/ nanobind or pybind11
+    [ ] Keyframing
+    [ ] Composition w/ ffmpeg
+        [ ] Encoding
+        [ ] Videos
+        [ ] Tiled images
 [ ] Precision
     [ ] Calculate orbit of arbitrary precision w/ GMP
     [ ] Calculate escape time using perterbation of a reference orbit

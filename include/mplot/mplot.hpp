@@ -10,6 +10,7 @@
 #include <mdspan>
 #include <vector>
 #include <cstdint>
+#include <functional>
 
 namespace mplot
 {
@@ -52,6 +53,31 @@ struct axis_limits {
     }
 };
 
+struct job {
+    std::size_t width;
+    std::size_t height;
+    axis_limits limits;
+    std::function<pixel(std::complex<double>)> coloring_algorithm;
+
+    auto render_pixel(std::size_t x, std::size_t y) const -> pixel {
+        return coloring_algorithm(limits.sample(x, y, width, height));
+    }
+    auto render(const std::span<pixel>& buffer) const -> bool {
+        std::size_t i = 0;
+
+        auto coords = std::views::cartesian_product(
+            std::views::iota(0uz, height),
+            std::views::iota(0uz, width)
+        );
+        for (auto [y,x] : coords) { // Assumes layout 
+            if (buffer.size() <= i)
+                return false;
+            buffer[i++] = render_pixel(x,y);
+        }
+        return true;
+    }
+};
+
 auto hsv_to_rgb(float h, float s, float v) -> pixel {
     h = std::clamp(h, 0.f, 1.f);
     s = std::clamp(s, 0.f, 1.f);
@@ -83,32 +109,52 @@ auto hsv_to_rgb(float h, float s, float v) -> pixel {
 
 auto lch_to_rgb(float l, float c, float h) -> pixel;
 
-auto coordinate_view(size_t rows, size_t cols) {
-    return std::views::cartesian_product(
-        std::views::iota(0uz, rows),
-        std::views::iota(0uz, cols)
+auto generate_keyframes();
+
+auto save_job(std::string_view filename, const job& j, const std::span<pixel>& buffer) -> bool {
+    if (j.width * j.height != buffer.size()) {
+        return false;
+    }
+    if (!j.render(buffer)) {
+        return false;
+    }
+
+    std::ofstream file(filename.data(), std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    auto header = std::format("P6\n{} {}\n255\n", j.width, j.height);
+    file.write(header.data(), header.size());
+    file.write(
+        reinterpret_cast<const char*>(buffer.data()),
+        static_cast<std::streamsize>(buffer.size_bytes())
     );
+    
+    return true;
 }
 
-template <std::invocable<std::complex<double>> F>
-auto save_to_ppm(std::string_view filename, std::size_t width, std::size_t height,
-                 const axis_limits& lim, F&& colorize) -> bool {
-    std::ofstream file(filename.data(), std::ios::binary);
+auto save_job(std::string_view filename, const job& j) -> bool {
+    std::vector<pixel> buffer (j.width * j.height);
+    return save_job(filename, j, buffer);
+}
 
-    if (!file.is_open())
-        return false;
+auto save_jobs(std::string_view filename, const std::vector<job>& jobs) -> bool {
+    std::vector<pixel> buffer;
 
-    auto header = std::format("P6\n{} {}\n255\n", width, height);
-    file.write(header.data(), header.size());
-
-    for (auto [y,x] : coordinate_view(height, width)) {
-        auto color = colorize(lim.sample(x, y, width, height));
-        file.write(
-            reinterpret_cast<const char*>(&color),
-            static_cast<std::streamsize>(sizeof(color))
-        );
+    for (const auto& [index, j] : std::views::enumerate(jobs)) {
+        buffer.resize(j.width * j.height);
+        if (!j.render(buffer)) {
+            return false;
+        }
+        
+        std::string num_string = std::string((jobs.size() + 9) / 10 - (index + 10) / 10, '0') + std::to_string(index);
+        std::string final_filename = std::format("{}_{}.ppm", filename, num_string);
+        if (!save_job(final_filename, j, buffer)) {
+            return false;
+        }
     }
-    
+
     return true;
 }
 

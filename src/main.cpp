@@ -21,8 +21,8 @@ int main(int argc, char *argv[]) {
     std::string filepath;
     params.add_parameter(filepath, "--output", "-o")
           .nargs(1)
-          .absent("mandelbrot")
-          .help("Path to output file (default: output)");
+          .absent("mandelbrot.ppm")
+          .help("Path to output file (default: mandelbrot.ppm)");
 
     unsigned int max_iterations;
     params.add_parameter(max_iterations, "--max-iterations", "-n")
@@ -55,13 +55,11 @@ int main(int argc, char *argv[]) {
           .absent({-0.75, 0.1})
           .help("Coordinates to zoom in on (default: -0.75 0.1 (seahorse valley))");
 
-    std::vector<double> zoom_factors;
-    params.add_parameter(zoom_factors, "--zoom-factors", "-z")
+    double zoom_factor;
+    params.add_parameter(zoom_factor, "--zoom-factor", "-z")
           .minargs(1)
           .absent({1.0})
-          .help("Factors of zoom to render (default: 1.0)");
-
-
+          .help("How deeply to zoom in (default: 1.0)");
 
     if (!parser.parse_args(argc, argv)) {
         std::exit(EXIT_FAILURE);
@@ -71,27 +69,23 @@ int main(int argc, char *argv[]) {
     std::println("\tDimensions: {}x{}", dimensions[0], dimensions[1]);
     std::println("\tReal Limits: min {}, max {}", real_limits[0], real_limits[1]);
     std::println("\tImaginary Limits: min {}i, max {}i", imag_limits[0], imag_limits[1]);
-    std::println("\tFocusing On: {} + {}i", focus[0], focus[1]);
-    std::println("\tAt Zoom Factor(s): {:n}", zoom_factors);
+    std::println("\tFocusing On: {} {} {}i", focus[0], focus[1] >= 0 ? '+' : '-', focus[1]);
+    std::println("\tZoom Factor(s): {}", zoom_factor);
 
     // Plot and render
-
-    mplot::axis_limits lim {{real_limits[0], imag_limits[0]}, {real_limits[1], imag_limits[1]}};
-    for (auto [index, factor] : std::views::enumerate(zoom_factors)) {
-        auto final_filepath = std::format("{}{:05}.ppm", filepath, index);
-
-        bool success = mplot::save_to_ppm(final_filepath, dimensions[0], dimensions[1], lim.at_zoom({focus[0], focus[1]}, factor),
-            [max_iterations](std::complex<double> c) -> mplot::pixel {
-                auto percent = mplot::escape_time_percent(c, max_iterations); 
-                if (percent == 1.0)
-                    return {0, 0, 0};
-                return mplot::hsv_to_rgb(percent, 1.0, 1.0);
-            }
-        );
-
-        if (!success) {
-            std::exit(EXIT_FAILURE);
+    bool success = mplot::save_job(filepath, {
+        .width = dimensions[0],
+        .height = dimensions[1],
+        .limits = {
+            {real_limits[0], imag_limits[0]},
+            {real_limits[1], imag_limits[1]}
+         },
+        .coloring_algorithm = [max_iterations](std::complex<double> c) -> mplot::pixel {
+            auto percent = mplot::escape_time_percent(c, max_iterations); 
+            if (percent == 1.0)
+                return {0, 0, 0};
+            return mplot::hsv_to_rgb(percent, 1.0, 1.0);
         }
-    }
-    std::exit(EXIT_SUCCESS);
+    });
+    std::exit(success ? EXIT_SUCCESS : EXIT_FAILURE);
 }
