@@ -73,19 +73,13 @@ int main(int argc, char *argv[]) {
     std::println("\tZoom Factor(s): {}", zoom_factor);
 
     // Plot and render
-    bool success = mplot::save_job(filepath, {
+    bool success = mplot::save_plot(filepath, {
         .width = dimensions[0],
         .height = dimensions[1],
         .limits = {
             {real_limits[0], imag_limits[0]},
             {real_limits[1], imag_limits[1]}
          },
-        .coloring_algorithm = [max_iterations](std::complex<double> c) -> mplot::pixel {
-            auto percent = mplot::escape_time_percent(c, max_iterations); 
-            if (percent == 1.0)
-                return {0, 0, 0};
-            return mplot::hsv_to_rgb(percent, 1.0, 1.0);
-        }
     });
     std::exit(success ? EXIT_SUCCESS : EXIT_FAILURE);
 }

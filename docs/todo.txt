@@ -4,8 +4,7 @@
     [X] Zoom Parameter
     [X] Argument Parsing
 [ ] Scripting
-    [ ] Scripting w/ nanobind or pybind11
-    [ ] Keyframing
+    [ ] Python Bindings
     [ ] Composition w/ ffmpeg
         [ ] Encoding
         [ ] Videos
@@ -16,10 +15,9 @@
 [ ] Parallelize
     [ ] Google Benchmark
     [ ] CUDA rendering using reference orbit computed on the CPU
-[ ] Video Generation
-    [ ] Video target specification
-    [ ] Compute information to render arbitrary frame
-    [ ] Encode rendered frames as images/video segments w/ ffmpeg
-    [ ] Compose frames/segments into complete videos w/ ffmpeg
+[ ] Interactivity
+    [ ] Keyframing Animations
+    [ ] Interchangable Color / Fractal Algorithms
+    [ ] WebGPU App
 [ ] Distribute (OpenMPI)
 [ ] Cloud Compute

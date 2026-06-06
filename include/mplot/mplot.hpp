@@ -53,31 +53,6 @@ struct axis_limits {
     }
 };
 
-struct job {
-    std::size_t width;
-    std::size_t height;
-    axis_limits limits;
-    std::function<pixel(std::complex<double>)> coloring_algorithm;
-
-    auto render_pixel(std::size_t x, std::size_t y) const -> pixel {
-        return coloring_algorithm(limits.sample(x, y, width, height));
-    }
-    auto render(const std::span<pixel>& buffer) const -> bool {
-        std::size_t i = 0;
-
-        auto coords = std::views::cartesian_product(
-            std::views::iota(0uz, height),
-            std::views::iota(0uz, width)
-        );
-        for (auto [y,x] : coords) { // Assumes layout 
-            if (buffer.size() <= i)
-                return false;
-            buffer[i++] = render_pixel(x,y);
-        }
-        return true;
-    }
-};
-
 auto hsv_to_rgb(float h, float s, float v) -> pixel {
     h = std::clamp(h, 0.f, 1.f);
     s = std::clamp(s, 0.f, 1.f);
@@ -109,13 +84,42 @@ auto hsv_to_rgb(float h, float s, float v) -> pixel {
 
 auto lch_to_rgb(float l, float c, float h) -> pixel;
 
+struct plot {
+    std::size_t width;
+    std::size_t height;
+    axis_limits limits;
+
+    auto render_pixel(std::size_t x, std::size_t y) const -> pixel {
+        // TODO: Make dynamic and parameterized
+        auto c = limits.sample(x, y, width, height);
+        auto percent = escape_time_percent(c, 255); // TODO: Switch out magic number for max_iterations
+        if (percent == 1.0)
+            return {0, 0, 0};
+        return hsv_to_rgb(percent, 1.0, 1.0);
+    }
+    auto render(const std::span<pixel>& buffer) const -> bool {
+        std::size_t i = 0;
+
+        auto coords = std::views::cartesian_product(
+            std::views::iota(0uz, height),
+            std::views::iota(0uz, width)
+        );
+        for (auto [y,x] : coords) { // Assumes layout 
+            if (buffer.size() <= i)
+                return false;
+            buffer[i++] = render_pixel(x,y);
+        }
+        return true;
+    }
+};
+
 auto generate_keyframes();
 
-auto save_job(std::string_view filename, const job& j, const std::span<pixel>& buffer) -> bool {
-    if (j.width * j.height != buffer.size()) {
+auto save_plot(std::string_view filename, const plot& p, const std::span<pixel>& buffer) -> bool {
+    if (p.width * p.height != buffer.size()) {
         return false;
     }
-    if (!j.render(buffer)) {
+    if (!p.render(buffer)) {
         return false;
     }
 
@@ -124,7 +128,7 @@ auto save_job(std::string_view filename, const job& j, const std::span<pixel>& b
         return false;
     }
 
-    auto header = std::format("P6\n{} {}\n255\n", j.width, j.height);
+    auto header = std::format("P6\n{} {}\n255\n", p.width, p.height);
     file.write(header.data(), header.size());
     file.write(
         reinterpret_cast<const char*>(buffer.data()),
@@ -134,23 +138,20 @@ auto save_job(std::string_view filename, const job& j, const std::span<pixel>& b
     return true;
 }
 
-auto save_job(std::string_view filename, const job& j) -> bool {
-    std::vector<pixel> buffer (j.width * j.height);
-    return save_job(filename, j, buffer);
+auto save_plot(std::string_view filename, const plot& p) -> bool {
+    std::vector<pixel> buffer (p.width * p.height);
+    return save_plot(filename, p, buffer);
 }
 
-auto save_jobs(std::string_view filename, const std::vector<job>& jobs) -> bool {
+auto save_plots(std::string_view filename, const std::vector<plot>& plots) -> bool {
     std::vector<pixel> buffer;
 
-    for (const auto& [index, j] : std::views::enumerate(jobs)) {
-        buffer.resize(j.width * j.height);
-        if (!j.render(buffer)) {
-            return false;
-        }
+    for (const auto& [index, p] : std::views::enumerate(plots)) {
+        buffer.resize(p.width * p.height);
         
-        std::string num_string = std::string((jobs.size() + 9) / 10 - (index + 10) / 10, '0') + std::to_string(index);
+        std::string num_string = std::string((plots.size() + 9) / 10 - (index + 10) / 10, '0') + std::to_string(index);
         std::string final_filename = std::format("{}_{}.ppm", filename, num_string);
-        if (!save_job(final_filename, j, buffer)) {
+        if (!save_plot(final_filename, p, buffer)) {
             return false;
         }
     }
