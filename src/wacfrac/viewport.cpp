@@ -3,6 +3,11 @@
 namespace wacfrac
 {
 
+void viewport::precision(std::size_t value) {
+    min.precision(value);
+    max.precision(value);
+}
+
 auto viewport::at_zoom(multi_complex focus, multi_float factor) -> viewport {
     auto width  = max.real() - min.real();
     auto height = max.imag() - min.imag();
@@ -10,7 +15,6 @@ auto viewport::at_zoom(multi_complex focus, multi_float factor) -> viewport {
     auto focus_re = (focus.real() - min.real()) / width;
     auto focus_im = (focus.imag() - min.imag()) / height;
 
-    // Scale the view
     auto new_width  = width  / factor;
     auto new_height = height / factor;
 

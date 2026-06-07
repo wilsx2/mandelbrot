@@ -7,7 +7,7 @@ namespace wacfrac
 {
 
 auto plot::render_pixel(std::size_t x, std::size_t y) const -> pixel {
-    auto c       = limits.sample(x, y, width, height);
+    auto c       = view.sample(x, y, res.width, res.height);
     auto percent = escape_time_percent(c, max_iterations);
     if (percent == 1.f)
         return {0, 0, 0};
@@ -19,11 +19,11 @@ auto plot::render(const std::span<pixel>& buffer) const -> bool {
     std::size_t i = 0;
 
     auto coords = std::views::cartesian_product(
-        std::views::iota(0uz, height),
-        std::views::iota(0uz, width)
+        std::views::iota(0uz, res.height),
+        std::views::iota(0uz, res.width)
     );
 
-    for (auto [y, x] : coords) {    // row-major: y is outer, x is inner
+    for (auto [y, x] : coords) { // row-major: y is outer, x is inner
         if (buffer.size() <= i)
             return false;
         buffer[i++] = render_pixel(x, y);

@@ -9,11 +9,12 @@
 namespace wacfrac
 {
 
+struct resolution { std::size_t width, height; };
+
 struct plot {
-    std::size_t  width;
-    std::size_t  height;
-    viewport     limits;
-    unsigned int max_iterations = 1000;
+    resolution   res;
+    viewport     view;
+    std::size_t  max_iterations; // TODO: calculate dynamically
 
     auto render_pixel(std::size_t x, std::size_t y) const -> pixel;
     auto render(const std::span<pixel>& buffer) const -> bool;

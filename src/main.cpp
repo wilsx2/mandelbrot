@@ -6,8 +6,6 @@
 #include <cstdlib>
 #include <cstddef>
 
-constexpr unsigned int MAX_ITERATIONS = 1000;
-
 int main(int argc, char *argv[]) {
     // Parse arguments
     auto parser = argumentum::argument_parser{};
@@ -27,8 +25,8 @@ int main(int argc, char *argv[]) {
     unsigned int max_iterations;
     params.add_parameter(max_iterations, "--max-iterations", "-n")
           .nargs(1)
-          .absent(MAX_ITERATIONS)
-          .help("Maximum number of iterations per orbit (default: 1000)");
+          .absent(256)
+          .help("Maximum number of iterations per orbit (default: 256)");
 
     std::vector<std::size_t> dimensions;
     params.add_parameter(dimensions, "--dimensions", "-d")
@@ -60,11 +58,11 @@ int main(int argc, char *argv[]) {
           .absent({1.0})
           .help("How deeply to zoom in (default: 1.0)");
 
-    std::size_t precision;
+    unsigned int precision;
     params.add_parameter(precision, "--precision", "-p")
           .minargs(1)
-          .absent(50uz)
-          .help("Number of decimal digits to use to store floating point numbers (default: 50)");
+          .absent(10u)
+          .help("Number of decimal digits to use to store floating point numbers (default: 10)");
 
     if (!parser.parse_args(argc, argv)) {
         std::exit(EXIT_FAILURE);
@@ -82,17 +80,16 @@ int main(int argc, char *argv[]) {
 
     // Plot and render
     wacfrac::viewport v = {
-        {real_limits[0], imag_limits[0]},
-        {real_limits[1], imag_limits[1]}
+        {real_limits[0], imag_limits[0], precision},
+        {real_limits[1], imag_limits[1], precision}
     };
     v = v.at_zoom({focus[0], focus[1]}, zoom_factor);
     std::println("\tZoomed Real Limits: min {}, max {}", v.min.real().convert_to<double>(), v.max.real().convert_to<double>());
     std::println("\tZoomed Imaginary Limits: min {}i, max {}i", v.min.imag().convert_to<double>(), v.max.imag().convert_to<double>());
 
     bool success = wacfrac::save_plot(filepath, {
-        .width          = dimensions[0],
-        .height         = dimensions[1],
-        .limits         = v,
+        .res            = {dimensions[0], dimensions[1]},
+        .view           = v,
         .max_iterations = max_iterations
     });
     std::exit(success ? EXIT_SUCCESS : EXIT_FAILURE);

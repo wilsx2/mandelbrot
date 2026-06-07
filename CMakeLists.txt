@@ -12,6 +12,7 @@ execute_process(
   COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
   OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nanobind_ROOT)
 find_package(nanobind CONFIG REQUIRED)
+find_package(benchmark REQUIRED)
 
 # find_package(PkgConfig REQUIRED)
 # pkg_check_modules(ffmpeg REQUIRED IMPORTED_TARGET ffmpeg)
@@ -26,11 +27,11 @@ add_compile_options("$<$<CONFIG:Release>:-O3>")
 
 # Static Library
 add_library(libwacfrac STATIC
-    src/color.cpp
-    src/viewport.cpp
-    src/fractal.cpp
-    src/plot.cpp
-    src/io.cpp
+    src/wacfrac/color.cpp
+    src/wacfrac/viewport.cpp
+    src/wacfrac/fractal.cpp
+    src/wacfrac/plot.cpp
+    src/wacfrac/io.cpp
 )
 # -fPIC is required so that this static lib can be linked into the nanobind
 # shared module (wacfracpy) without TLS relocation errors from Boost MPFR.
@@ -54,5 +55,5 @@ target_link_libraries(wacfrac
 )
 
 # Python Package
-nanobind_add_module(wacfracpy src/bindings.cpp)
-target_link_libraries(wacfracpy PRIVATE libwacfrac)
+# nanobind_add_module(wacfracpy src/bindings.cpp)
+# target_link_libraries(wacfracpy PRIVATE libwacfrac)

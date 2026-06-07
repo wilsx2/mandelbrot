@@ -10,7 +10,7 @@ namespace wacfrac
 {
 
 auto save_plot(std::string_view filename, const plot& p, const std::span<pixel>& buffer) -> bool {
-    if (p.width * p.height != buffer.size()) {
+    if (p.res.width * p.res.height != buffer.size()) {
         return false;
     }
     if (!p.render(buffer)) {
@@ -22,7 +22,7 @@ auto save_plot(std::string_view filename, const plot& p, const std::span<pixel>&
         return false;
     }
 
-    auto header = std::format("P6\n{} {}\n255\n", p.width, p.height);
+    auto header = std::format("P6\n{} {}\n255\n", p.res.width, p.res.height);
     file.write(header.data(), header.size());
     file.write(
         reinterpret_cast<const char*>(buffer.data()),
@@ -33,7 +33,7 @@ auto save_plot(std::string_view filename, const plot& p, const std::span<pixel>&
 }
 
 auto save_plot(std::string_view filename, const plot& p) -> bool {
-    std::vector<pixel> buffer(p.width * p.height);
+    std::vector<pixel> buffer(p.res.width * p.res.height);
     return save_plot(filename, p, buffer);
 }
 
@@ -41,7 +41,7 @@ auto save_plots(std::string_view filename, const std::vector<plot>& plots) -> bo
     std::vector<pixel> buffer;
 
     for (const auto& [index, p] : std::views::enumerate(plots)) {
-        buffer.resize(p.width * p.height);
+        buffer.resize(p.res.width * p.res.height);
 
         std::string num_string = std::string((plots.size() + 9) / 10 - (index + 10) / 10, '0') + std::to_string(index);
         std::string final_filename = std::format("{}_{}.ppm", filename, num_string);
