@@ -1,20 +1,21 @@
 #include <wacfrac/wacfrac.hpp>
 #include <benchmark/benchmark.h>
 
-static void bm_render(benchmark::State& state) {
-    wacfrac::multi_complex::default_precision(state.range(0));
-    wacfrac::multi_float::default_precision(state.range(0));
+using namespace boost::multiprecision;
 
-    wacfrac::plot plot {
-        {100uz, 100uz}, // Note: Magic
-        wacfrac::FULL_SET,
-        static_cast<std::size_t>(state.range(1))
-    };
-    std::vector<wacfrac::pixel> buffer (plot.res.width * plot.res.height);
-    for (auto _ : state)
-        plot.render(buffer);
+template<typename T>
+    // TODO: Concept
+static void calculate_next_z(benchmark::State& state) {
+    for (auto _ : state) {
+        auto n = wacfrac::escape_time<T>({}, 1); // One iteration using default value for c
+        benchmark::DoNotOptimize(n);
+    }
 }
-BENCHMARK(bm_render)
-    ->Args({5, 32});
+BENCHMARK_TEMPLATE(calculate_next_z, std::complex<float>);
+BENCHMARK_TEMPLATE(calculate_next_z, std::complex<double>);
+BENCHMARK_TEMPLATE(calculate_next_z, mpc_complex_50);
+BENCHMARK_TEMPLATE(calculate_next_z, mpc_complex_100);
+BENCHMARK_TEMPLATE(calculate_next_z, mpc_complex_500);
+BENCHMARK_TEMPLATE(calculate_next_z, mpc_complex_1000);
 
 BENCHMARK_MAIN();

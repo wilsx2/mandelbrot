@@ -7,8 +7,9 @@ namespace wacfrac
 {
 
 auto plot::render_pixel(std::size_t x, std::size_t y) const -> pixel {
-    auto c       = view.sample(x, y, res.width, res.height);
-    auto percent = escape_time_percent(c, max_iterations);
+    auto c = view.sample(x, y, res.width, res.height);
+    auto i = escape_time<multi_complex>(c, max_iterations);
+    auto percent = i / static_cast<float>(max_iterations);
     if (percent == 1.f)
         return {0, 0, 0};
     auto hue = std::fmod(percent, 0.2f) * 5.0f;
