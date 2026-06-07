@@ -5,6 +5,7 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
+find_package(Boost REQUIRED)
 find_package(Argumentum CONFIG REQUIRED)
 find_package(Python 3.14 COMPONENTS Interpreter Development.Module REQUIRED)
 execute_process(
@@ -33,6 +34,10 @@ add_executable(mplot "src/main.cpp")
 target_link_libraries(mplot
    PRIVATE
    Argumentum::argumentum
+   Boost::headers
+   mpc
+   mpfr
+   gmp
 )
 
 # Python Package (Library and Application)

@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <cstddef>
 
-constexpr unsigned int MAX_ITERATIONS = 255;
+constexpr unsigned int MAX_ITERATIONS = 1000;
 
 int main(int argc, char *argv[]) {
     // Parse arguments
@@ -27,8 +27,8 @@ int main(int argc, char *argv[]) {
     unsigned int max_iterations;
     params.add_parameter(max_iterations, "--max-iterations", "-n")
           .nargs(1)
-          .absent(255)
-          .help("Maximum number of iterations per orbit");
+          .absent(MAX_ITERATIONS)
+          .help("Maximum number of iterations per orbit (default: 1000)");
 
 
     std::vector<std::size_t> dimensions;
@@ -61,9 +61,18 @@ int main(int argc, char *argv[]) {
           .absent({1.0})
           .help("How deeply to zoom in (default: 1.0)");
 
+    std::size_t precision;
+    params.add_parameter(precision, "--precision", "-p")
+          .minargs(1)
+          .absent(50uz)
+          .help("Number of decimal digits to use to store floating point numbers (default: 50)");
+
     if (!parser.parse_args(argc, argv)) {
         std::exit(EXIT_FAILURE);
     }
+
+    mplot::multi_float::default_precision(precision);
+    mplot::multi_complex::default_precision(precision);
     
     std::println("Rendering plot to \"{}\"", filepath);
     std::println("\tDimensions: {}x{}", dimensions[0], dimensions[1]);
@@ -73,13 +82,18 @@ int main(int argc, char *argv[]) {
     std::println("\tZoom Factor(s): {}", zoom_factor);
 
     // Plot and render
+    mplot::axis_limits l = {
+        {real_limits[0], imag_limits[0]},
+        {real_limits[1], imag_limits[1]}
+    };
+    l = l.at_zoom({focus[0], focus[1]}, zoom_factor);
+    std::println("\tZoomed Real Limits: min {}, max {}", l.min.real().convert_to<double>(), l.max.real().convert_to<double>());
+    std::println("\tZoomed Imaginary Limits: min {}i, max {}i", l.min.imag().convert_to<double>(), l.max.imag().convert_to<double>());
     bool success = mplot::save_plot(filepath, {
         .width = dimensions[0],
         .height = dimensions[1],
-        .limits = {
-            {real_limits[0], imag_limits[0]},
-            {real_limits[1], imag_limits[1]}
-         },
+        .limits = l,
+        .max_iterations = max_iterations
     });
     std::exit(success ? EXIT_SUCCESS : EXIT_FAILURE);
 }

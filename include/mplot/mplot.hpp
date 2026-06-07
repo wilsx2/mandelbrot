@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/multiprecision/mpc.hpp>
+#include <boost/multiprecision/gmp.hpp>
 #include <complex>
 #include <cmath>
 #include <concepts>
@@ -14,42 +16,54 @@
 
 namespace mplot
 {
+using multi_float = boost::multiprecision::mpfr_float;
+using multi_complex = boost::multiprecision::mpc_complex;
 
-constexpr std::complex<double> Z_0 = {0.0, 0.0};
-
-auto escape_time(std::complex<double> c, unsigned int max_iterations) -> unsigned int {
-    auto z_n = Z_0;
+auto escape_time(multi_complex c, unsigned int max_iterations) -> unsigned int {
+    multi_complex z {0.0, 0.0};
     auto n = 0u;
 
-    while (std::norm(z_n) <= 2*2 && n < max_iterations) {
-        z_n = z_n * z_n + c;
+    while (z.real()*z.real() + z.imag()*z.imag() < 4 && n < max_iterations) {
+        z = z*z + c;
         ++n;
     }
 
     return n;
 }
 
-auto escape_time_percent(std::complex<double> c, unsigned int max_iterations) -> float {
+auto escape_time_percent(multi_complex c, unsigned int max_iterations) -> float {
     return escape_time(c, max_iterations) / static_cast<float>(max_iterations);
 }
 
 struct pixel { uint8_t r, g, b; };
 
 struct axis_limits {
-    std::complex<double> min;
-    std::complex<double> max;
+    multi_complex min;
+    multi_complex max;
 
-    auto at_zoom(std::complex<double> focus, double factor) -> axis_limits {
-        return {
-            {(1/factor) * min + (1 - 1/factor) * focus},
-            {(1/factor) * max + (1 - 1/factor) * focus}
-        };
+
+    auto at_zoom(multi_complex focus, multi_float factor) -> axis_limits {
+        auto width  = max.real() - min.real();
+        auto height = max.imag() - min.imag();
+
+        auto focus_re = (focus.real() - min.real()) / width;
+        auto focus_im = (focus.imag() - min.imag()) / height;
+
+        // Scale the view
+        auto new_width  = width  / factor;
+        auto new_height = height / factor;
+
+        auto new_min = multi_complex(
+            focus.real() - focus_re * new_width,
+            focus.imag() - focus_im * new_height
+        );
+
+        return { new_min, new_min + multi_complex(new_width, new_height) };
     }
-    auto sample(size_t x, size_t y, size_t width, size_t height) const -> std::complex<double> {
-        return {
-            x / static_cast<double>(width)  * (std::real(max) - std::real(min)) + std::real(min),
-            y / static_cast<double>(height) * (std::imag(max) - std::imag(min)) + std::imag(min)
-        };
+    auto sample(size_t x, size_t y, size_t width, size_t height) const -> multi_complex {
+        auto re = multi_float(x) / multi_float(width)  * (max.real() - min.real()) + min.real();
+        auto im = multi_float(y) / multi_float(height) * (max.imag() - min.imag()) + min.imag();
+        return multi_complex(re, im);
     }
 };
 
@@ -59,7 +73,7 @@ auto hsv_to_rgb(float h, float s, float v) -> pixel {
     v = std::clamp(v, 0.f, 1.f);
 
     int i = static_cast<int>(std::floor(h * 6.f));
-    float f = h - i;
+    float f = h * 6.f - i;
     float p = v * (1.f - s);
     float q = v * (1.f - s * f);
     float t = v * (1.f - s * (1.f - f));
@@ -71,7 +85,7 @@ auto hsv_to_rgb(float h, float s, float v) -> pixel {
         case 2: r = p; g = v; b = t; break;
         case 3: r = p; g = q; b = v; break;
         case 4: r = t; g = p; b = v; break;
-        case 5: r = f; g = p; b = q; break;
+        case 5: r = v; g = p; b = q; break;
         default: r = g = b = 0.f;    break;
     }
 
@@ -88,14 +102,15 @@ struct plot {
     std::size_t width;
     std::size_t height;
     axis_limits limits;
+    unsigned int max_iterations = 1000;
 
     auto render_pixel(std::size_t x, std::size_t y) const -> pixel {
-        // TODO: Make dynamic and parameterized
         auto c = limits.sample(x, y, width, height);
-        auto percent = escape_time_percent(c, 255); // TODO: Switch out magic number for max_iterations
-        if (percent == 1.0)
+        auto percent = escape_time_percent(c, max_iterations);
+        if (percent == 1.f)
             return {0, 0, 0};
-        return hsv_to_rgb(percent, 1.0, 1.0);
+        auto hue = std::fmod(percent, 0.2f) * 5.0f;
+        return hsv_to_rgb(hue, 1.0, 1.0);
     }
     auto render(const std::span<pixel>& buffer) const -> bool {
         std::size_t i = 0;
@@ -104,6 +119,7 @@ struct plot {
             std::views::iota(0uz, height),
             std::views::iota(0uz, width)
         );
+
         for (auto [y,x] : coords) { // Assumes layout 
             if (buffer.size() <= i)
                 return false;

@@ -11,7 +11,12 @@ using namespace nb::literals;
 NB_MODULE(mplotpy, m) {
     nb::class_<mp::axis_limits>(m, "axis_limits")
         .def(nb::init<>())
-        .def(nb::init<std::complex<double>, std::complex<double>>())
+        .def("__init__", [](mp::axis_limits* self, std::complex<double> mn, std::complex<double> mx) {
+            new (self) mp::axis_limits{
+                mp::multi_complex(mn.real(), mn.imag()),
+                mp::multi_complex(mx.real(), mx.imag())
+            };
+        }, "min"_a, "max"_a)
         .def_rw("min", &mp::axis_limits::min)
         .def_rw("max", &mp::axis_limits::max)
         .def("at_zoom", &mp::axis_limits::at_zoom, "focus"_a, "factor"_a);
