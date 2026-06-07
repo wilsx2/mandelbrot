@@ -7,12 +7,13 @@
     [x] Python Bindings
 [X] Precision
     [X] Calculate orbit of arbitrary precision w/ GMP
-[ ] Speed
-    [ ] Google Benchmark
+[X] Speed
+    [X] Google Benchmark
     [ ] Perturbation Theory
     [ ] SA or BLA
     [ ] Parallelize (CUDA rendering using reference orbit computed on the CPU)
 [ ] Interactivity
+    [ ] Progress bar
     [ ] Low and high level scripting API
     [ ] Keyframing Animations
     [ ] Interchangable Escape Time Algorithms
