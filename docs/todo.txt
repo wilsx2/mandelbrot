@@ -3,21 +3,26 @@
     [X] Plot a Mandelbrot
     [X] Zoom Parameter
     [X] Argument Parsing
-[ ] Scripting
-    [ ] Python Bindings
+[X] Scripting
+    [x] Python Bindings
+[X] Precision
+    [X] Calculate orbit of arbitrary precision w/ GMP
+[ ] Refactor, this is heineous
+[ ] Speed
+    [ ] Google Benchmark
+    [ ] Perturbation Theory
+    [ ] SA or BLA
+    [ ] 
+    [ ] Parallelize (CUDA rendering using reference orbit computed on the CPU)
+[ ] Interactivity
+    [ ] Low and high level scripting API
+    [ ] Keyframing Animations
+    [ ] Interchangable Escape Time Algorithms
+    [ ] Color Palette Parameter and Generator
     [ ] Composition w/ ffmpeg
         [ ] Encoding
         [ ] Videos
         [ ] Tiled images
-[ ] Precision
-    [ ] Calculate orbit of arbitrary precision w/ GMP
-    [ ] Calculate escape time using perterbation of a reference orbit
-[ ] Parallelize
-    [ ] Google Benchmark
-    [ ] CUDA rendering using reference orbit computed on the CPU
-[ ] Interactivity
-    [ ] Keyframing Animations
-    [ ] Interchangable Color / Fractal Algorithms
     [ ] WebGPU App
 [ ] Distribute (OpenMPI)
 [ ] Cloud Compute

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(mandelbrot LANGUAGES C CXX)
+project(wacfrac LANGUAGES C CXX)
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -21,24 +21,38 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_compile_options(-Wall -Wextra -Werror)
 add_compile_options("$<$<CONFIG:Release>:-O3>")
 
 # Static Library
-# 
-
-# Application
-add_executable(mplot "src/main.cpp")
-target_link_libraries(mplot
-   PRIVATE
-   Argumentum::argumentum
-   Boost::headers
-   mpc
-   mpfr
-   gmp
+add_library(libwacfrac STATIC
+    src/color.cpp
+    src/viewport.cpp
+    src/fractal.cpp
+    src/plot.cpp
+    src/io.cpp
+)
+# -fPIC is required so that this static lib can be linked into the nanobind
+# shared module (wacfracpy) without TLS relocation errors from Boost MPFR.
+set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(libwacfrac PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_link_libraries(libwacfrac PUBLIC
+    Boost::headers
+    mpc
+    mpfr
+    gmp
 )
 
-# Python Package (Library and Application)
-nanobind_add_module(mplotpy src/bindings.cpp)
+# Application
+add_executable(wacfrac src/main.cpp)
+target_link_libraries(wacfrac
+    PRIVATE
+    libwacfrac
+    Argumentum::argumentum
+)
+
+# Python Package
+nanobind_add_module(wacfracpy src/bindings.cpp)
+target_link_libraries(wacfracpy PRIVATE libwacfrac)
