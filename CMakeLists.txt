@@ -33,8 +33,6 @@ add_library(libwacfrac STATIC
     src/wacfrac/plot.cpp
     src/wacfrac/io.cpp
 )
-# -fPIC is required so that this static lib can be linked into the nanobind
-# shared module (wacfracpy) without TLS relocation errors from Boost MPFR.
 set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libwacfrac PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -46,10 +44,16 @@ target_link_libraries(libwacfrac PUBLIC
     gmp
 )
 
+# Benchmarks
+add_executable(bench src/bench.cpp)
+target_link_libraries(bench PRIVATE
+    libwacfrac
+    benchmark::benchmark_main
+)
+
 # Application
 add_executable(wacfrac src/main.cpp)
-target_link_libraries(wacfrac
-    PRIVATE
+target_link_libraries(wacfrac PRIVATE
     libwacfrac
     Argumentum::argumentum
 )
