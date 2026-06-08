@@ -9,8 +9,9 @@
     [X] Calculate orbit of arbitrary precision w/ GMP
 [X] Speed
     [X] Google Benchmark
-    [ ] Perturbation Theory
-    [ ] SA or BLA
+    [X] Perturbation Theory
+    [ ] SA
+    [ ] BLA
     [ ] Parallelize (CUDA rendering using reference orbit computed on the CPU)
 [ ] Interactivity
     [ ] Progress bar

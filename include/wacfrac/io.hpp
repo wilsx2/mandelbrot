@@ -8,8 +8,9 @@
 namespace wacfrac
 {
 
-auto save_plot(std::string_view filename, const plot& p, const std::span<pixel>& buffer) -> bool;
-auto save_plot(std::string_view filename, const plot& p) -> bool;
-auto save_plots(std::string_view filename, const std::vector<plot>& plots) -> bool;
+auto save_to_ppm(std::string_view filename, resolution res, const std::span<pixel>& buffer) -> bool;
+// TODO: Parameterize render function
+auto save_to_ppm(std::string_view filename, const plot& p) -> bool;
+auto save_to_ppm(std::string_view filename, const std::vector<plot>& plots) -> bool;
 
 }   // namespace wacfrac

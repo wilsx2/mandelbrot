@@ -6,28 +6,37 @@
 namespace wacfrac
 {
 
-auto plot::render_pixel(std::size_t x, std::size_t y) const -> pixel {
-    auto c = view.sample(x, y, res.width, res.height);
-    auto i = escape_time<multi_complex>(c, max_iterations);
-    auto percent = i / static_cast<float>(max_iterations);
-    if (percent == 1.f)
-        return {0, 0, 0};
-    auto hue = std::fmod(percent, 0.2f) * 5.0f;
-    return hsv_to_rgb(hue, 1.0f, 1.0f);
+auto render_directly (const plot& p, const std::span<pixel>& buffer) -> bool {
+    if (p.res.area() != buffer.size())
+        return false;
+
+    auto i {0uz};
+    for (auto [y, x] : p.res.coordinates()) {
+        auto c = p.view.sample(x, y, p.res.width, p.res.height);
+        auto n = escape_time(c, p.max_iterations);
+        auto percent = n / static_cast<float>(p.max_iterations);
+        buffer[i++] = (percent == 1.f) ? pixel(0,0,0) : hsv_to_rgb(percent,1.f,1.f);
+    }
+
+    return true;
 }
+auto render_perturbed(const plot& p, const std::span<pixel>& buffer) -> bool {
+    if (p.res.area() != buffer.size())
+        return false;
 
-auto plot::render(const std::span<pixel>& buffer) const -> bool {
-    std::size_t i = 0;
+    std::vector<std::complex<double>> reference = wacfrac::calculate_orbit<std::complex<double>, wacfrac::multi_complex>((p.view.min + p.view.max)/wacfrac::multi_float(2.0), p.max_iterations);
 
-    auto coords = std::views::cartesian_product(
-        std::views::iota(0uz, res.height),
-        std::views::iota(0uz, res.width)
-    );
-
-    for (auto [y, x] : coords) { // row-major: y is outer, x is inner
-        if (buffer.size() <= i)
-            return false;
-        buffer[i++] = render_pixel(x, y);
+    auto i {0uz};
+    for (auto [y, x] : p.res.coordinates()) {
+        auto c_pixel = p.view.sample(x, y, p.res.width, p.res.height);
+        auto c_ref   = (p.view.min + p.view.max) / wacfrac::multi_float(2.0);
+        std::complex<double> dc {
+            static_cast<double>(c_pixel.real() - c_ref.real()),
+            static_cast<double>(c_pixel.imag() - c_ref.imag())
+        };
+        auto n = escape_time_perturbed<std::complex<double>>(dc, reference, p.max_iterations);
+        auto percent = n / static_cast<float>(p.max_iterations);
+        buffer[i++] = (percent == 1.f) ? pixel(0,0,0) : hsv_to_rgb(percent,1.f,1.f);
     }
     return true;
 }

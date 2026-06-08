@@ -49,8 +49,8 @@ int main(int argc, char *argv[]) {
     std::vector<double> focus;
     params.add_parameter(focus, "--focus", "-f")
           .nargs(2)
-          .absent({-0.75, 0.1})
-          .help("Coordinates to zoom in on (default: -0.75 0.1 (seahorse valley))");
+          .absent({-0.7269, 0.1889})
+          .help("Coordinates to zoom in on (default: -0.7269 0.1889 (Misiurewicz point, seahorse valley tip))");
 
     double zoom_factor;
     params.add_parameter(zoom_factor, "--zoom-factor", "-z")
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
     std::println("\tZoomed Real Limits: min {}, max {}", v.min.real().convert_to<double>(), v.max.real().convert_to<double>());
     std::println("\tZoomed Imaginary Limits: min {}i, max {}i", v.min.imag().convert_to<double>(), v.max.imag().convert_to<double>());
 
-    bool success = wacfrac::save_plot(filepath, {
+    bool success = wacfrac::save_to_ppm(filepath, {
         .res            = {dimensions[0], dimensions[1]},
         .view           = v,
         .max_iterations = max_iterations
