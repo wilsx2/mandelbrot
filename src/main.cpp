@@ -49,20 +49,26 @@ int main(int argc, char *argv[]) {
     std::vector<double> focus;
     params.add_parameter(focus, "--focus", "-f")
           .nargs(2)
-          .absent({-0.7269, 0.1889})
-          .help("Coordinates to zoom in on (default: -0.7269 0.1889 (Misiurewicz point, seahorse valley tip))");
+          .absent({-2,0})
+          .help("Coordinates to zoom in on (default: left-most tip)");
 
     double zoom_factor;
     params.add_parameter(zoom_factor, "--zoom-factor", "-z")
-          .minargs(1)
+          .nargs(1)
           .absent({1.0})
           .help("How deeply to zoom in (default: 1.0)");
 
     unsigned int precision;
     params.add_parameter(precision, "--precision", "-p")
-          .minargs(1)
+          .nargs(1)
           .absent(10u)
           .help("Number of decimal digits to use to store floating point numbers (default: 10)");
+
+    bool purturbed;
+    params.add_parameter(purturbed, "--purturbed", "-u")
+          .nargs(1)
+          .absent(false)
+          .help("Use perturbation theory");
 
     if (!parser.parse_args(argc, argv)) {
         std::exit(EXIT_FAILURE);
@@ -79,7 +85,7 @@ int main(int argc, char *argv[]) {
     std::println("\tZoom Factor(s): {}", zoom_factor);
 
     // Plot and render
-    wacfrac::viewport v = {
+    wacfrac::viewport v {
         {real_limits[0], imag_limits[0], precision},
         {real_limits[1], imag_limits[1], precision}
     };
@@ -87,10 +93,19 @@ int main(int argc, char *argv[]) {
     std::println("\tZoomed Real Limits: min {}, max {}", v.min.real().convert_to<double>(), v.max.real().convert_to<double>());
     std::println("\tZoomed Imaginary Limits: min {}i, max {}i", v.min.imag().convert_to<double>(), v.max.imag().convert_to<double>());
 
-    bool success = wacfrac::save_to_ppm(filepath, {
+    wacfrac::plot p {
         .res            = {dimensions[0], dimensions[1]},
         .view           = v,
         .max_iterations = max_iterations
-    });
+    };
+
+    std::vector<wacfrac::pixel> buff (p.res.area());
+    if (purturbed) {
+        wacfrac::render_perturbed(p, buff);
+    } else {
+        wacfrac::render_directly(p, buff);
+    }
+
+    bool success = wacfrac::save_to_ppm(filepath, p.res, buff);
     std::exit(success ? EXIT_SUCCESS : EXIT_FAILURE);
 }

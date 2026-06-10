@@ -41,7 +41,7 @@ auto save_to_ppm(std::string_view filename, const std::vector<plot>& plots) -> b
     for (const auto& [index, p] : std::views::enumerate(plots)) {
         buffer.resize(p.res.area());
 
-        std::string num_string = std::string((plots.size() + 9) / 10 - (index + 10) / 10, '0') + std::to_string(index);
+        std::string num_string = std::string(std::floor(std::log10(plots.size())) - std::floor(std::log10(index)), '0') + std::to_string(index);
         std::string final_filename = std::format("{}_{}.ppm", filename, num_string);
         if (!save_to_ppm(final_filename, p)) {
             return false;
