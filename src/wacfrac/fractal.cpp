@@ -33,6 +33,10 @@ auto newtons_method(multi_complex c, std::size_t period,  std::size_t max_iterat
     return c;
 }
 
-
+// https://math.stackexchange.com/questions/2967515/difference-between-limbs-and-bulbs-in-mandelbrot-set
+//auto attachment_point(unsigned int p, unsigned int q) {
+    // NOTE: p and q must be coprime
+    // NOTE: q represents a local period 
+//}
 
 }   // namespace wacfrac

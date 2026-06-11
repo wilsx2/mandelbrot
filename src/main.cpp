@@ -63,18 +63,15 @@ int main(int argc, char *argv[]) {
     std::println("\tDimensions: {}x{}", dimensions[0], dimensions[1]);
     std::println("\tFocusing On: {} {} {}i", focus[0], focus[1] >= 0 ? '+' : '-', focus[1]);
     std::println("\tZoom Factor(s): {}", zoom_factor);
+    std::println("\tPrecision: {}", precision);
 
     // Plot and render
     wacfrac::viewport v {
-        //wacfrac::poi::BIG_BANG,
+        wacfrac::poi::BIG_BANG,
         {focus[0], focus[1], precision},
-        {1.0, 1.0, precision}
+        {1.0, 1.0}
     };
     v.precision(precision);
-    //v.center = wacfrac::newtons_method(2, v.center, 1024);
-    //focus[0] = v.center.real().convert_to<double>();
-    //focus[1] = v.center.imag().convert_to<double>();
-    //std::println("\tPost Zoom Focusing On: {} {} {}i", focus[0], focus[1] >= 0 ? '+' : '-', focus[1]);
     v.dimensions /= zoom_factor;
 
     wacfrac::plot p {
@@ -82,6 +79,7 @@ int main(int argc, char *argv[]) {
         .view           = v,
         .max_iterations = max_iterations
     };
+
 
     std::vector<wacfrac::pixel> buff (p.res.area());
     wacfrac::render_perturbed(p, buff);
