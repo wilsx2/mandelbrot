@@ -52,12 +52,6 @@ int main(int argc, char *argv[]) {
           .absent(10u)
           .help("Number of decimal digits to use to store floating point numbers (default: 10)");
 
-    bool purturbed;
-    params.add_parameter(purturbed, "--purturbed", "-u")
-          .nargs(1)
-          .absent(false)
-          .help("Use perturbation theory");
-
     if (!parser.parse_args(argc, argv)) {
         std::exit(EXIT_FAILURE);
     }
@@ -74,9 +68,13 @@ int main(int argc, char *argv[]) {
     wacfrac::viewport v {
         //wacfrac::poi::BIG_BANG,
         {focus[0], focus[1], precision},
-        {2.5, 2.5, precision}
+        {1.0, 1.0, precision}
     };
     v.precision(precision);
+    //v.center = wacfrac::newtons_method(2, v.center, 1024);
+    //focus[0] = v.center.real().convert_to<double>();
+    //focus[1] = v.center.imag().convert_to<double>();
+    //std::println("\tPost Zoom Focusing On: {} {} {}i", focus[0], focus[1] >= 0 ? '+' : '-', focus[1]);
     v.dimensions /= zoom_factor;
 
     wacfrac::plot p {
@@ -86,11 +84,7 @@ int main(int argc, char *argv[]) {
     };
 
     std::vector<wacfrac::pixel> buff (p.res.area());
-    if (purturbed) {
-        wacfrac::render_perturbed(p, buff);
-    } else {
-        wacfrac::render_directly(p, buff);
-    }
+    wacfrac::render_perturbed(p, buff);
 
     bool success = wacfrac::save_to_ppm(filepath, p.res, buff);
     std::exit(success ? EXIT_SUCCESS : EXIT_FAILURE);

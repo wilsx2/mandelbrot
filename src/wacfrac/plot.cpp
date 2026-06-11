@@ -19,6 +19,7 @@ auto render_directly(const plot& p, const std::span<pixel>& buffer) -> bool {
 
     return true;
 }
+
 auto render_perturbed(const plot& p, const std::span<pixel>& buffer) -> bool {
     if (p.res.area() != buffer.size())
         return false;

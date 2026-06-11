@@ -74,7 +74,7 @@ auto distance_estimation(T c, unsigned int max_iterations) -> float {
     T dz {0};
 
     for (auto n {0u}; n < max_iterations; ++n) { //TODO: parameterize escape radius; ought be large
-        if (square_magnitude(z) < 2*2)
+        if (square_magnitude(z) < 1024*1024)
             return 2.0 * z * std::log10(magnitude(z)) / dz;
         dz = 2.0 * z * dz + 1.0;
         z = z*z + c;
@@ -96,4 +96,7 @@ auto calculate_orbit(U c, unsigned int max_iterations) -> std::vector<T> {
     return orbit;
 }
 
+// https://www.mrob.com/pub/muency/newtonraphsonmethod.html
+auto newtons_method(std::size_t period, multi_complex c, std::size_t max_iterations) -> multi_complex;
+    
 }   // namespace wacfrac
