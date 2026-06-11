@@ -10,10 +10,14 @@
 [X] Fast Math
     [X] Google Benchmark
     [X] Perturbation Theory
-    [ ] Solve Glitches
     [ ] SA
     [ ] BLA
 [ ] Parallelism (CUDA rendering using reference orbit computed on the CPU)
+[ ] Generate zoom point
+    [X] Newton's method applied to nucleus finding
+    [ ] NM applied to finding bond points
+    [ ] Find bonded nucleus
+    [ ] Apply recursively to find infinitely small nucleus
 [ ] Interactivity
     [ ] Progress bar
     [ ] Low and high level scripting API

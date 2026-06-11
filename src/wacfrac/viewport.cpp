@@ -1,4 +1,5 @@
 #include <wacfrac/viewport.hpp>
+#include <cmath>
 
 namespace wacfrac
 {
@@ -18,5 +19,16 @@ auto viewport::sample(std::size_t x, std::size_t y, std::size_t width, std::size
     auto im = (multi_float(y, dimensions.precision()) / multi_float(height, dimensions.precision()) - 0.5) * dimensions.imag() + center.imag();
     return multi_complex(re, im);
 }
+
+
+auto approximate_required_precision(multi_float scale) -> unsigned int {
+    return std::log10(scale.convert_to<double>()) + 4.0; // TODO: Use proper member overloads
+}
+auto approximate_required_iterations(multi_float scale, double modifier, double factor, double exponent) -> unsigned int {
+    if (scale < 1.0)
+        return modifier;
+    return modifier + factor * std::pow(std::log10(scale.convert_to<double>()), exponent);
+}
+
 
 }   // namespace wacfrac

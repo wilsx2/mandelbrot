@@ -11,8 +11,11 @@ struct viewport {
     multi_complex dimensions;
 
     void precision(std::size_t value);
-    auto zoomed(multi_float factor) const -> viewport;
+    auto zoomed(multi_float scale) const -> viewport;
     auto sample(std::size_t x, std::size_t y, std::size_t width, std::size_t height) const -> multi_complex;
 };
+
+auto approximate_required_precision(multi_float scale) -> unsigned int;
+auto approximate_required_iterations(multi_float scale, double modifier = 250.0, double factor = 50.0, double exponent = 1.5) -> unsigned int;
 
 }   // namespace wacfrac
