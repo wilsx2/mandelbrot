@@ -6,8 +6,8 @@
 namespace wacfrac {
 
 inline const viewport FULL_SET = {
-    multi_complex(-2.5, -1.0),
-    multi_complex(+1.0, +1.0)
+    multi_complex(-0.75, 0.0),
+    multi_complex(2.5, 2.5)
 };
 
 namespace video_resolution {

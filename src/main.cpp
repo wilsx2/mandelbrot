@@ -34,18 +34,6 @@ int main(int argc, char *argv[]) {
           .absent({1920, 1080})
           .help("Width and height of output image (default: 1920 1080)");
 
-    std::vector<double> real_limits;
-    params.add_parameter(real_limits, "--real-limits", "-r")
-          .nargs(2)
-          .absent({-2.0, 0.5})
-          .help("Minimum and maximum values of the real component of 'c' to be graphed (default: -2.0 0.5)");
-
-    std::vector<double> imag_limits;
-    params.add_parameter(imag_limits, "--imaginary-limits", "-i")
-          .nargs(2)
-          .absent({-1.25, 1.25})
-          .help("Minimum and maximum values of the imaginary component of 'c' to be graphed (default: -1.25 1.25)");
-
     std::vector<double> focus;
     params.add_parameter(focus, "--focus", "-f")
           .nargs(2)
@@ -79,19 +67,17 @@ int main(int argc, char *argv[]) {
 
     std::println("Rendering plot to \"{}\"", filepath);
     std::println("\tDimensions: {}x{}", dimensions[0], dimensions[1]);
-    std::println("\tReal Limits: min {}, max {}", real_limits[0], real_limits[1]);
-    std::println("\tImaginary Limits: min {}i, max {}i", imag_limits[0], imag_limits[1]);
     std::println("\tFocusing On: {} {} {}i", focus[0], focus[1] >= 0 ? '+' : '-', focus[1]);
     std::println("\tZoom Factor(s): {}", zoom_factor);
 
     // Plot and render
     wacfrac::viewport v {
-        {real_limits[0], imag_limits[0], precision},
-        {real_limits[1], imag_limits[1], precision}
+        //wacfrac::poi::BIG_BANG,
+        {focus[0], focus[1], precision},
+        {2.5, 2.5, precision}
     };
-    v = v.at_zoom({focus[0], focus[1]}, zoom_factor);
-    std::println("\tZoomed Real Limits: min {}, max {}", v.min.real().convert_to<double>(), v.max.real().convert_to<double>());
-    std::println("\tZoomed Imaginary Limits: min {}i, max {}i", v.min.imag().convert_to<double>(), v.max.imag().convert_to<double>());
+    v.precision(precision);
+    v.dimensions /= zoom_factor;
 
     wacfrac::plot p {
         .res            = {dimensions[0], dimensions[1]},

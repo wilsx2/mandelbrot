@@ -27,21 +27,21 @@ NB_MODULE(wacfracpy, m) {
     // viewport
     nb::class_<wf::viewport>(m, "viewport")
         .def(nb::init<>())
-        .def("__init__", [](wf::viewport* self, std::complex<double> mn, std::complex<double> mx) {
+        .def("__init__", [](wf::viewport* self, std::complex<double> center, std::complex<double> dimensions) {
             new (self) wf::viewport{
-                wf::multi_complex(mn.real(), mn.imag()),
-                wf::multi_complex(mx.real(), mx.imag())
+                wf::multi_complex(center.real(), center.imag()),
+                wf::multi_complex(dimensions.real(), dimensions.imag())
             };
-        }, "min"_a, "max"_a)
-        .def_rw("min", &wf::viewport::min)
-        .def_rw("max", &wf::viewport::max)
-        .def("at_zoom", [](wf::viewport& self, std::complex<double> focus, double factor) {
-            return self.at_zoom(
-                wf::multi_complex(focus.real(), focus.imag()),
-                wf::multi_float(factor)
-            );
-        }, "focus"_a, "factor"_a)
+        }, "center"_a, "dimensions"_a)
+        .def_rw("center", &wf::viewport::center)
+        .def_rw("dimensions", &wf::viewport::dimensions)
         .def("precision", &wf::viewport::precision, "value"_a)
+        .def("zoomed", [](const wf::viewport& self, double factor) {
+            return self.zoomed(wf::multi_float(factor));
+         }, "factor"_a)
+        .def("zoomed", [](const wf::viewport& self, std::string factor) {
+            return self.zoomed(wf::multi_float(factor));
+         }, "factor"_a)
         .def("sample", [](const wf::viewport& self, std::size_t x, std::size_t y,
                           std::size_t width, std::size_t height) {
             auto c = self.sample(x, y, width, height);
