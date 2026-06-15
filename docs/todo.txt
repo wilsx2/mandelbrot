@@ -10,9 +10,9 @@
 [X] Fast Math
     [X] Google Benchmark
     [X] Perturbation Theory
-    [ ] SA
+    [X] SA
     [ ] BLA
-[ ] Parallelism (CUDA rendering using reference orbit computed on the CPU)
+[ ] Parallelism (CUDA rendering using reference orbit computed on the CPU, OpenMP for multiple references/series)
 [ ] Generate zoom point
     [X] Newton's method applied to nucleus finding
     [ ] NM applied to finding bond points

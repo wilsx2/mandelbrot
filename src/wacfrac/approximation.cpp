@@ -8,12 +8,13 @@ series_approximator::series_approximator(const std::vector<std::complex<double>>
     : _reference_orbit(reference_orbit)
     , _curr_coeffs(coefficient_count, {0.0, 0.0})
     , _next_coeffs(coefficient_count)
+    , _n(1)
 {
     if (coefficient_count > 0)
         _curr_coeffs[0] = {1.0, 0.0};
 }
 void series_approximator::resize(std::size_t coefficient_count) {
-    _n = 0;
+    _n = 1;
     _curr_coeffs.resize(coefficient_count);
     _next_coeffs.resize(coefficient_count);
     if (coefficient_count > 0) {

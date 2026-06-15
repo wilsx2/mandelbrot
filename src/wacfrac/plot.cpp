@@ -49,9 +49,9 @@ auto render_approximated(const plot& p, const std::span<pixel>& buffer) -> bool 
         return false;
 
     auto c_ref   = p.view.center;
-    std::vector<std::complex<double>> reference = compute_reference(c_ref, p.max_iterations);
+    auto reference = compute_reference(c_ref, p.max_iterations);
     series_approximator sa {reference, 12}; // TODO: Replace magic number
-    sa.compute_coeffs_while_valid({static_cast<std::complex<double>>(c_ref)}, 1e-6); // TODO: Replace magic number; use many probes
+    sa.compute_coeffs_while_valid(p.view.generate_probes(4,4), 1e-6); // TODO: Replace magic numbers
 
     auto i {0uz};
     for (auto [y, x] : p.res.coordinates()) {
@@ -61,8 +61,8 @@ auto render_approximated(const plot& p, const std::span<pixel>& buffer) -> bool 
             static_cast<double>(c_pixel.imag() - c_ref.imag())
         };
         auto dz = sa.approximate_delta_n(dc);
-        auto n = escape_time<perturbed_orbit>({reference, dz, dc}, p.max_iterations, sa.n());
-        auto percent = n / static_cast<float>(p.max_iterations);
+        auto et = escape_time<perturbed_orbit>({reference, dz, dc, sa.n()}, p.max_iterations);
+        auto percent = et / static_cast<float>(p.max_iterations);
         buffer[i++] = (percent == 1.f) ? pixel(0,0,0) : hsv_to_rgb(percent,1.f,1.f);
     }
     return true;

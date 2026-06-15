@@ -19,6 +19,28 @@ auto viewport::sample(std::size_t x, std::size_t y, std::size_t width, std::size
     return multi_complex(re, im);
 }
 
+auto viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<double>> {
+    std::vector<std::complex<double>> probes;
+    std::complex<double> interval {
+        static_cast<double>(dimensions.real()/cols),
+        static_cast<double>(dimensions.imag()/rows)
+    };
+    std::complex<double> start {
+        static_cast<double>(cols % 2 == 0 ? -dimensions.real()/2.0 : (-dimensions.real() + interval.real())/2.0),
+        static_cast<double>(rows % 2 == 0 ? -dimensions.imag()/2.0 : (-dimensions.imag() + interval.imag())/2.0)
+    };
+    std::complex<double> end {
+        static_cast<double>(+dimensions.real()/2.0),
+        static_cast<double>(+dimensions.imag()/2.0)
+    };
+    for (double dx = start.real(); dx <= end.real(); dx += interval.real()) {
+        for (double dy = start.imag(); dy <= end.imag(); dy += interval.imag()) {
+            probes.emplace_back(dx, dy);
+        }
+    }
+    return probes;
+}
+
 auto approximate_required_precision(multi_float scale) -> unsigned int {
     return std::log10(scale.convert_to<double>()) + 4.0; // TODO: Use proper member overloads
 }
