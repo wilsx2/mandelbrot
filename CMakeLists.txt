@@ -28,6 +28,7 @@ add_compile_options("$<$<CONFIG:Release>:-O3>")
 
 # Static Library
 add_library(libwacfrac STATIC
+    src/wacfrac/approximation.cpp
     src/wacfrac/color.cpp
     src/wacfrac/viewport.cpp
     src/wacfrac/fractal.cpp

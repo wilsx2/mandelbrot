@@ -86,9 +86,8 @@ int main(int argc, char *argv[]) {
         .max_iterations = max_iterations
     };
 
-
     std::vector<wacfrac::pixel> buff (p.res.area());
-    wacfrac::render_perturbed(p, buff);
+    wacfrac::render_approximated(p, buff);
 
     bool success = wacfrac::save_to_ppm(filepath, p.res, buff);
     std::exit(success ? EXIT_SUCCESS : EXIT_FAILURE);

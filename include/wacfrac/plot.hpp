@@ -31,5 +31,6 @@ struct plot {
 
 auto render_directly      (const plot& p, const std::span<pixel>& buffer) -> bool;
 auto render_perturbed     (const plot& p, const std::span<pixel>& buffer) -> bool;
+auto render_approximated  (const plot& p, const std::span<pixel>& buffer) -> bool;
 
 }   // namespace wacfrac

@@ -5,6 +5,18 @@
 namespace wacfrac
 {
 
+auto compute_reference(multi_complex c, unsigned int max_iterations) -> std::vector<std::complex<double>> {
+    std::vector<std::complex<double>> reference { {0.0, 0.0} };
+    orbit<multi_complex> orb {c};
+
+    for (auto n {0u}; n < max_iterations && square_magnitude(orb.z) < 2*2; ++n) {
+        orb.iterate();
+        reference.emplace_back(static_cast<std::complex<double>>(orb.z));
+    }
+
+    return reference;
+}
+
 static auto lemniscate_curve(multi_complex c, std::size_t period) -> std::pair<multi_complex, multi_complex> {
     multi_complex z  {0};
     multi_complex dz {0};
@@ -17,7 +29,7 @@ static auto lemniscate_curve(multi_complex c, std::size_t period) -> std::pair<m
 }
 
 // https://www.mrob.com/pub/muency/newtonraphsonmethod.html
-auto newtons_method(multi_complex c, std::size_t period,  std::size_t max_iterations) -> multi_complex {
+auto find_nucleus(multi_complex c, std::size_t period,  std::size_t max_iterations) -> multi_complex {
     auto square_tolerance = 1.0 / std::pow(10.0, 2.0*c.precision()); // TODO: Worry about precision getting cut
     for (auto i {0uz}; i < max_iterations; ++i) {
         multi_complex z, dz;
@@ -34,7 +46,7 @@ auto newtons_method(multi_complex c, std::size_t period,  std::size_t max_iterat
 }
 
 // https://math.stackexchange.com/questions/2967515/difference-between-limbs-and-bulbs-in-mandelbrot-set
-//auto attachment_point(unsigned int p, unsigned int q) {
+//auto find_attachment_point(unsigned int p, unsigned int q) {
     // NOTE: p and q must be coprime
     // NOTE: q represents a local period 
 //}
