@@ -32,12 +32,12 @@ int main(int argc, char *argv[]) {
     params.add_parameter(focus, "--focus", "-f")
           .nargs(2)
           .absent({-0.5, 0})
-          .help("Coordinates to zoom in on (default: -0.5 + 0i)");
+          .help("Coordinates to zoom in on (default: -0.5 0)");
 
-    double scale;
+    std::string scale;
     params.add_parameter(scale, "--zoom-scale", "-z")
           .nargs(1)
-          .absent({0.4})
+          .absent({"0.4"})
           .help("Zoom scale (default: 0.4)");
 
     unsigned int max_iterations;
@@ -56,13 +56,15 @@ int main(int argc, char *argv[]) {
     if (!parser.parse_args(argc, argv)) {
         std::exit(EXIT_FAILURE);
     }
+    wacfrac::multi_float zoom_scale (scale, 1000);
     if (max_iterations == 0)
-        max_iterations = wacfrac::approximate_required_iterations(scale);
+        max_iterations = wacfrac::approximate_required_iterations(zoom_scale);
     if (precision == 0)
-        precision = wacfrac::approximate_required_precision(scale);
+        precision = wacfrac::approximate_required_precision(zoom_scale);
 
     wacfrac::multi_float::default_precision(precision);
     wacfrac::multi_complex::default_precision(precision);
+    zoom_scale.precision(precision);
 
     std::println("Rendering plot to \"{}\"", filepath);
     std::println("\tDimensions: {}x{}", dimensions[0], dimensions[1]);
@@ -78,7 +80,7 @@ int main(int argc, char *argv[]) {
         {1.0, 1.0}
     };
     v.precision(precision);
-    v.dimensions /= scale;
+    v = v.zoomed(zoom_scale);
 
     wacfrac::plot p {
         .res            = {dimensions[0], dimensions[1]},
