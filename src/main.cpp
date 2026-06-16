@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
         .res            = {dimensions[0], dimensions[1]},
         .view           = v,
         .max_iterations = max_iterations,
-        .palette        = wacfrac::generate_hsv_rainbow_palette(64), // TODO: Replace magic numbers
+        .palette        = wacfrac::generate_palette(std::bind_back(wacfrac::hcl_to_rgb, 1.f, 1.f), 64), // TODO: Replace magic numbers
         .eta            = wacfrac::approximate_eta {
             .num_coefficients = 12, // TODO: Replace magic numbers
             .probe_cols = 4,

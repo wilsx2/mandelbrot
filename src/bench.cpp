@@ -3,8 +3,7 @@
 
 using namespace boost::multiprecision;
 
-template<typename T>
-    // TODO: Concept
+template<wacfrac::Complex T>
 static void calculate_next_z(benchmark::State& state) {
     T z {0.0, 0.0};
     T c {0.0, 0.0};

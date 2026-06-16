@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <vector>
 #include <complex>
+#include <ranges>
 #include <functional>
 
 namespace wacfrac
@@ -24,13 +25,27 @@ auto colorize_continuous(colorization_method method, const std::vector<rgb>& pal
 auto palette_lookup_normal(const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb;
 auto palette_lookup_looped(const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb;
 
-// palette generation
-auto hsv_rainbow_generator(float increment, float initial_hue) -> std::function<rgb()>;
-auto generate_hsv_rainbow_palette(std::size_t samples, float initial_hue = 1.f, float range = 1.f) -> std::vector<rgb>;
-
 // manipulation
 auto lerp_color(rgb a, rgb b, float percentile) -> rgb;
 auto hsv_to_rgb(float h, float s, float v) -> rgb;
-auto lch_to_rgb(float l, float c, float h) -> rgb; // TODO: Implement
+auto hcl_to_rgb(float l, float c, float h) -> rgb;
+
+// palette generation
+template<std::invocable<float> F>
+auto color_generator(F&& func, float increment, float initial) -> std::function<rgb()> {
+    return [=]() {
+        static float value = initial - increment;
+        return func(value = std::fmod(value + increment, 1.f));
+    };
+}
+
+template<std::invocable<float> F>
+auto generate_palette(F&& func, std::size_t samples, float initial = 0.f, float range = 1.f) -> std::vector<rgb> {
+    std::vector<rgb> palette (samples);
+    palette.front() = rgb(0, 0, 0);
+    auto generator {color_generator(func, range/static_cast<float>(samples-2), initial)};
+    std::generate(palette.begin() + 1, palette.end(), generator);
+    return palette;
+}
 
 }   // namespace wacfrac

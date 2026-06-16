@@ -17,7 +17,7 @@
     [X] Palette Application
     [ ] Palette Constants
     [ ] LCH
-    [ ] Continuous Coloring
+    [X] Continuous Coloring
 [ ] Parallelism (CUDA rendering using reference orbit computed on the CPU, OpenMP for multiple references/series)
 [ ] Generate zoom point
     [X] Newton's method applied to nucleus finding
