@@ -82,15 +82,18 @@ int main(int argc, char *argv[]) {
     v.precision(precision);
     v = v.zoomed(zoom_scale);
 
-    wacfrac::plot p {
+    wacfrac::render_config conf {
         .res            = {dimensions[0], dimensions[1]},
         .view           = v,
-        .max_iterations = max_iterations
+        .max_iterations = max_iterations,
+        .eta            = wacfrac::approximate_eta {
+            .num_coefficients = 12, // TODO: Remove magic numbers
+            .probe_cols = 4,
+            .probe_rows = 4,
+            .tolerance = 1e-6
+        }
     };
 
-    std::vector<wacfrac::pixel> buff (p.res.area());
-    wacfrac::render_approximated(p, buff);
-
-    bool success = wacfrac::save_to_ppm(filepath, p.res, buff);
+    bool success = wacfrac::save_to_ppm(filepath, conf);
     std::exit(success ? EXIT_SUCCESS : EXIT_FAILURE);
 }

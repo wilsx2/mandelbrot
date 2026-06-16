@@ -51,36 +51,36 @@ NB_MODULE(wacfracpy, m) {
             );
         }, "x"_a, "y"_a, "width"_a, "height"_a);
 
-    // plot
-    nb::class_<wf::plot>(m, "plot")
-        .def(nb::init<>())
-        .def("__init__", [](wf::plot* self, wf::resolution res, wf::viewport view, std::size_t max_iterations) {
-            new (self) wf::plot{ res, view, max_iterations };
-        }, "res"_a, "view"_a, "max_iterations"_a)
-        .def_rw("res",            &wf::plot::res)
-        .def_rw("view",           &wf::plot::view)
-        .def_rw("max_iterations", &wf::plot::max_iterations);
+    // // plot
+    // nb::class_<wf::plot>(m, "plot")
+    //     .def(nb::init<>())
+    //     .def("__init__", [](wf::plot* self, wf::resolution res, wf::viewport view, std::size_t max_iterations) {
+    //         new (self) wf::plot{ res, view, max_iterations };
+    //     }, "res"_a, "view"_a, "max_iterations"_a)
+    //     .def_rw("res",            &wf::plot::res)
+    //     .def_rw("view",           &wf::plot::view)
+    //     .def_rw("max_iterations", &wf::plot::max_iterations);
 
-    // render functions - return pixel buffer as list
-    m.def("render_directly", [](const wf::plot& p) -> std::vector<wf::pixel> {
-        std::vector<wf::pixel> buffer(p.res.area());
-        wf::render_directly(p, buffer);
-        return buffer;
-    }, "plot"_a);
+    // // render functions - return pixel buffer as list
+    // m.def("render_directly", [](const wf::plot& p) -> std::vector<wf::pixel> {
+    //     std::vector<wf::pixel> buffer(p.res.area());
+    //     wf::render_directly(p, buffer);
+    //     return buffer;
+    // }, "plot"_a);
 
-    m.def("render_perturbed", [](const wf::plot& p) -> std::vector<wf::pixel> {
-        std::vector<wf::pixel> buffer(p.res.area());
-        wf::render_perturbed(p, buffer);
-        return buffer;
-    }, "plot"_a);
+    // m.def("render_perturbed", [](const wf::plot& p) -> std::vector<wf::pixel> {
+    //     std::vector<wf::pixel> buffer(p.res.area());
+    //     wf::render_perturbed(p, buffer);
+    //     return buffer;
+    // }, "plot"_a);
 
     // io functions
-    m.def("save_to_ppm",
-        static_cast<bool(*)(std::string_view, const wf::plot&)>(&wf::save_to_ppm),
-        "filename"_a, "plot"_a);
-    m.def("save_to_ppm",
-        static_cast<bool(*)(std::string_view, const std::vector<wf::plot>&)>(&wf::save_to_ppm),
-        "filename"_a, "plots"_a);
+    // m.def("save_to_ppm",
+    //     static_cast<bool(*)(std::string_view, const wf::plot&)>(&wf::save_to_ppm),
+    //     "filename"_a, "plot"_a);
+    // m.def("save_to_ppm",
+    //     static_cast<bool(*)(std::string_view, const std::vector<wf::plot>&)>(&wf::save_to_ppm),
+    //     "filename"_a, "plots"_a);
 
     // color utilities
     m.def("hsv_to_rgb", &wf::hsv_to_rgb, "h"_a, "s"_a, "v"_a);

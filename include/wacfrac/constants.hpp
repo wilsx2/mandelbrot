@@ -1,6 +1,6 @@
 #pragma once
 #include <wacfrac/types.hpp>
-#include <wacfrac/plot.hpp>
+#include <wacfrac/rendering.hpp>
 #include <wacfrac/viewport.hpp>
 
 namespace wacfrac {

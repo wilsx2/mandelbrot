@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18)
 project(wacfrac LANGUAGES C CXX)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -32,7 +34,7 @@ add_library(libwacfrac STATIC
     src/wacfrac/color.cpp
     src/wacfrac/viewport.cpp
     src/wacfrac/fractal.cpp
-    src/wacfrac/plot.cpp
+    src/wacfrac/rendering.cpp
     src/wacfrac/io.cpp
 )
 set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)

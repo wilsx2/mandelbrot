@@ -23,14 +23,21 @@ struct resolution {
     }
 };
 
-struct plot {
-    resolution   res;
-    viewport     view;
-    std::size_t  max_iterations; // TODO: calculate dynamically
+struct direct_eta { };
+struct perturbed_eta { };
+struct approximate_eta {
+    std::size_t num_coefficients, probe_cols, probe_rows;
+    double tolerance;
+};
+using escape_time_algorithm = std::variant<direct_eta, perturbed_eta, approximate_eta>;
+
+struct render_config {
+    resolution  res;
+    viewport    view;
+    std::size_t max_iterations;
+    escape_time_algorithm eta;
 };
 
-auto render_directly      (const plot& p, const std::span<pixel>& buffer) -> bool;
-auto render_perturbed     (const plot& p, const std::span<pixel>& buffer) -> bool;
-auto render_approximated  (const plot& p, const std::span<pixel>& buffer) -> bool;
+auto render(const render_config& conf, const std::span<pixel>& buffer) -> bool;
 
 }   // namespace wacfrac

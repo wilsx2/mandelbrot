@@ -1,0 +1,116 @@
+[
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++  -I/home/wilsx2/Code/mandelbrot/include -O3 -DNDEBUG -std=c++26 -fPIC -Wall -Wextra -Werror -O3 -o CMakeFiles/libwacfrac.dir/src/wacfrac/approximation.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/approximation.cpp",
+    "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/approximation.cpp",
+    "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/approximation.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++  -I/home/wilsx2/Code/mandelbrot/include -O3 -DNDEBUG -std=c++26 -fPIC -Wall -Wextra -Werror -O3 -o CMakeFiles/libwacfrac.dir/src/wacfrac/color.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/color.cpp",
+    "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/color.cpp",
+    "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/color.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++  -I/home/wilsx2/Code/mandelbrot/include -O3 -DNDEBUG -std=c++26 -fPIC -Wall -Wextra -Werror -O3 -o CMakeFiles/libwacfrac.dir/src/wacfrac/viewport.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/viewport.cpp",
+    "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/viewport.cpp",
+    "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/viewport.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++  -I/home/wilsx2/Code/mandelbrot/include -O3 -DNDEBUG -std=c++26 -fPIC -Wall -Wextra -Werror -O3 -o CMakeFiles/libwacfrac.dir/src/wacfrac/fractal.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/fractal.cpp",
+    "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/fractal.cpp",
+    "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/fractal.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++  -I/home/wilsx2/Code/mandelbrot/include -O3 -DNDEBUG -std=c++26 -fPIC -Wall -Wextra -Werror -O3 -o CMakeFiles/libwacfrac.dir/src/wacfrac/rendering.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/rendering.cpp",
+    "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/rendering.cpp",
+    "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/rendering.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++  -I/home/wilsx2/Code/mandelbrot/include -O3 -DNDEBUG -std=c++26 -fPIC -Wall -Wextra -Werror -O3 -o CMakeFiles/libwacfrac.dir/src/wacfrac/io.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/io.cpp",
+    "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/io.cpp",
+    "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/io.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++  -I/home/wilsx2/Code/mandelbrot/include -O3 -DNDEBUG -std=c++26 -Wall -Wextra -Werror -O3 -o CMakeFiles/bench.dir/src/bench.cpp.o -c /home/wilsx2/Code/mandelbrot/src/bench.cpp",
+    "file": "/home/wilsx2/Code/mandelbrot/src/bench.cpp",
+    "output": "CMakeFiles/bench.dir/src/bench.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++  -I/home/wilsx2/Code/mandelbrot/include -O3 -DNDEBUG -std=c++26 -Wall -Wextra -Werror -O3 -o CMakeFiles/wacfrac.dir/src/main.cpp.o -c /home/wilsx2/Code/mandelbrot/src/main.cpp",
+    "file": "/home/wilsx2/Code/mandelbrot/src/main.cpp",
+    "output": "CMakeFiles/wacfrac.dir/src/main.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -DNB_COMPACT_ASSERTIONS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -ffunction-sections -fdata-sections -fno-strict-aliasing -o CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_internals.cpp.o -c /usr/lib/python3.14/site-packages/nanobind/src/nb_internals.cpp",
+    "file": "/usr/lib/python3.14/site-packages/nanobind/src/nb_internals.cpp",
+    "output": "CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_internals.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -DNB_COMPACT_ASSERTIONS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -ffunction-sections -fdata-sections -fno-strict-aliasing -o CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_func.cpp.o -c /usr/lib/python3.14/site-packages/nanobind/src/nb_func.cpp",
+    "file": "/usr/lib/python3.14/site-packages/nanobind/src/nb_func.cpp",
+    "output": "CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_func.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -DNB_COMPACT_ASSERTIONS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -ffunction-sections -fdata-sections -fno-strict-aliasing -o CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_type.cpp.o -c /usr/lib/python3.14/site-packages/nanobind/src/nb_type.cpp",
+    "file": "/usr/lib/python3.14/site-packages/nanobind/src/nb_type.cpp",
+    "output": "CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_type.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -DNB_COMPACT_ASSERTIONS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -ffunction-sections -fdata-sections -fno-strict-aliasing -o CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_enum.cpp.o -c /usr/lib/python3.14/site-packages/nanobind/src/nb_enum.cpp",
+    "file": "/usr/lib/python3.14/site-packages/nanobind/src/nb_enum.cpp",
+    "output": "CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_enum.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -DNB_COMPACT_ASSERTIONS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -ffunction-sections -fdata-sections -fno-strict-aliasing -o CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_ndarray.cpp.o -c /usr/lib/python3.14/site-packages/nanobind/src/nb_ndarray.cpp",
+    "file": "/usr/lib/python3.14/site-packages/nanobind/src/nb_ndarray.cpp",
+    "output": "CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_ndarray.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -DNB_COMPACT_ASSERTIONS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -ffunction-sections -fdata-sections -fno-strict-aliasing -o CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_static_property.cpp.o -c /usr/lib/python3.14/site-packages/nanobind/src/nb_static_property.cpp",
+    "file": "/usr/lib/python3.14/site-packages/nanobind/src/nb_static_property.cpp",
+    "output": "CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/nb_static_property.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -DNB_COMPACT_ASSERTIONS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -ffunction-sections -fdata-sections -fno-strict-aliasing -o CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/common.cpp.o -c /usr/lib/python3.14/site-packages/nanobind/src/common.cpp",
+    "file": "/usr/lib/python3.14/site-packages/nanobind/src/common.cpp",
+    "output": "CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/common.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -DNB_COMPACT_ASSERTIONS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -ffunction-sections -fdata-sections -fno-strict-aliasing -o CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/error.cpp.o -c /usr/lib/python3.14/site-packages/nanobind/src/error.cpp",
+    "file": "/usr/lib/python3.14/site-packages/nanobind/src/error.cpp",
+    "output": "CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/error.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -DNB_COMPACT_ASSERTIONS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -ffunction-sections -fdata-sections -fno-strict-aliasing -o CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/trampoline.cpp.o -c /usr/lib/python3.14/site-packages/nanobind/src/trampoline.cpp",
+    "file": "/usr/lib/python3.14/site-packages/nanobind/src/trampoline.cpp",
+    "output": "CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/trampoline.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -DNB_COMPACT_ASSERTIONS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -ffunction-sections -fdata-sections -fno-strict-aliasing -o CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/implicit.cpp.o -c /usr/lib/python3.14/site-packages/nanobind/src/implicit.cpp",
+    "file": "/usr/lib/python3.14/site-packages/nanobind/src/implicit.cpp",
+    "output": "CMakeFiles/nanobind-static.dir/usr/lib/python3.14/site-packages/nanobind/src/implicit.cpp.o"
+  },
+  {
+    "directory": "/home/wilsx2/Code/mandelbrot/build",
+    "command": "/usr/bin/c++ -Dwacfracpy_EXPORTS -I/usr/include/python3.14 -I/usr/lib/python3.14/site-packages/nanobind/include -I/home/wilsx2/Code/mandelbrot/include -O3 -DNDEBUG -std=c++26 -fPIC -fvisibility=hidden -Wall -Wextra -Werror -O3 -fno-stack-protector -Os -ffunction-sections -fdata-sections -o CMakeFiles/wacfracpy.dir/src/bindings.cpp.o -c /home/wilsx2/Code/mandelbrot/src/bindings.cpp",
+    "file": "/home/wilsx2/Code/mandelbrot/src/bindings.cpp",
+    "output": "CMakeFiles/wacfracpy.dir/src/bindings.cpp.o"
+  }
+]
