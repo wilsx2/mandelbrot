@@ -11,7 +11,10 @@ static auto render_generic(const render_config& conf, const std::span<rgb>& buff
         return false;
     auto i {0uz};
     for (auto [y, x] : conf.res.coordinates()) {
-        buffer[i++] = colorize(conf.ca, conf.palette, conf.max_iterations, escape_fn(x, y), {});
+        std::complex<double> z;
+        unsigned int n;
+        std::tie(z,n) = escape_fn(x, y);
+        buffer[i++] = colorize(conf.ca, conf.palette, conf.max_iterations, z, n);
     }
     return true;
 }
@@ -20,7 +23,7 @@ static auto render_direct(const render_config& conf, const std::span<rgb>& buffe
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            return escape_time<orbit<std::complex<double>>>({c.convert_to<double>()}, conf.max_iterations);
+            return escape<orbit<std::complex<double>>>({c.convert_to<double>()}, conf.max_iterations);
         }
     );
 }
@@ -31,7 +34,7 @@ static auto render_perturbed(const render_config& conf, const std::span<rgb>& bu
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
             std::complex<double> dc {c - conf.view.center};
-            return escape_time<perturbed_orbit>({reference, dc}, conf.max_iterations);
+            return escape<perturbed_orbit>({reference, dc}, conf.max_iterations);
         }
     );
 }
@@ -52,7 +55,7 @@ static auto render_approximate(const render_config& conf, const std::span<rgb>& 
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
             std::complex<double> dc {c - conf.view.center};
             auto dz = sa.approximate_delta_n(dc);
-            return escape_time<perturbed_orbit>({reference, dz, dc, sa.n()}, conf.max_iterations);
+            return escape<perturbed_orbit>({reference, dz, dc, sa.n()}, conf.max_iterations);
         }
     );
 }

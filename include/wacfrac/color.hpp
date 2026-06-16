@@ -18,9 +18,9 @@ struct colorization_algorithm {
     colorization_type type;
     colorization_method method;
 };
-auto colorize(colorization_algorithm ca, const std::vector<rgb>& palette, std::size_t max_n, std::size_t n, std::complex<double> z) -> rgb;
+auto colorize(colorization_algorithm ca, const std::vector<rgb>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> rgb;
 auto colorize_discrete(colorization_method method, const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb;
-auto colorize_continuous(colorization_method method, const std::vector<rgb>& palette, std::size_t max_n, std::size_t n, std::complex<double> z) -> rgb;
+auto colorize_continuous(colorization_method method, const std::vector<rgb>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> rgb;
 auto palette_lookup_normal(const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb;
 auto palette_lookup_looped(const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb;
 

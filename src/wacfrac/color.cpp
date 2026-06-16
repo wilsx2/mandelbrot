@@ -9,10 +9,10 @@ namespace wacfrac
 
 // https://www.tomchaplin.xyz/blog/2018-11-02-exploring-the-mandelbrot-set/
 // https://linas.org/art-gallery/escape/escape.html
-auto colorize(colorization_algorithm ca, const std::vector<rgb>& palette, std::size_t max_n, std::size_t n, std::complex<double> z) -> rgb {
+auto colorize(colorization_algorithm ca, const std::vector<rgb>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> rgb {
     switch (ca.type) {
         case colorization_type::discrete:   return colorize_discrete(ca.method, palette, max_n, n); break;
-        case colorization_type::continuous: return colorize_continuous(ca.method, palette, max_n, n, z); break;
+        case colorization_type::continuous: return colorize_continuous(ca.method, palette, max_n, z, n); break;
     }
     return {255, 0, 255};
 }
@@ -23,10 +23,10 @@ auto colorize_discrete(colorization_method method, const std::vector<rgb>& palet
     }
     return {255, 0, 255};
 }
-auto colorize_continuous(colorization_method method, const std::vector<rgb>& palette, std::size_t max_n, std::size_t n, std::complex<double> z) -> rgb {
-    auto cont_n = n - (std::log(std::log(magnitude(z))))/std::log(2.0);
-    auto n1 = static_cast<std::size_t>(std::floor(cont_n));
-    auto n2 = static_cast<std::size_t>(std::ceil(cont_n));
+auto colorize_continuous(colorization_method method, const std::vector<rgb>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> rgb {
+    auto cont_n {n - (std::log(std::log(magnitude(z))))/std::log(2.0)};
+    auto n1     {static_cast<std::size_t>(std::floor(cont_n))};
+    auto n2     {static_cast<std::size_t>(std::ceil(cont_n))};
     auto color1 {colorize_discrete(method, palette, max_n, n1)};
     auto color2 {colorize_discrete(method, palette, max_n, n2)};
     return lerp_color(color1, color2, std::fmod(cont_n, 1.0));

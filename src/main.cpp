@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
             .tolerance = 1e-6
         },
         .ca             = {
-            wacfrac::colorization_type::discrete,
+            wacfrac::colorization_type::continuous,
             wacfrac::colorization_method::looped
         }
     };

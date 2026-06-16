@@ -2,8 +2,7 @@
 
 #include <wacfrac/types.hpp>
 #include <concepts>
-#include <mdspan>
-#include <cmath>
+#include <utility>
 
 namespace wacfrac
 {
@@ -91,11 +90,11 @@ struct perturbed_orbit {
 };
 
 template<Orbit T>
-auto escape_time(T orb, unsigned int max_n) -> unsigned int {
+auto escape(T orb, unsigned int max_n) -> std::pair<std::complex<double>, unsigned int> {
     while (square_magnitude(orb.z) < 2*2 && orb.n < max_n) {
         orb.iterate();
     }
-    return orb.n;
+    return std::make_pair(static_cast<std::complex<double>>(orb.z), static_cast<unsigned int>(orb.n));
 }
 
 auto compute_reference(multi_complex c, unsigned int max_iterations) -> std::vector<std::complex<double>>;
