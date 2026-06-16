@@ -50,5 +50,4 @@ auto approximate_required_iterations(multi_float scale, double modifier, double 
     return modifier + factor * std::pow(std::log10(scale.convert_to<double>()), exponent);
 }
 
-
 }   // namespace wacfrac

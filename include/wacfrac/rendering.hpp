@@ -3,25 +3,12 @@
 #include <wacfrac/color.hpp>
 #include <wacfrac/fractal.hpp>
 #include <wacfrac/viewport.hpp>
+#include <wacfrac/resolution.hpp>
 #include <span>
-#include <ranges>
 #include <cstddef>
 
 namespace wacfrac
 {
-
-struct resolution {
-    std::size_t width, height;
-    inline auto area() const {
-        return width * height;
-    }
-    inline auto coordinates() const {
-        return std::views::cartesian_product(
-            std::views::iota(0uz, height),
-            std::views::iota(0uz, width)
-        );
-    }
-};
 
 struct direct_eta { };
 struct perturbed_eta { };
