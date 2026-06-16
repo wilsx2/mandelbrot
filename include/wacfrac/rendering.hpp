@@ -1,7 +1,7 @@
 #pragma once
 
 #include <wacfrac/color.hpp>
-#include <wacfrac/fractal.hpp>
+#include <wacfrac/orbit.hpp>
 #include <wacfrac/viewport.hpp>
 #include <wacfrac/resolution.hpp>
 #include <span>

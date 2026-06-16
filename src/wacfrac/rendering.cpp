@@ -23,7 +23,7 @@ static auto render_direct(const render_config& conf, const std::span<rgb>& buffe
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            return escape<orbit<std::complex<double>>>({c.convert_to<double>()}, conf.max_iterations);
+            return escape<multi_complex>(c, conf.max_iterations);
         }
     );
 }
@@ -34,7 +34,7 @@ static auto render_perturbed(const render_config& conf, const std::span<rgb>& bu
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
             std::complex<double> dc {c - conf.view.center};
-            return escape<perturbed_orbit>({reference, dc}, conf.max_iterations);
+            return escape_perturbed(reference, dc, conf.max_iterations);
         }
     );
 }
@@ -55,7 +55,7 @@ static auto render_approximate(const render_config& conf, const std::span<rgb>& 
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
             std::complex<double> dc {c - conf.view.center};
             auto dz = sa.approximate_delta_n(dc);
-            return escape<perturbed_orbit>({reference, dz, dc, sa.n()}, conf.max_iterations);
+            return escape_perturbed(reference, dc, conf.max_iterations, dz, sa.n());
         }
     );
 }

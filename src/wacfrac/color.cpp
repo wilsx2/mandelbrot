@@ -1,5 +1,5 @@
 #include <wacfrac/color.hpp>
-#include <wacfrac/fractal.hpp>
+#include <wacfrac/orbit.hpp>
 
 #include <algorithm>
 #include <cmath>

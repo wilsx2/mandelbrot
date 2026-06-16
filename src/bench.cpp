@@ -6,9 +6,11 @@ using namespace boost::multiprecision;
 template<typename T>
     // TODO: Concept
 static void calculate_next_z(benchmark::State& state) {
-    wacfrac::orbit<T> o {{0.0, 0.0}};
+    T z {0.0, 0.0};
+    T c {0.0, 0.0};
     for (auto _ : state) {
-        o.iterate();
+        auto z_n = wacfrac::compute_next_z(z, c);
+        benchmark::DoNotOptimize(z_n);
     }
 }
 BENCHMARK_TEMPLATE(calculate_next_z, std::complex<float>);
