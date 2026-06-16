@@ -12,6 +12,12 @@
     [X] Perturbation Theory
     [X] SA
     [ ] BLA
+    [ ] Update benchmarks
+[ ] Colorization
+    [X] Palette Application
+    [ ] Palette Constants
+    [ ] LCH
+    [ ] Continuous Coloring
 [ ] Parallelism (CUDA rendering using reference orbit computed on the CPU, OpenMP for multiple references/series)
 [ ] Generate zoom point
     [X] Newton's method applied to nucleus finding
@@ -20,14 +26,14 @@
     [ ] Apply recursively to find infinitely small nucleus
 [ ] Interactivity
     [ ] Progress bar
-    [ ] Low and high level scripting API
-    [ ] Keyframing Animations
-    [ ] Interchangable Escape Time Algorithms
-    [ ] Color Palette Parameter and Generator
+    [ ] Logging
+    [ ] Finalize scripting API
+    [X] Interchangable Escape Time Algorithms
+    [X] Color Palette Parameter and Generator
     [ ] Composition w/ ffmpeg
         [ ] Encoding
         [ ] Videos
         [ ] Tiled images
-    [ ] WebGPU App
+    [ ] Pause and resume video recording
 [ ] Distribute (OpenMPI)
 [ ] Cloud Compute

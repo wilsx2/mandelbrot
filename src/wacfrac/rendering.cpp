@@ -11,7 +11,7 @@ static auto render_generic(const render_config& conf, const std::span<rgb>& buff
         return false;
     auto i {0uz};
     for (auto [y, x] : conf.res.coordinates()) {
-        buffer[i++] = colorize(conf.ca, conf.palette, conf.max_iterations, escape_fn(x, y));
+        buffer[i++] = colorize(conf.ca, conf.palette, conf.max_iterations, escape_fn(x, y), {});
     }
     return true;
 }

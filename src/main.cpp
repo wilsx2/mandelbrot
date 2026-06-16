@@ -94,7 +94,10 @@ int main(int argc, char *argv[]) {
             .probe_rows = 4,
             .tolerance = 1e-6
         },
-        .ca             = wacfrac::colorization_algorithm::looped
+        .ca             = {
+            wacfrac::colorization_type::discrete,
+            wacfrac::colorization_method::looped
+        }
     };
 
     bool success = wacfrac::save_to_ppm(filepath, conf);

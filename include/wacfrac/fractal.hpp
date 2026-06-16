@@ -22,6 +22,11 @@ auto square_magnitude(const T& a) {
     return a.real()*a.real() + a.imag()*a.imag();
 }
 
+template <Complex T>
+auto magnitude(const T& a) {
+    return std::sqrt(a.real()*a.real() + a.imag()*a.imag());
+}
+
 template <typename T>
 concept Orbit = requires(T a) {
     square_magnitude(a.z);
@@ -97,5 +102,5 @@ auto compute_reference(multi_complex c, unsigned int max_iterations) -> std::vec
 
 // https://www.mrob.com/pub/muency/newtonraphsonmethod.html
 auto find_nucleus(std::size_t period, multi_complex c, std::size_t max_iterations) -> multi_complex;
-    
+
 }   // namespace wacfrac
