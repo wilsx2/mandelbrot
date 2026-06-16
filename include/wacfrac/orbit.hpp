@@ -24,12 +24,13 @@ auto square_magnitude(const T& a) {
 
 template <Complex T>
 auto magnitude(const T& a) {
-    return std::sqrt(a.real()*a.real() + a.imag()*a.imag());
+    return std::sqrt(square_magnitude(a));
 }
 
 template <Complex T>
 auto escaped(const T& a) {
-    return square_magnitude(a) > 2.0*2.0;
+    constexpr double escape_radius {8.0};
+    return square_magnitude(a) > escape_radius*escape_radius;
 }
 
 template <Complex T>

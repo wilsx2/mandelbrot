@@ -23,7 +23,7 @@ auto colorize(colorization_algorithm ca, const std::vector<rgb>& palette, std::s
 auto colorize_discrete(colorization_method method, const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb;
 auto colorize_continuous(colorization_method method, const std::vector<rgb>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> rgb;
 auto palette_lookup_normal(const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb;
-auto palette_lookup_looped(const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb;
+auto palette_lookup_looped(const std::vector<rgb>& palette, std::size_t n) -> rgb;
 
 // manipulation
 auto lerp_color(rgb a, rgb b, float percentile) -> rgb;
@@ -42,9 +42,8 @@ auto color_generator(F&& func, float increment, float initial) -> std::function<
 template<std::invocable<float> F>
 auto generate_palette(F&& func, std::size_t samples, float initial = 0.f, float range = 1.f) -> std::vector<rgb> {
     std::vector<rgb> palette (samples);
-    palette.front() = rgb(0, 0, 0);
-    auto generator {color_generator(func, range/static_cast<float>(samples-2), initial)};
-    std::generate(palette.begin() + 1, palette.end(), generator);
+    auto generator {color_generator(func, range/static_cast<float>(samples), initial)};
+    std::generate(palette.begin(), palette.end(), generator);
     return palette;
 }
 

@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
         .res            = {dimensions[0], dimensions[1]},
         .view           = v,
         .max_iterations = max_iterations,
-        .palette        = wacfrac::generate_palette(std::bind_back(wacfrac::hcl_to_rgb, 1.f, 1.f), 64), // TODO: Replace magic numbers
+        .palette        = wacfrac::palette::hcl_rainbow,
         .eta            = wacfrac::approximate_eta {
             .num_coefficients = 12, // TODO: Replace magic numbers
             .probe_cols = 4,
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
         },
         .ca             = {
             wacfrac::colorization_type::continuous,
-            wacfrac::colorization_method::looped
+            wacfrac::colorization_method::normal
         }
     };
 
