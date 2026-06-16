@@ -1,3 +1,4 @@
+#include "wacfrac/color.hpp"
 #include "wacfrac/wacfrac.hpp"
 #include "argumentum/argparse.h"
 #include <print>
@@ -86,12 +87,14 @@ int main(int argc, char *argv[]) {
         .res            = {dimensions[0], dimensions[1]},
         .view           = v,
         .max_iterations = max_iterations,
+        .palette        = wacfrac::generate_hsv_rainbow_palette(64), // TODO: Replace magic numbers
         .eta            = wacfrac::approximate_eta {
-            .num_coefficients = 12, // TODO: Remove magic numbers
+            .num_coefficients = 12, // TODO: Replace magic numbers
             .probe_cols = 4,
             .probe_rows = 4,
             .tolerance = 1e-6
-        }
+        },
+        .ca             = wacfrac::colorization_algorithm::looped
     };
 
     bool success = wacfrac::save_to_ppm(filepath, conf);

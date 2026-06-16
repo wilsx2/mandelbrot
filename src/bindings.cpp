@@ -11,11 +11,11 @@ using namespace nb::literals;
 
 NB_MODULE(wacfracpy, m) {
     // pixel
-    nb::class_<wf::pixel>(m, "pixel")
+    nb::class_<wf::rgb>(m, "pixel")
         .def(nb::init<uint8_t, uint8_t, uint8_t>(), "r"_a, "g"_a, "b"_a)
-        .def_rw("r", &wf::pixel::r)
-        .def_rw("g", &wf::pixel::g)
-        .def_rw("b", &wf::pixel::b);
+        .def_rw("r", &wf::rgb::r)
+        .def_rw("g", &wf::rgb::g)
+        .def_rw("b", &wf::rgb::b);
 
     // resolution
     nb::class_<wf::resolution>(m, "resolution")

@@ -6,7 +6,37 @@
 namespace wacfrac
 {
 
-auto hsv_to_rgb(float h, float s, float v) -> pixel {
+auto colorize(colorization_algorithm ca, const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb {
+    switch (ca) {
+        case wacfrac::colorization_algorithm::normal: return colorize_normal(palette, max_n, n);
+        case wacfrac::colorization_algorithm::looped: return colorize_looped(palette, max_n, n);
+    }
+    return {255, 0, 255};
+}
+
+auto colorize_normal(const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb {
+    return palette.at((max_n - n) / static_cast<float>(max_n) * (palette.size() - 2));
+}
+auto colorize_looped(const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb {
+    return palette.at((max_n - n) % palette.size());
+}
+
+auto hsv_rainbow_generator(float increment, float initial_hue) -> std::function<rgb()> {
+    return [increment, initial_hue]() {
+        static float hue = initial_hue;
+        return hsv_to_rgb(hue = std::fmod(hue + increment, 1.f), 1.f, 1.f);
+    };
+}
+auto generate_hsv_rainbow_palette(std::size_t samples, float initial_hue, float range) -> std::vector<rgb> {
+    std::vector<rgb> palette (samples);
+    palette.front() = rgb(0, 0, 0);
+    palette.back()  = rgb(0, 0, 0);
+    auto generator {hsv_rainbow_generator(range/static_cast<float>(samples-2), initial_hue)};
+    std::ranges::generate(palette.begin() + 1, palette.end() - 1, generator);
+    return palette;
+}
+
+auto hsv_to_rgb(float h, float s, float v) -> rgb {
     h = std::clamp(h, 0.f, 1.f);
     s = std::clamp(s, 0.f, 1.f);
     v = std::clamp(v, 0.f, 1.f);
