@@ -22,11 +22,11 @@ struct render_config {
     resolution  res;
     viewport    view;
     std::size_t max_iterations;
-    std::vector<rgb> palette;
+    std::vector<pixel> palette;
     escape_time_algorithm eta;
     colorization_algorithm ca;
 };
 
-auto render(const render_config& conf, const std::span<rgb>& buffer) -> bool;
+auto render(const render_config& conf, const std::span<pixel>& buffer) -> bool;
 
 }   // namespace wacfrac

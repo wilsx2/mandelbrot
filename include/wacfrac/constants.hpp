@@ -25,11 +25,7 @@ namespace poi {
 } // namespace poi
 
 namespace palette {
-    inline const std::size_t standard_size {16};
-    inline const std::vector<rgb> greyscale {generate_palette(std::bind_front(hsv_to_rgb, 1.f, 1.f), standard_size)};
-    inline const std::vector<rgb> hsv_rainbow {generate_palette(std::bind_back(hsv_to_rgb, 1.f, 1.f), standard_size)};
-    inline const std::vector<rgb> hcl_rainbow {generate_palette(std::bind_back(hcl_to_rgb, 1.f, 1.f), standard_size)};
-    inline const std::vector<rgb> ultra {
+    inline const std::vector<pixel> ultra {
         // https://stackoverflow.com/questions/16500656/which-color-gradient-is-used-to-color-mandelbrot-in-wikipedia
         {  25,   7,  26 },
         {   9,   1,  47 },

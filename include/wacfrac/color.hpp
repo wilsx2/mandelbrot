@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <initializer_list>
+#include <tuple>
 #include <vector>
 #include <complex>
 #include <ranges>
@@ -10,7 +12,9 @@
 namespace wacfrac
 {
 
-struct rgb { uint8_t r, g, b; };
+struct pixel { uint8_t r, g, b; };
+using color = std::tuple<float,float,float>;
+enum class color_encoding { rgb , hsv , hcl };
 
 // colorization
 enum class colorization_type { discrete , continuous };
@@ -19,32 +23,22 @@ struct colorization_algorithm {
     colorization_type type;
     colorization_method method;
 };
-auto colorize(colorization_algorithm ca, const std::vector<rgb>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> rgb;
-auto colorize_discrete(colorization_method method, const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb;
-auto colorize_continuous(colorization_method method, const std::vector<rgb>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> rgb;
-auto palette_lookup_normal(const std::vector<rgb>& palette, std::size_t max_n, std::size_t n) -> rgb;
-auto palette_lookup_looped(const std::vector<rgb>& palette, std::size_t n) -> rgb;
+auto colorize(colorization_algorithm ca, const std::vector<pixel>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> pixel;
+auto colorize_discrete(colorization_method method, const std::vector<pixel>& palette, std::size_t max_n, std::size_t n) -> pixel;
+auto colorize_continuous(colorization_method method, const std::vector<pixel>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> pixel;
+auto palette_lookup_normal(const std::vector<pixel>& palette, std::size_t max_n, std::size_t n) -> pixel;
+auto palette_lookup_looped(const std::vector<pixel>& palette, std::size_t n) -> pixel;
 
 // manipulation
-auto lerp_color(rgb a, rgb b, float percentile) -> rgb;
-auto hsv_to_rgb(float h, float s, float v) -> rgb;
-auto hcl_to_rgb(float l, float c, float h) -> rgb;
+auto lerp_pixel(pixel a, pixel b, float percentile) -> pixel;
+auto lerp_color(color a, color b, float percentile) -> color;
+auto to_pixel(color_encoding e, color c) -> pixel;
+auto rgb_to_pixel(float r, float g, float b) -> pixel;
+auto hsv_to_pixel(float h, float s, float v) -> pixel;
+auto hcl_to_pixel(float l, float c, float h) -> pixel;
 
 // palette generation
-template<std::invocable<float> F>
-auto color_generator(F&& func, float increment, float initial) -> std::function<rgb()> {
-    return [=]() {
-        static float value = initial - increment;
-        return func(value = std::fmod(value + increment, 1.f));
-    };
-}
+auto generate_palette(std::size_t size, std::initializer_list<pixel> samples) -> std::vector<pixel>;
+auto generate_palette(std::size_t size, color_encoding encoding, std::initializer_list<color> samples) -> std::vector<pixel>;
 
-template<std::invocable<float> F>
-auto generate_palette(F&& func, std::size_t samples, float initial = 0.f, float range = 1.f) -> std::vector<rgb> {
-    std::vector<rgb> palette (samples);
-    auto generator {color_generator(func, range/static_cast<float>(samples), initial)};
-    std::generate(palette.begin(), palette.end(), generator);
-    return palette;
-}
-
-}   // namespace wacfrac
+} // namespace wacfrac

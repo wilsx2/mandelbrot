@@ -9,7 +9,7 @@
 namespace wacfrac
 {
 
-auto save_to_ppm(std::string_view filename, resolution res, const std::span<rgb>& buffer) -> bool {
+auto save_to_ppm(std::string_view filename, resolution res, const std::span<pixel>& buffer) -> bool {
     if (res.width * res.height != buffer.size()) {
         return false;
     }
@@ -29,7 +29,7 @@ auto save_to_ppm(std::string_view filename, resolution res, const std::span<rgb>
     return true;
 }
 auto save_to_ppm(std::string_view filename, const render_config& conf) -> bool {
-    std::vector<rgb> buffer (conf.res.area());
+    std::vector<pixel> buffer (conf.res.area());
     if (!render(conf, buffer))
         return false;
     return save_to_ppm(filename, conf.res, buffer);

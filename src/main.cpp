@@ -1,4 +1,3 @@
-#include "wacfrac/color.hpp"
 #include "wacfrac/wacfrac.hpp"
 #include "argumentum/argparse.h"
 #include <print>
@@ -87,7 +86,7 @@ int main(int argc, char *argv[]) {
         .res            = {dimensions[0], dimensions[1]},
         .view           = v,
         .max_iterations = max_iterations,
-        .palette        = wacfrac::palette::hcl_rainbow,
+        .palette        = wacfrac::generate_palette(32, wacfrac::color_encoding::hcl, {{.9f,.8f,.1f}, {1.f,1.f,1.f}, {.7f,.5f,.5f}}),
         .eta            = wacfrac::approximate_eta {
             .num_coefficients = 12, // TODO: Replace magic numbers
             .probe_cols = 4,

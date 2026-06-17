@@ -8,7 +8,7 @@
 namespace wacfrac
 {
 
-auto save_to_ppm(std::string_view filename, resolution res, const std::span<rgb>& buffer) -> bool;
+auto save_to_ppm(std::string_view filename, resolution res, const std::span<pixel>& buffer) -> bool;
 auto save_to_ppm(std::string_view filename, const render_config& conf) -> bool;
 
 }   // namespace wacfrac

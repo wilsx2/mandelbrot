@@ -63,5 +63,5 @@ target_link_libraries(wacfrac PRIVATE
 )
 
 # Python Package
-nanobind_add_module(wacfracpy src/bindings.cpp)
-target_link_libraries(wacfracpy PRIVATE libwacfrac)
+# nanobind_add_module(wacfracpy src/bindings.cpp)
+# target_link_libraries(wacfracpy PRIVATE libwacfrac)

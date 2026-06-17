@@ -6,7 +6,7 @@ namespace wacfrac
 {
 
 template <std::invocable<std::size_t, std::size_t> F>
-static auto render_generic(const render_config& conf, const std::span<rgb>& buffer, F&& escape_fn) -> bool {
+static auto render_generic(const render_config& conf, const std::span<pixel>& buffer, F&& escape_fn) -> bool {
     if (conf.res.area() != buffer.size())
         return false;
     auto i {0uz};
@@ -19,7 +19,7 @@ static auto render_generic(const render_config& conf, const std::span<rgb>& buff
     return true;
 }
 
-static auto render_direct(const render_config& conf, const std::span<rgb>& buffer) -> bool {
+static auto render_direct(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
@@ -28,7 +28,7 @@ static auto render_direct(const render_config& conf, const std::span<rgb>& buffe
     );
 }
 
-static auto render_perturbed(const render_config& conf, const std::span<rgb>& buffer) -> bool {
+static auto render_perturbed(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     std::vector<std::complex<double>> reference = compute_reference(conf.view.center, conf.max_iterations);
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
@@ -39,7 +39,7 @@ static auto render_perturbed(const render_config& conf, const std::span<rgb>& bu
     );
 }
 
-static auto render_approximate(const render_config& conf, const std::span<rgb>& buffer) -> bool {
+static auto render_approximate(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     const auto& sa_conf {std::get<2>(conf.eta)};
     auto reference = compute_reference(conf.view.center, conf.max_iterations);
     series_approximator sa {reference, sa_conf.num_coefficients};
@@ -62,7 +62,7 @@ static auto render_approximate(const render_config& conf, const std::span<rgb>& 
 
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
-auto render(const render_config& conf, const std::span<rgb>& buffer) -> bool {
+auto render(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     return std::visit(overloaded {
         [&](const direct_eta& _)        { (void) _; return render_direct(conf, buffer); },
         [&](const perturbed_eta& _)     { (void) _; return render_perturbed(conf, buffer); },

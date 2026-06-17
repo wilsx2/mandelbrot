@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <complex>
-#include <functional>
 #include <cstddef>
 
 namespace wacfrac {
