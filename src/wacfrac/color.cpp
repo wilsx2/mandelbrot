@@ -43,17 +43,17 @@ auto palette_lookup_looped(const std::vector<pixel>& palette, std::size_t n) -> 
 
 auto lerp_pixel(pixel a, pixel b, float percentile) -> pixel {
     return pixel(
-        a.r * (1.f - percentile) + b.r * (percentile),
-        a.g * (1.f - percentile) + b.g * (percentile),
-        a.b * (1.f - percentile) + b.b * (percentile)
+        std::lerp(a.r, b.r, percentile),
+        std::lerp(a.g, b.g, percentile),
+        std::lerp(a.b, b.b, percentile)
     );
 }
 
 auto lerp_color(color a, color b, float percentile) -> color {
     return color(
-        std::get<0>(a) * (1.f - percentile) + std::get<0>(b) * (percentile),
-        std::get<1>(a) * (1.f - percentile) + std::get<1>(b) * (percentile),
-        std::get<2>(a) * (1.f - percentile) + std::get<2>(b) * (percentile)
+        std::lerp(std::get<0>(a), std::get<0>(b), percentile),
+        std::lerp(std::get<1>(a), std::get<1>(b), percentile),
+        std::lerp(std::get<2>(a), std::get<2>(b), percentile)
     );
 }
 
@@ -135,52 +135,39 @@ auto hcl_to_pixel(float h, float c, float l) -> pixel {
     };
 }
 
-auto generate_palette(std::size_t size, std::initializer_list<pixel> samples) -> std::vector<pixel> {
+template <typename T, std::invocable<T, T, float> F>
+static auto generate_palette(std::size_t size, std::initializer_list<T> samples, F&& generate) -> std::vector<pixel> {
     if (size == 0 || samples.size() == 0) return {};
-    
-    std::vector<pixel> palette(size);
-    const auto samples_view = std::views::all(samples);
-    const std::size_t num_segments = samples.size() - 1;
+      
+      std::vector<pixel> palette(size);
+      const auto samples_view = std::views::all(samples);
+      const std::size_t num_segments = samples.size() - 1;
 
-    for (auto&& [i, col] : std::views::enumerate(palette)) {
-        float global_t = (size > 1) ? static_cast<float>(i) / (size - 1) : 0.0f;
+      for (auto&& [i, col] : std::views::enumerate(palette)) {
+          float global_t = (size > 1) ? static_cast<float>(i) / (size - 1) : 0.0f;
 
-        float segment_scaled = global_t * num_segments;
-        std::size_t segment_idx = std::min(static_cast<std::size_t>(segment_scaled), num_segments - 1);
+          float segment_scaled = global_t * num_segments;
+          std::size_t segment_idx = std::min(static_cast<std::size_t>(segment_scaled), num_segments - 1);
 
-        float progress = segment_scaled - segment_idx;
+          float progress = segment_scaled - segment_idx;
 
-        auto curr = samples_view[segment_idx];
-        auto next = samples_view[std::min(segment_idx + 1, samples.size() - 1)];
+          auto curr = samples_view[segment_idx];
+          auto next = samples_view[std::min(segment_idx + 1, samples.size() - 1)];
 
-        col = lerp_pixel(curr, next, progress);
-    }
+          col = generate(curr, next, progress);
+      }
 
-    return palette;
+      return palette;
+}
+
+auto generate_palette(std::size_t size, std::initializer_list<pixel> samples) -> std::vector<pixel> {
+    return generate_palette(size, samples, lerp_pixel);
 }
 
 auto generate_palette(std::size_t size, color_encoding encoding, std::initializer_list<color> samples) -> std::vector<pixel> {
-    if (size == 0 || samples.size() == 0) return {};
-    
-    std::vector<pixel> palette(size);
-    const auto samples_view = std::views::all(samples);
-    const std::size_t num_segments = samples.size() - 1;
-
-    for (auto&& [i, col] : std::views::enumerate(palette)) {
-        float global_t = (size > 1) ? static_cast<float>(i) / (size - 1) : 0.0f;
-
-        float segment_scaled = global_t * num_segments;
-        std::size_t segment_idx = std::min(static_cast<std::size_t>(segment_scaled), num_segments - 1);
-
-        float progress = segment_scaled - segment_idx;
-
-        auto curr = samples_view[segment_idx];
-        auto next = samples_view[std::min(segment_idx + 1, samples.size() - 1)];
-
-        col = to_pixel(encoding, lerp_color(curr, next, progress));
-    }
-
-    return palette;
+    return generate_palette(size, samples, [encoding](color a, color b, float progress){
+        return to_pixel(encoding, lerp_color(a, b, progress));
+    });
 }
 
 }   // namespace wacfrac

@@ -18,8 +18,9 @@
     [X] LCH
     [X] Continuous
     [X] Palette Constants
-    [ ] Histogram?
-[ ] Parallelism (CUDA rendering using reference orbit computed on the CPU, OpenMP for multiple references/series)
+[ ] Parallelism
+    [ ] CUDA for per-pixel calculations
+    [ ] OpenMP for references and approximation coefficients
 [ ] Generate zoom point
     [X] Newton's method applied to nucleus finding
     [ ] NM applied to finding bond points
@@ -32,6 +33,7 @@
     [ ] Finalize scripting API
     [X] Interchangable Escape Time Algorithms
     [X] Color Palette Parameter and Generator
+    [ ] Improve IO with targets
     [ ] Composition w/ ffmpeg
         [ ] Encoding
         [ ] Videos
