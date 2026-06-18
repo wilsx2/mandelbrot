@@ -55,6 +55,4 @@ auto escape(T c, unsigned int max_n) -> std::pair<std::complex<double>, unsigned
 auto escape_perturbed(const std::vector<std::complex<double>>& ref, std::complex<double> dc, unsigned int max_n, std::complex<double> dz = {0.0, 0.0}, unsigned int n = 0) -> std::pair<std::complex<double>, unsigned int>;
 auto compute_reference(multi_complex c, unsigned int max_n) -> std::vector<std::complex<double>>;
 
-auto find_nucleus(std::size_t period, multi_complex c, std::size_t max_iterations) -> multi_complex;
-
 }   // namespace wacfrac
