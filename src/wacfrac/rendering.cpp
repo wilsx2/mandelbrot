@@ -70,7 +70,7 @@ static auto render_approximate(const render_config& conf, const std::span<pixel>
 static auto render_bla(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     auto half_dx = conf.view.dimensions.real() / 2.0;
     auto half_dy = conf.view.dimensions.imag() / 2.0;
-    auto periods = find_period_ball(conf.view.center, half_dx, half_dy, 10000uz, true); // TODO: Replace magic num
+    auto periods = find_period_ball(conf.view.center, half_dx, half_dy, conf.max_iterations, true);
     auto view_period = periods.empty() ? 1uz : periods.front();
 
     auto c_ref {find_nucleus(conf.view.center, view_period, 255uz)};
@@ -105,11 +105,6 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     auto c_br = static_cast<std::complex<double>>(conf.view.sample(conf.res.width, 0, conf.res.width, conf.res.height));
     auto c_bl = static_cast<std::complex<double>>(conf.view.sample(0, 0, conf.res.width, conf.res.height));
 
-    auto max_c = c_tr;
-    if (std::abs(c_tl) > std::abs(max_c)) max_c = c_tl;
-    if (std::abs(c_br) > std::abs(max_c)) max_c = c_br;
-    if (std::abs(c_bl) > std::abs(max_c)) max_c = c_bl;
-
     auto max_dc = c_tr - c_ref_d;
     if (std::abs(c_tl - c_ref_d) > std::abs(max_dc)) max_dc = c_tl - c_ref_d;
     if (std::abs(c_br - c_ref_d) > std::abs(max_dc)) max_dc = c_br - c_ref_d;
@@ -117,9 +112,9 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
 
     const auto& bla_conf {std::get<3>(conf.eta)};
     bivariate_linear_approximator bla {
-        reference,
-        max_c, max_dc,
         bla_conf.epsilon,
+        max_dc,
+        reference,
         bla_conf.first_level
     };
     return render_generic(conf, buffer,
@@ -135,19 +130,8 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
                 if (approximation) {
                     auto m {ref_n};
                     std::tie(dz, ref_n) = *approximation;
-                    // TODO: DRY
-                    std::println("skipping {}", ref_n - m);
                     n += ref_n - m;
-                    if (ref_n >= reference.size()) {
-                        dz = z;
-                        ref_n = 0;
-                    }
-                    z = reference[ref_n] + dz;
-                    if (std::norm(z) < std::norm(dz)) {
-                        dz = z;
-                        ref_n = 0;
-                    }
-                    //
+                    std::tie(ref_n, dz, z) = rebase_reference(reference, ref_n, dz);
                 } else {
                     std::tie(ref_n, dz, z) = compute_next_perturbation(reference, ref_n, dc, dz);
                     ++n;

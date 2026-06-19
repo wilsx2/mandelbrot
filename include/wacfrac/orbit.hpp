@@ -53,6 +53,7 @@ auto escape(T c, unsigned int max_n) -> std::pair<std::complex<double>, unsigned
 }
 
 auto compute_next_perturbation(const std::vector<std::complex<double>>& ref, std::size_t ref_n, std::complex<double> dc, std::complex<double> dz) -> std::tuple<std::size_t, std::complex<double>, std::complex<double>>;
+auto rebase_reference(const std::vector<std::complex<double>>& ref, std::size_t ref_n, std::complex<double> dz) -> std::tuple<std::size_t, std::complex<double>, std::complex<double>>;
 auto escape_perturbed(const std::vector<std::complex<double>>& ref, std::complex<double> dc, unsigned int max_n, std::complex<double> dz = {0.0, 0.0}, unsigned int n = 0) -> std::pair<std::complex<double>, unsigned int>;
 
 auto compute_reference(multi_complex c, unsigned int max_n) -> std::vector<std::complex<double>>;

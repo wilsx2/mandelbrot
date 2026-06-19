@@ -41,13 +41,16 @@ auto viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std:
     return probes;
 }
 
-auto approximate_required_precision(multi_float scale) -> unsigned int {
-    return std::log10(scale.convert_to<double>()) + 4.0; // TODO: Use proper member overloads
+auto viewport::required_precision() const -> unsigned int {
+    auto zoom = static_cast<double>(dimensions.real());
+    return static_cast<unsigned int>(std::log10(1.0 / zoom) + 4.0);
 }
-auto approximate_required_iterations(multi_float scale, double modifier, double factor, double exponent) -> unsigned int {
-    if (scale < 1.0)
+
+auto viewport::required_iterations(double modifier, double factor, double exponent) const -> unsigned int {
+    auto zoom = static_cast<double>(dimensions.real());
+    if (zoom > 1.0)
         return modifier;
-    return modifier + factor * std::pow(std::log10(scale.convert_to<double>()), exponent);
+    return modifier + factor * std::pow(std::log10(1.0 / zoom), exponent);
 }
 
 }   // namespace wacfrac

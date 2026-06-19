@@ -57,21 +57,6 @@ int main(int argc, char *argv[]) {
         std::exit(EXIT_FAILURE);
     }
     wacfrac::multi_float zoom_scale (scale, 1000);
-    if (max_iterations == 0)
-        max_iterations = wacfrac::approximate_required_iterations(zoom_scale);
-    if (precision == 0)
-        precision = wacfrac::approximate_required_precision(zoom_scale);
-
-    wacfrac::multi_float::default_precision(precision);
-    wacfrac::multi_complex::default_precision(precision);
-    zoom_scale.precision(precision);
-
-    std::println("Rendering plot to \"{}\"", filepath);
-    std::println("\tDimensions: {}x{}", dimensions[0], dimensions[1]);
-    std::println("\tFocusing On: {} {} {}i", focus[0], focus[1] >= 0 ? '+' : '-', focus[1]);
-    std::println("\tZoom Factor(s): {}", scale);
-    std::println("\tIterations: {}", max_iterations);
-    std::println("\tPrecision: {}", precision);
 
     // Plot and render
     wacfrac::viewport v {
@@ -79,8 +64,19 @@ int main(int argc, char *argv[]) {
         //{focus[0], focus[1], precision},
         {1.0, 1.0}
     };
-    v.precision(precision);
     v = v.zoomed(zoom_scale);
+
+    if (max_iterations == 0)
+        max_iterations = v.required_iterations();
+    if (precision == 0)
+        precision = v.required_precision();
+
+    wacfrac::multi_float::default_precision(precision);
+    wacfrac::multi_complex::default_precision(precision);
+    zoom_scale.precision(precision);
+    v.precision(precision);
+
+    std::println("Rendering plot to \"{}\"", filepath);
 
     wacfrac::render_config conf {
         .res            = {dimensions[0], dimensions[1]},

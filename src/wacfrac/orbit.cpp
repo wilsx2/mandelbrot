@@ -7,10 +7,7 @@
 namespace wacfrac
 {
 
-auto compute_next_perturbation(const std::vector<std::complex<double>>& ref, std::size_t ref_n, std::complex<double> dc, std::complex<double> dz) -> std::tuple<std::size_t, std::complex<double>, std::complex<double>> {
-    dz = 2.0 * dz * ref[ref_n] + dz * dz + dc;
-    ++ref_n;
-
+auto rebase_reference(const std::vector<std::complex<double>>& ref, std::size_t ref_n, std::complex<double> dz) -> std::tuple<std::size_t, std::complex<double>, std::complex<double>> {
     if (ref_n >= ref.size()) {
         return {0uz, dz, dz};
     }
@@ -22,6 +19,12 @@ auto compute_next_perturbation(const std::vector<std::complex<double>>& ref, std
         ref_n = 0;
     }
     return {ref_n, dz, z};
+}
+
+auto compute_next_perturbation(const std::vector<std::complex<double>>& ref, std::size_t ref_n, std::complex<double> dc, std::complex<double> dz) -> std::tuple<std::size_t, std::complex<double>, std::complex<double>> {
+    dz = 2.0 * dz * ref[ref_n] + dz * dz + dc;
+    ++ref_n;
+    return rebase_reference(ref, ref_n, dz);
 }
 
 // https://fractalforums.org/index.php?topic=4360.0
@@ -37,6 +40,7 @@ auto escape_perturbed(const std::vector<std::complex<double>>& ref, std::complex
         return z;
     });
 }
+
 auto compute_reference(multi_complex c, unsigned int max_n) -> std::vector<std::complex<double>> {
     std::vector<std::complex<double>> reference { {0.0, 0.0} };
 

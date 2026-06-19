@@ -84,7 +84,6 @@ NB_MODULE(wacfracpy, m) {
 
     // color utilities
     m.def("hsv_to_rgb", &wf::hsv_to_rgb, "h"_a, "s"_a, "v"_a);
-    // lch_to_rgb is declared but not yet implemented (TODO in color.hpp)
 
     // constants
     m.attr("FULL_SET") = wf::FULL_SET;
