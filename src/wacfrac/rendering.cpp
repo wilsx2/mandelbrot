@@ -17,9 +17,7 @@ static auto render_generic(const render_config& conf, const std::span<pixel>& bu
         return false;
     auto i {0uz};
     for (auto [y, x] : conf.res.coordinates()) {
-        std::complex<double> z;
-        unsigned int n;
-        std::tie(z,n) = escape_fn(x, y);
+        auto [z, n] = escape_fn(x, y);
         buffer[i++] = colorize(conf.ca, conf.palette, conf.max_iterations, z, n);
     }
     return true;

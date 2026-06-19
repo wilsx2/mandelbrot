@@ -19,8 +19,7 @@ static auto lemniscate_curve(multi_complex c, std::size_t period) -> std::pair<m
 auto find_nucleus(multi_complex c, std::size_t period,  std::size_t max_iterations) -> multi_complex {
     auto square_tolerance = 1.0 / std::pow(10.0, 2.0*c.precision());
     for (auto i {0uz}; i < max_iterations; ++i) {
-        multi_complex z, dz;
-        std::tie(z, dz) = lemniscate_curve(c, period);
+        auto [z, dz] = lemniscate_curve(c, period);
 
         if (square_magnitude(dz) < multi_float{1e-30}) {
             c += multi_complex{1e-3, 1e-3};
