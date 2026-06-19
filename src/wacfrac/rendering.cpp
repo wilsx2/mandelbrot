@@ -73,7 +73,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     auto view_period = periods.empty() ? 1uz : periods.front();
 
     auto c_ref {find_nucleus(conf.view.center, view_period, 1028uz)}; // TODO: Parameterize magic numbers
-    auto reference {compute_reference(c_ref, conf.max_iterations)};
+    auto reference {compute_reference(c_ref, conf.max_iterations, false)};
     auto c_ref_d {static_cast<std::complex<double>>(c_ref)};
 
     std::println("ref size: {}, period: {}", reference.size(), view_period);
@@ -81,7 +81,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     for (auto p : periods) {
         if (p == view_period) continue;
         c_ref = find_nucleus(conf.view.center, p, 1028uz); // TODO: Parameterize magic numbers
-        reference = compute_reference(c_ref, conf.max_iterations);
+        reference = compute_reference(c_ref, conf.max_iterations, false);
         c_ref_d = static_cast<std::complex<double>>(c_ref);
         auto nondegenerate = std::ranges::any_of(reference, [](auto z) { return std::abs(z) >= 1e-4; }); // TODO: See below
         if (nondegenerate) {
@@ -96,7 +96,8 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
         std::println("all periods degenerate, falling back to view center");
         c_ref = conf.view.center;
         c_ref_d = static_cast<std::complex<double>>(c_ref);
-        reference = compute_reference(c_ref, conf.max_iterations);
+        reference = compute_reference(c_ref, conf.max_iterations, false);
+        std::println("ref size: {}", reference.size(), view_period);
     }
 
     auto c_tr = static_cast<std::complex<double>>(conf.view.sample(conf.res.width, conf.res.height, conf.res.width, conf.res.height));

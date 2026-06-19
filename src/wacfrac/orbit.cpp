@@ -41,11 +41,11 @@ auto escape_perturbed(const std::vector<std::complex<double>>& ref, std::complex
     });
 }
 
-auto compute_reference(multi_complex c, unsigned int max_n) -> std::vector<std::complex<double>> {
+auto compute_reference(multi_complex c, unsigned int max_n, bool do_escape) -> std::vector<std::complex<double>> {
     std::vector<std::complex<double>> reference { {0.0, 0.0} };
 
     multi_complex z {0.0, 0.0};
-    for (auto n {0u}; n < max_n && !escaped(z); ++n) {
+    for (auto n {0u}; n < max_n - 1 && (!do_escape || !escaped(z)); ++n) {
         z = compute_next_z(z, c);
         reference.emplace_back(static_cast<std::complex<double>>(z));
     }
