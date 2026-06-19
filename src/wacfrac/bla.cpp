@@ -28,7 +28,71 @@ bivariate_linear_approximator::bivariate_linear_approximator(double epsilon, std
     compute_blas(epsilon, max_dc);
 }
 
-auto bivariate_linear_approximator::apply(std::complex<double> dc, std::complex<double> dzm, std::size_t m) const -> std::optional<std::pair<std::complex<double>, std::size_t>> {
+bivariate_linear_approximator::bivariate_linear_approximator(double initial_epsilon, double tolerance, const std::vector<std::complex<double>>& probes, std::complex<double> max_dc, const std::vector<std::complex<double>>& ref, std::size_t first_level)
+    : bivariate_linear_approximator(ref, first_level)
+{
+    std::vector<std::size_t> true_escape_times;
+    true_escape_times.reserve(probes.size());
+    std::ranges::transform(probes, std::back_inserter(true_escape_times),
+        [&ref](std::complex<double> p) -> std::size_t { return escape_perturbed(ref, p, ref.size()).second; });
+    
+    // Perform binary search for ideal epsilon
+    auto upper {initial_epsilon};
+    auto lower {initial_epsilon};
+    auto found_heuristic {false};
+    auto prev_avg_skipped {0.0};
+    while (!found_heuristic) {
+        auto epsilon = (upper + lower) / 2.0;
+        compute_blas(epsilon, max_dc);
+
+        auto all_correct {true};
+        auto total_skipped {0uz};
+        for (auto&& [i, probe] : probes | std::views::enumerate) {
+            auto [_, approx_escape_time, skipped] = escape_approximate(probe);
+           
+            if (approx_escape_time / static_cast<double>(true_escape_times.at(i)) > 1.0 - tolerance) {
+                all_correct = false;
+                break;
+            }
+            
+            total_skipped += skipped;
+        }
+        if (!all_correct) {
+            upper = epsilon;
+            break;
+        }
+        
+        auto avg_skipped {total_skipped / static_cast<double>(probes.size())};
+        if (avg_skipped > prev_avg_skipped) {
+            lower = epsilon;
+        } else {
+            found_heuristic = true;
+        }
+    }
+}
+
+auto bivariate_linear_approximator::escape_approximate(std::complex<double> dc) const -> std::tuple<std::complex<double>, std::size_t, std::size_t> {
+    auto ref_n {0uz};
+    auto n {0u};
+    auto skipped {0uz};
+    std::complex<double> dz {0.0, 0.0};
+    std::complex<double> z {0.0, 0.0};
+    while (n < _ref.size() && !escaped(z)) {
+        auto approximation = compute_zn(dc, dz, ref_n);
+        if (approximation) {
+            auto m {ref_n};
+            std::tie(dz, ref_n) = *approximation;
+            n += ref_n - m;
+            std::tie(ref_n, dz, z) = rebase_reference(_ref, ref_n, dz);
+        } else {
+            std::tie(ref_n, dz, z) = compute_next_perturbation(_ref, ref_n, dc, dz);
+            ++n;
+        }
+    }
+    return std::make_tuple(dz, n, skipped);
+}
+
+auto bivariate_linear_approximator::compute_zn(std::complex<double> dc, std::complex<double> dzm, std::size_t m) const -> std::optional<std::pair<std::complex<double>, std::size_t>> {
     auto bla = bla_at(m, _first_level);
     if (!bla || !bla->is_valid(dzm))
         return std::nullopt;

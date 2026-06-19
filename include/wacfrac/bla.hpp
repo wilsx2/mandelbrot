@@ -8,7 +8,8 @@ namespace wacfrac {
 class bivariate_linear_approximator {
     public:
     bivariate_linear_approximator(double epsilon, std::complex<double> max_dc, const std::vector<std::complex<double>>& ref, std::size_t first_level = 0);
-    auto apply(std::complex<double> dc, std::complex<double> dzm, std::size_t m) const -> std::optional<std::pair<std::complex<double>, std::size_t>>;
+    bivariate_linear_approximator(double initial_epsilon, double tolerance, const std::vector<std::complex<double>>& probes, std::complex<double> max_dc, const std::vector<std::complex<double>>& ref, std::size_t first_level = 0);
+    auto escape_approximate(std::complex<double> dc) const -> std::tuple<std::complex<double>, std::size_t, std::size_t>;
 
     private:
     bivariate_linear_approximator(const std::vector<std::complex<double>>& ref, std::size_t first_level);
@@ -22,6 +23,7 @@ class bivariate_linear_approximator {
     auto compute_bla(double epsilon, std::complex<double> max_dc, std::size_t m, std::size_t n) const -> bla;
     auto compute_blas(double epsilon, std::complex<double> max_dc) -> void;
     auto merge_blas(std::complex<double> max_dc, const bla& x, const bla& y) const -> bla;
+    auto compute_zn(std::complex<double> dc, std::complex<double> dzm, std::size_t m) const -> std::optional<std::pair<std::complex<double>, std::size_t>>;
 
     struct column_info {
         std::size_t first;

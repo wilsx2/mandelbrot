@@ -84,7 +84,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
         c_ref = find_nucleus(conf.view.center, p, 255uz);
         reference = compute_reference(c_ref, conf.max_iterations);
         c_ref_d = static_cast<std::complex<double>>(c_ref);
-        auto nondegenerate = std::ranges::any_of(reference, [](auto z) { return std::abs(z) >= 1e-4; });
+        auto nondegenerate = std::ranges::any_of(reference, [](auto z) { return std::abs(z) >= 1e-4; }); // TODO: See below
         if (nondegenerate) {
             view_period = p;
             std::println("trying deeper period: {}", view_period);
@@ -92,7 +92,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
         }
     }
 
-    auto degenerate = std::ranges::none_of(reference, [](auto z) { return std::abs(z) >= 1e-4; });
+    auto degenerate = std::ranges::none_of(reference, [](auto z) { return std::abs(z) >= 1e-4; }); // TODO: Parameterize degeneration threshhold
     if (reference.empty() || degenerate) {
         std::println("all periods degenerate, falling back to view center");
         c_ref = conf.view.center;
@@ -119,24 +119,9 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     };
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
-            auto ref_n {0uz};
-            auto n {0u};
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
             std::complex<double> dc {c - c_ref};
-            std::complex<double> dz {0.0, 0.0};
-            std::complex<double> z {0.0, 0.0};
-            while (n < conf.max_iterations && !escaped(z)) {
-                auto approximation = bla.apply(dc, dz, ref_n);
-                if (approximation) {
-                    auto m {ref_n};
-                    std::tie(dz, ref_n) = *approximation;
-                    n += ref_n - m;
-                    std::tie(ref_n, dz, z) = rebase_reference(reference, ref_n, dz);
-                } else {
-                    std::tie(ref_n, dz, z) = compute_next_perturbation(reference, ref_n, dc, dz);
-                    ++n;
-                }
-            }
+            auto [dz, n, _] = bla.escape_approximate(dc);
             return std::make_pair(dz, n);
         }
     );
