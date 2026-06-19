@@ -16,7 +16,11 @@ struct approximate_eta {
     std::size_t num_coefficients, probe_cols, probe_rows;
     double tolerance;
 };
-using escape_time_algorithm = std::variant<direct_eta, perturbed_eta, approximate_eta>;
+struct bla_eta {
+    double epsilon;
+    std::size_t first_level;
+};
+using escape_time_algorithm = std::variant<direct_eta, perturbed_eta, approximate_eta, bla_eta>;
 
 struct render_config {
     resolution  res;

@@ -30,12 +30,14 @@ add_compile_options("$<$<CONFIG:Release>:-O3>")
 
 # Static Library
 add_library(libwacfrac STATIC
+    src/wacfrac/analysis.cpp
     src/wacfrac/approximation.cpp
     src/wacfrac/color.cpp
     src/wacfrac/viewport.cpp
     src/wacfrac/orbit.cpp
     src/wacfrac/rendering.cpp
     src/wacfrac/io.cpp
+    src/wacfrac/bla.cpp
 )
 set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libwacfrac PUBLIC

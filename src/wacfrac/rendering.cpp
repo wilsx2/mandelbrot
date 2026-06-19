@@ -1,6 +1,12 @@
+#include "wacfrac/rendering.hpp"
 #include "wacfrac/color.hpp"
-#include <wacfrac/rendering.hpp>
-#include <wacfrac/approximation.hpp>
+#include "wacfrac/orbit.hpp"
+#include "wacfrac/analysis.hpp"
+#include "wacfrac/approximation.hpp"
+#include "wacfrac/bla.hpp"
+#include <algorithm>
+#include <complex>
+#include <print>
 
 namespace wacfrac
 {
@@ -60,13 +66,106 @@ static auto render_approximate(const render_config& conf, const std::span<pixel>
     );
 }
 
+// https://philthompson.me/2023/Faster-Mandelbrot-Set-Rendering-with-BLA-Bivariate-Linear-Approximation.html
+static auto render_bla(const render_config& conf, const std::span<pixel>& buffer) -> bool {
+    auto half_dx = conf.view.dimensions.real() / 2.0;
+    auto half_dy = conf.view.dimensions.imag() / 2.0;
+    auto periods = find_period_ball(conf.view.center, half_dx, half_dy, 10000uz, true); // TODO: Replace magic num
+    auto view_period = periods.empty() ? 1uz : periods.front();
+
+    auto c_ref {find_nucleus(conf.view.center, view_period, 255uz)};
+    auto reference {compute_reference(c_ref, conf.max_iterations)};
+    auto c_ref_d {static_cast<std::complex<double>>(c_ref)};
+
+    std::println("ref size: {}, period: {}", reference.size(), view_period);
+
+    for (auto p : periods) {
+        if (p == view_period) continue;
+        c_ref = find_nucleus(conf.view.center, p, 255uz);
+        reference = compute_reference(c_ref, conf.max_iterations);
+        c_ref_d = static_cast<std::complex<double>>(c_ref);
+        auto nondegenerate = std::ranges::any_of(reference, [](auto z) { return std::abs(z) >= 1e-4; });
+        if (nondegenerate) {
+            view_period = p;
+            std::println("trying deeper period: {}", view_period);
+            break;
+        }
+    }
+
+    auto degenerate = std::ranges::none_of(reference, [](auto z) { return std::abs(z) >= 1e-4; });
+    if (reference.empty() || degenerate) {
+        std::println("all periods degenerate, falling back to view center");
+        c_ref = conf.view.center;
+        c_ref_d = static_cast<std::complex<double>>(c_ref);
+        reference = compute_reference(c_ref, conf.max_iterations);
+    }
+
+    auto c_tr = static_cast<std::complex<double>>(conf.view.sample(conf.res.width, conf.res.height, conf.res.width, conf.res.height));
+    auto c_tl = static_cast<std::complex<double>>(conf.view.sample(0, conf.res.height, conf.res.width, conf.res.height));
+    auto c_br = static_cast<std::complex<double>>(conf.view.sample(conf.res.width, 0, conf.res.width, conf.res.height));
+    auto c_bl = static_cast<std::complex<double>>(conf.view.sample(0, 0, conf.res.width, conf.res.height));
+
+    auto max_c = c_tr;
+    if (std::abs(c_tl) > std::abs(max_c)) max_c = c_tl;
+    if (std::abs(c_br) > std::abs(max_c)) max_c = c_br;
+    if (std::abs(c_bl) > std::abs(max_c)) max_c = c_bl;
+
+    auto max_dc = c_tr - c_ref_d;
+    if (std::abs(c_tl - c_ref_d) > std::abs(max_dc)) max_dc = c_tl - c_ref_d;
+    if (std::abs(c_br - c_ref_d) > std::abs(max_dc)) max_dc = c_br - c_ref_d;
+    if (std::abs(c_bl - c_ref_d) > std::abs(max_dc)) max_dc = c_bl - c_ref_d;
+
+    const auto& bla_conf {std::get<3>(conf.eta)};
+    bivariate_linear_approximator bla {
+        reference,
+        max_c, max_dc,
+        bla_conf.epsilon,
+        bla_conf.first_level
+    };
+    return render_generic(conf, buffer,
+        [&](std::size_t x, std::size_t y){
+            auto ref_n {0uz};
+            auto n {0u};
+            auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
+            std::complex<double> dc {c - c_ref};
+            std::complex<double> dz {0.0, 0.0};
+            std::complex<double> z {0.0, 0.0};
+            while (n < conf.max_iterations && !escaped(z)) {
+                auto approximation = bla.apply(dc, dz, ref_n);
+                if (approximation) {
+                    auto m {ref_n};
+                    std::tie(dz, ref_n) = *approximation;
+                    // TODO: DRY
+                    std::println("skipping {}", ref_n - m);
+                    n += ref_n - m;
+                    if (ref_n >= reference.size()) {
+                        dz = z;
+                        ref_n = 0;
+                    }
+                    z = reference[ref_n] + dz;
+                    if (std::norm(z) < std::norm(dz)) {
+                        dz = z;
+                        ref_n = 0;
+                    }
+                    //
+                } else {
+                    std::tie(ref_n, dz, z) = compute_next_perturbation(reference, ref_n, dc, dz);
+                    ++n;
+                }
+            }
+            return std::make_pair(dz, n);
+        }
+    );
+}
+
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 auto render(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     return std::visit(overloaded {
         [&](const direct_eta& _)        { (void) _; return render_direct(conf, buffer); },
         [&](const perturbed_eta& _)     { (void) _; return render_perturbed(conf, buffer); },
-        [&](const approximate_eta& _)   { (void) _; return render_approximate(conf, buffer); }
+        [&](const approximate_eta& _)   { (void) _; return render_approximate(conf, buffer); },
+        [&](const bla_eta& _)           { (void) _; return render_bla(conf, buffer); }
     }, conf.eta);
 }
 

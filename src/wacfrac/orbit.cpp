@@ -1,8 +1,28 @@
 #include <wacfrac/orbit.hpp>
+#include <complex>
+#include <tuple>
 #include <utility>
+#include <vector>
 
 namespace wacfrac
 {
+
+auto compute_next_perturbation(const std::vector<std::complex<double>>& ref, std::size_t ref_n, std::complex<double> dc, std::complex<double> dz) -> std::tuple<std::size_t, std::complex<double>, std::complex<double>> {
+    dz = 2.0 * dz * ref[ref_n] + dz * dz + dc;
+    ++ref_n;
+
+    if (ref_n >= ref.size()) {
+        return {0uz, dz, dz};
+    }
+
+    auto z {ref[ref_n] + dz};
+
+    if (std::norm(z) < std::norm(dz)) {
+        dz = z;
+        ref_n = 0;
+    }
+    return {ref_n, dz, z};
+}
 
 // https://fractalforums.org/index.php?topic=4360.0
 auto escape_perturbed(const std::vector<std::complex<double>>& ref, std::complex<double> dc, unsigned int max_n, std::complex<double> dz, unsigned int n) -> std::pair<std::complex<double>, unsigned int> {
@@ -13,16 +33,7 @@ auto escape_perturbed(const std::vector<std::complex<double>>& ref, std::complex
 
     auto z0 {ref[ref_n] + dz};
     return escape_generic(z0, n, max_n, [&](std::complex<double> z) {
-        // Iterate dz
-        dz = 2.0 * dz * ref[ref_n] + dz * dz + dc;
-        ++ref_n;
-        z = ref[ref_n] + dz;
-
-        // Rebase
-        if (square_magnitude(z) < square_magnitude(dz) || ref_n >= ref.size()) {
-            dz = z;
-            ref_n = 0;
-        }
+        std::tie(ref_n, dz, z) = compute_next_perturbation(ref, ref_n, dc, dz);
         return z;
     });
 }

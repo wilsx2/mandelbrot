@@ -33,11 +33,6 @@ auto escaped(const T& a) {
     return square_magnitude(a) > escape_radius*escape_radius;
 }
 
-template <Complex T>
-auto compute_next_z(const T& z, const T& c) -> T {
-    return z*z + c;
-}
-
 template <Complex T, std::invocable<T> F>
 auto escape_generic(T z0, unsigned int n, unsigned int max_n, F&& next_z) -> std::pair<std::complex<double>, unsigned int> {
     auto z {z0};
@@ -48,11 +43,18 @@ auto escape_generic(T z0, unsigned int n, unsigned int max_n, F&& next_z) -> std
     return {static_cast<std::complex<double>>(z), n};
 }
 
+template <Complex T>
+auto compute_next_z(const T& z, const T& c) -> T {
+    return z*z + c;
+}
 template<Complex T>
 auto escape(T c, unsigned int max_n) -> std::pair<std::complex<double>, unsigned int> {
     return escape_generic(T{0.0,0.0}, 0, max_n, std::bind_back(compute_next_z<T>, c));
 }
+
+auto compute_next_perturbation(const std::vector<std::complex<double>>& ref, std::size_t ref_n, std::complex<double> dc, std::complex<double> dz) -> std::tuple<std::size_t, std::complex<double>, std::complex<double>>;
 auto escape_perturbed(const std::vector<std::complex<double>>& ref, std::complex<double> dc, unsigned int max_n, std::complex<double> dz = {0.0, 0.0}, unsigned int n = 0) -> std::pair<std::complex<double>, unsigned int>;
+
 auto compute_reference(multi_complex c, unsigned int max_n) -> std::vector<std::complex<double>>;
 
 }   // namespace wacfrac

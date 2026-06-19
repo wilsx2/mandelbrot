@@ -87,15 +87,13 @@ int main(int argc, char *argv[]) {
         .view           = v,
         .max_iterations = max_iterations,
         .palette        = wacfrac::generate_palette(32, wacfrac::color_encoding::hcl, {{.9f,.8f,.1f}, {1.f,1.f,1.f}, {.7f,.5f,.5f}}),
-        .eta            = wacfrac::approximate_eta {
-            .num_coefficients = 12, // TODO: Replace magic numbers
-            .probe_cols = 4,
-            .probe_rows = 4,
-            .tolerance = 1e-6
+        .eta            = wacfrac::bla_eta {
+            .epsilon =  1e-2,
+            .first_level = 0
         },
         .ca             = {
             wacfrac::colorization_type::continuous,
-            wacfrac::colorization_method::normal
+            wacfrac::colorization_method::looped
         }
     };
 
