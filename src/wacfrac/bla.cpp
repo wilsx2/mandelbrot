@@ -7,7 +7,6 @@
 using namespace wacfrac;
 
 // https://philthompson.me/2023/Faster-Mandelbrot-Set-Rendering-with-BLA-Bivariate-Linear-Approximation.html
-
 bivariate_linear_approximator::bivariate_linear_approximator(const std::vector<std::complex<double>>& ref, std::size_t first_level)
     : _ref(ref)
     , _first_level(first_level)
@@ -37,8 +36,10 @@ bivariate_linear_approximator::bivariate_linear_approximator(double initial_epsi
         [&ref](std::complex<double> p) -> std::size_t { return escape_perturbed(ref, p, ref.size()).second; });
     
     // Perform binary search for ideal epsilon
-    auto upper {initial_epsilon};
-    auto lower {initial_epsilon};
+    auto exponent {std::floor(std::log10(initial_epsilon))};
+    auto coeff {initial_epsilon / std::pow(10, exponent)};
+    auto upper {coeff * std::pow(10.0, exponent * 2.0)};
+    auto lower {coeff * std::pow(10.0, exponent / 2.0)};
     auto found_heuristic {false};
     auto prev_avg_skipped {0.0};
     while (!found_heuristic) {
@@ -50,7 +51,7 @@ bivariate_linear_approximator::bivariate_linear_approximator(double initial_epsi
         for (auto&& [i, probe] : probes | std::views::enumerate) {
             auto [_, approx_escape_time, skipped] = escape_approximate(probe);
            
-            if (approx_escape_time / static_cast<double>(true_escape_times.at(i)) > 1.0 - tolerance) {
+            if (std::abs(approx_escape_time / static_cast<double>(true_escape_times.at(i)) - 1.0) > tolerance) {
                 all_correct = false;
                 break;
             }
