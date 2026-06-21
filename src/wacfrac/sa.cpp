@@ -1,5 +1,5 @@
 // https://web.archive.org/web/20220125200420/http://www.science.eclipse.co.uk/sft_maths.pdf
-#include "wacfrac/approximation.hpp"
+#include "wacfrac/sa.hpp"
 #include <ranges>
 
 using namespace wacfrac;

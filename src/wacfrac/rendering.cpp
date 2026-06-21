@@ -2,7 +2,7 @@
 #include "wacfrac/color.hpp"
 #include "wacfrac/orbit.hpp"
 #include "wacfrac/analysis.hpp"
-#include "wacfrac/approximation.hpp"
+#include "wacfrac/sa.hpp"
 #include "wacfrac/bla.hpp"
 #include <algorithm>
 #include <complex>
@@ -43,7 +43,7 @@ static auto render_perturbed(const render_config& conf, const std::span<pixel>& 
     );
 }
 
-static auto render_approximate(const render_config& conf, const std::span<pixel>& buffer) -> bool {
+static auto render_sa(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     const auto& sa_conf {std::get<2>(conf.eta)};
     auto reference = compute_reference(conf.view.center, conf.max_iterations);
     series_approximator sa {reference, sa_conf.num_coefficients};
@@ -151,7 +151,7 @@ auto render(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     return std::visit(overloaded {
         [&](const direct_eta& _)        { (void) _; return render_direct(conf, buffer); },
         [&](const perturbed_eta& _)     { (void) _; return render_perturbed(conf, buffer); },
-        [&](const approximate_eta& _)   { (void) _; return render_approximate(conf, buffer); },
+        [&](const approximate_eta& _)   { (void) _; return render_sa(conf, buffer); },
         [&](const bla_eta& _)           { (void) _; return render_bla(conf, buffer); }
     }, conf.eta);
 }
