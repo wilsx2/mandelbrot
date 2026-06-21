@@ -16,16 +16,18 @@
     [X] Perturbation Theory
     [X] SA
     [X] BLA
+    [ ] FloatExp backend (eww)
     [ ] Update benchmarks
         [ ] POI
         [ ] Depths
         [ ] Reference orbit calculation
         [ ] approximation initialization
 [ ] Optimize CPU-bound tasks
+    [ ] Period finding
+    [ ] Nucleus finding
     [ ] Reference orbit
-    [ ] Coeff calculation
-    [ ] Try using periodic reference for SA as well
-[ ] Generate zoom point
+    [ ] Coefficient calculation
+[ ] Finding zoom point
     [X] Newton's method applied to nucleus finding
     [ ] NM applied to finding bond points
     [ ] Find bonded nucleus
