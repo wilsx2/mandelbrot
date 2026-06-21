@@ -28,7 +28,7 @@ auto compute_next_perturbation(const std::vector<std::complex<double>>& ref, std
 }
 
 // https://fractalforums.org/index.php?topic=4360.0
-auto escape_perturbed(const std::vector<std::complex<double>>& ref, std::complex<double> dc, unsigned int max_n, std::complex<double> dz, unsigned int n) -> std::pair<std::complex<double>, unsigned int> {
+auto escape_perturbed(const std::vector<std::complex<double>>& ref, std::complex<double> dc, std::size_t max_n, std::complex<double> dz, std::size_t n) -> std::pair<std::complex<double>, std::size_t> {
     auto ref_n {n};
     if (ref_n >= ref.size()) {
         return {{}, 0};
@@ -41,11 +41,11 @@ auto escape_perturbed(const std::vector<std::complex<double>>& ref, std::complex
     });
 }
 
-auto compute_reference(multi_complex c, unsigned int max_n, bool do_escape) -> std::vector<std::complex<double>> {
+auto compute_reference(multi_complex c, std::size_t max_n, bool do_escape) -> std::vector<std::complex<double>> {
     std::vector<std::complex<double>> reference { {0.0, 0.0} };
 
     multi_complex z {0.0, 0.0};
-    for (auto n {0u}; n < max_n - 1 && (!do_escape || !escaped(z)); ++n) {
+    for (auto n {0uz}; n < max_n - 1 && (!do_escape || !escaped(z)); ++n) {
         z = compute_next_z(z, c);
         reference.emplace_back(static_cast<std::complex<double>>(z));
     }

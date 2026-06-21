@@ -7,37 +7,47 @@
     [x] Python Bindings
 [X] Precision
     [X] Calculate orbit of arbitrary precision w/ GMP
-[X] Fast Math
-    [X] Google Benchmark
-    [X] Perturbation Theory
-    [X] SA
-    [ ] BLA
-    [ ] Update benchmarks
 [X] Colorization
     [X] Palette Application
     [X] LCH
     [X] Continuous
-    [X] Palette Constants
-[ ] Parallelism
-    [ ] CUDA for per-pixel calculations
-    [ ] OpenMP for references and approximation coefficients
+[X] Fast Math
+    [X] Google Benchmark
+    [X] Perturbation Theory
+    [X] SA
+    [X] BLA
+    [ ] Update benchmarks
+        [ ] POI
+        [ ] Depths
+        [ ] Reference orbit calculation
+        [ ] approximation initialization
+[ ] Optimize CPU-bound tasks
+    [ ] Reference orbit
+    [ ] Coeff calculation
+    [ ] Try using periodic reference for SA as well
 [ ] Generate zoom point
     [X] Newton's method applied to nucleus finding
     [ ] NM applied to finding bond points
     [ ] Find bonded nucleus
     [ ] Apply recursively to find infinitely small nucleus
 [ ] Interactivity
-    [ ] Parameterize escape radius
-    [ ] Progress bar
-    [ ] Logging
-    [ ] Finalize scripting API
     [X] Interchangable Escape Time Algorithms
     [X] Color Palette Parameter and Generator
-    [ ] Improve IO with targets
+    [ ] Parameterize all the things
+    [ ] Progress bar and time estimate in CLI
+    [ ] Post-render report (time, skipped iterations, etc)
+    [ ] Lazy frame/filename generator for zoom videos
+    [ ] Video generation in CLI
+    [ ] Video segmentation
     [ ] Composition w/ ffmpeg
         [ ] Encoding
         [ ] Videos
         [ ] Tiled images
-    [ ] Pause and resume video recording
+    [ ] Final Python Bindings
+    [ ] Export Python Package
+[ ] Parallelism
+    [ ] CUDA for per-pixel calculations
+    [ ] ? BLA coefficients w/ CUDA ?
+    [ ] OpenMP for references and approximation coefficients
 [ ] Distribute (OpenMPI)
 [ ] Cloud Compute

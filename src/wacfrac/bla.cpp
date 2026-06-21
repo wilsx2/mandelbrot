@@ -40,9 +40,10 @@ bivariate_linear_approximator::bivariate_linear_approximator(double initial_epsi
     auto coeff {initial_epsilon / std::pow(10, exponent)};
     auto upper {coeff * std::pow(10.0, exponent * 2.0)};
     auto lower {coeff * std::pow(10.0, exponent / 2.0)};
-    auto found_heuristic {false};
+    if (upper < lower) std::swap(upper, lower);
     auto prev_avg_skipped {0.0};
-    while (!found_heuristic) {
+    constexpr auto upper_limit {100uz};
+    for (auto iter {0uz}; iter < upper_limit; ++iter) {
         auto epsilon = (upper + lower) / 2.0;
         compute_blas(epsilon, max_dc);
 
@@ -65,16 +66,17 @@ bivariate_linear_approximator::bivariate_linear_approximator(double initial_epsi
         
         auto avg_skipped {total_skipped / static_cast<double>(probes.size())};
         if (avg_skipped > prev_avg_skipped) {
+            prev_avg_skipped = avg_skipped;
             lower = epsilon;
         } else {
-            found_heuristic = true;
+            break;
         }
     }
 }
 
 auto bivariate_linear_approximator::escape_approximate(std::complex<double> dc) const -> std::tuple<std::complex<double>, std::size_t, std::size_t> {
     auto ref_n {0uz};
-    auto n {0u};
+    auto n {0uz};
     auto skipped {0uz};
     std::complex<double> dz {0.0, 0.0};
     std::complex<double> z {0.0, 0.0};

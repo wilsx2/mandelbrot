@@ -40,13 +40,13 @@ int main(int argc, char *argv[]) {
           .absent({"0.4"})
           .help("Zoom scale (default: 0.4)");
 
-    unsigned int max_iterations;
+    std::size_t max_iterations;
     params.add_parameter(max_iterations, "--max-iterations", "-n")
           .nargs(1)
           .absent({0})
           .help("Maximum number of iterations per orbit (default: approximate)");
 
-    unsigned int precision;
+    std::size_t precision;
     params.add_parameter(precision, "--precision", "-p")
           .nargs(1)
           .absent({0})

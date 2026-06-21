@@ -67,12 +67,15 @@ static auto render_approximate(const render_config& conf, const std::span<pixel>
 // https://philthompson.me/2023/Faster-Mandelbrot-Set-Rendering-with-BLA-Bivariate-Linear-Approximation.html
 static auto render_bla(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     std::println("max_iter: {}", conf.max_iterations);
+    std::println("finding period...");
     auto half_dx = conf.view.dimensions.real() / 2.0;
     auto half_dy = conf.view.dimensions.imag() / 2.0;
     auto periods = find_period_ball(conf.view.center, half_dx, half_dy, conf.max_iterations, true);
     auto view_period = periods.empty() ? 1uz : periods.front();
 
-    auto c_ref {find_nucleus(conf.view.center, view_period, 1028uz)}; // TODO: Parameterize magic numbers
+    std::println("finding nucleus...");
+    auto c_ref {find_nucleus(conf.view.center, view_period, 256uz)}; // TODO: Parameterize magic numbers
+    std::println("calculating reference...");
     auto reference {compute_reference(c_ref, conf.max_iterations, false)};
     auto c_ref_d {static_cast<std::complex<double>>(c_ref)};
 
@@ -80,7 +83,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
 
     for (auto p : periods) {
         if (p == view_period) continue;
-        c_ref = find_nucleus(conf.view.center, p, 1028uz); // TODO: Parameterize magic numbers
+        c_ref = find_nucleus(conf.view.center, p, 256uz); // TODO: Parameterize magic numbers
         reference = compute_reference(c_ref, conf.max_iterations, false);
         c_ref_d = static_cast<std::complex<double>>(c_ref);
         auto nondegenerate = std::ranges::any_of(reference, [](auto z) { return std::abs(z) >= 1e-4; }); // TODO: See below
@@ -117,6 +120,8 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
         reference,
         bla_conf.first_level
     };*/ 
+
+    std::println("calculating coeffs...");
     bivariate_linear_approximator bla { // TODO: Parameterize magic numbers
         1e-100, 1e-5, 
         conf.view.generate_probes( // TODO: Dynamic probe count
@@ -127,10 +132,13 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
         reference,
         bla_conf.first_level
     };
+  
+    std::println("rendering...");
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
             std::complex<double> dc {c - c_ref};
+            std::print("{} + i{},", dc.real(), dc.imag());
             auto [dz, n, _] = bla.escape_approximate(dc);
             return std::make_pair(dz, n);
         }
