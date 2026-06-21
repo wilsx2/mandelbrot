@@ -4,7 +4,10 @@
 #include "wacfrac/analysis.hpp"
 #include "wacfrac/sa.hpp"
 #include "wacfrac/bla.hpp"
+#include "wacfrac/types.hpp"
 #include <algorithm>
+#include <boost/multiprecision/fwd.hpp>
+#include <boost/multiprecision/number.hpp>
 #include <complex>
 #include <print>
 
@@ -26,8 +29,9 @@ static auto render_generic(const render_config& conf, const std::span<pixel>& bu
 static auto render_direct(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
-            auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            return escape<multi_complex>(c, conf.max_iterations);
+            auto raw = conf.view.sample(x, y, conf.res.width, conf.res.height);
+            auto c = doubleexp_complex{static_cast<std::complex<long double>>(raw)};
+            return escape<doubleexp_complex>(c, conf.max_iterations);
         }
     );
 }

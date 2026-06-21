@@ -168,11 +168,11 @@ inline int floatexp<M, E>::compare(const floatexp& o) const noexcept {
     return pos ? cmp : -cmp;
 }
 
-#define X(T)                                                \
-    template<std::floating_point M, std::integral E>                             \
-    inline int floatexp<M, E>::compare(T a) const {                    \
-        floatexp t;                                                     \
-        t.mantissa = 0; t.exponent = 0;                                          \
+#define X(T) \
+    template<std::floating_point M, std::integral E> \
+    inline int floatexp<M, E>::compare(T a) const { \
+        floatexp t; \
+        t.mantissa = 0; t.exponent = 0; \
         if (a != 0) { int e; t.mantissa = std::frexp(static_cast<M>(a), &e); t.exponent = e; } \
         return compare(t);                                                       \
     }
@@ -326,24 +326,41 @@ floatexp<M, E>::operator-() const {
 namespace wacfrac {
 
 // Arithmetic
+
+// 2-arg
 template<std::floating_point M, std::integral E>
 inline void eval_add(floatexp<M, E>& b, const floatexp<M, E>& cb) {
     b += cb;
 }
-
 template<std::floating_point M, std::integral E>
 inline void eval_subtract(floatexp<M, E>& b, const floatexp<M, E>& cb) {
     b -= cb;
 }
-
 template<std::floating_point M, std::integral E>
 inline void eval_multiply(floatexp<M, E>& b, const floatexp<M, E>& cb) {
     b *= cb;
 }
-
 template<std::floating_point M, std::integral E>
 inline void eval_divide(floatexp<M, E>& b, const floatexp<M, E>& cb) {
     b /= cb;
+}
+
+// 3-arg: result = a op b
+template<std::floating_point M, std::integral E>
+inline void eval_add(floatexp<M, E>& result, const floatexp<M, E>& a, const floatexp<M, E>& b) {
+    result = a; eval_add(result, b);
+}
+template<std::floating_point M, std::integral E>
+inline void eval_subtract(floatexp<M, E>& result, const floatexp<M, E>& a, const floatexp<M, E>& b) {
+    result = a; eval_subtract(result, b);
+}
+template<std::floating_point M, std::integral E>
+inline void eval_multiply(floatexp<M, E>& result, const floatexp<M, E>& a, const floatexp<M, E>& b) {
+    result = a; eval_multiply(result, b);
+}
+template<std::floating_point M, std::integral E>
+inline void eval_divide(floatexp<M, E>& result, const floatexp<M, E>& a, const floatexp<M, E>& b) {
+    result = a; eval_divide(result, b);
 }
 
 // Conversion
@@ -461,6 +478,41 @@ inline void eval_sqrt(floatexp<M, E>& b, const floatexp<M, E>& cb) {
     b.mantissa = std::sqrt(b.mantissa);
     b.exponent /= 2;
     detail::normalize(b);
+}
+
+// Classification / sign / abs
+
+template<std::floating_point M, std::integral E>
+inline bool eval_is_zero(const floatexp<M, E>& x) {
+    return x.mantissa == M(0);
+}
+
+template<std::floating_point M, std::integral E>
+inline int eval_get_sign(const floatexp<M, E>& x) {
+    return (x.mantissa > M(0)) - (x.mantissa < M(0));
+}
+
+template<std::floating_point M, std::integral E>
+inline void eval_fabs(floatexp<M, E>& result, const floatexp<M, E>& x) {
+    result = x;
+    if (result.mantissa < M(0))
+        result.mantissa = -result.mantissa;
+}
+
+template<std::floating_point M, std::integral E>
+inline int eval_signbit(const floatexp<M, E>& x) {
+    return std::signbit(x.mantissa);
+}
+
+template<std::floating_point M, std::integral E>
+inline int eval_fpclassify(const floatexp<M, E>& x) {
+    if (x.mantissa == M(0))
+        return FP_ZERO;
+    if (std::isnan(x.mantissa))
+        return FP_NAN;
+    if (std::isinf(x.mantissa))
+        return FP_INFINITE;
+    return FP_NORMAL;
 }
 
 // Binary operators
