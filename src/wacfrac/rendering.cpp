@@ -33,11 +33,11 @@ static auto render_direct(const render_config& conf, const std::span<pixel>& buf
 }
 
 static auto render_perturbed(const render_config& conf, const std::span<pixel>& buffer) -> bool {
-    std::vector<std::complex<double>> reference = compute_reference(conf.view.center, conf.max_iterations);
+    std::vector<std::complex<long double>> reference = compute_reference(conf.view.center, conf.max_iterations);
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            std::complex<double> dc {c - conf.view.center};
+            std::complex<long double> dc {c - conf.view.center};
             return escape_perturbed(reference, dc, conf.max_iterations);
         }
     );
@@ -57,7 +57,7 @@ static auto render_sa(const render_config& conf, const std::span<pixel>& buffer)
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            std::complex<double> dc {c - conf.view.center};
+            std::complex<long double> dc {c - conf.view.center};
             auto dz = sa.approximate_delta_n(dc);
             return escape_perturbed(reference, dc, conf.max_iterations, dz, sa.n());
         }
@@ -77,7 +77,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     auto c_ref {find_nucleus(conf.view.center, view_period, 256uz)}; // TODO: Parameterize magic numbers
     std::println("calculating reference...");
     auto reference {compute_reference(c_ref, conf.max_iterations, false)};
-    auto c_ref_d {static_cast<std::complex<double>>(c_ref)};
+    auto c_ref_d {static_cast<std::complex<long double>>(c_ref)};
 
     std::println("ref size: {}, period: {}", reference.size(), view_period);
 
@@ -85,7 +85,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
         if (p == view_period) continue;
         c_ref = find_nucleus(conf.view.center, p, 256uz); // TODO: Parameterize magic numbers
         reference = compute_reference(c_ref, conf.max_iterations, false);
-        c_ref_d = static_cast<std::complex<double>>(c_ref);
+        c_ref_d = static_cast<std::complex<long double>>(c_ref);
         auto nondegenerate = std::ranges::any_of(reference, [](auto z) { return std::abs(z) >= 1e-4; }); // TODO: See below
         if (nondegenerate) {
             view_period = p;
@@ -98,15 +98,15 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     if (reference.empty() || degenerate) {
         std::println("all periods degenerate, falling back to view center");
         c_ref = conf.view.center;
-        c_ref_d = static_cast<std::complex<double>>(c_ref);
+        c_ref_d = static_cast<std::complex<long double>>(c_ref);
         reference = compute_reference(c_ref, conf.max_iterations, false);
         std::println("ref size: {}", reference.size(), view_period);
     }
 
-    auto c_tr = static_cast<std::complex<double>>(conf.view.sample(conf.res.width, conf.res.height, conf.res.width, conf.res.height));
-    auto c_tl = static_cast<std::complex<double>>(conf.view.sample(0, conf.res.height, conf.res.width, conf.res.height));
-    auto c_br = static_cast<std::complex<double>>(conf.view.sample(conf.res.width, 0, conf.res.width, conf.res.height));
-    auto c_bl = static_cast<std::complex<double>>(conf.view.sample(0, 0, conf.res.width, conf.res.height));
+    auto c_tr = static_cast<std::complex<long double>>(conf.view.sample(conf.res.width, conf.res.height, conf.res.width, conf.res.height));
+    auto c_tl = static_cast<std::complex<long double>>(conf.view.sample(0, conf.res.height, conf.res.width, conf.res.height));
+    auto c_br = static_cast<std::complex<long double>>(conf.view.sample(conf.res.width, 0, conf.res.width, conf.res.height));
+    auto c_bl = static_cast<std::complex<long double>>(conf.view.sample(0, 0, conf.res.width, conf.res.height));
 
     auto max_dc = c_tr - c_ref_d;
     if (std::abs(c_tl - c_ref_d) > std::abs(max_dc)) max_dc = c_tl - c_ref_d;
@@ -137,7 +137,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            std::complex<double> dc {c - c_ref};
+            std::complex<long double> dc {c - c_ref};
             std::print("{} + i{},", dc.real(), dc.imag());
             auto [dz, n, _] = bla.escape_approximate(dc);
             return std::make_pair(dz, n);

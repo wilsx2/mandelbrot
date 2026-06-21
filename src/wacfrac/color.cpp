@@ -10,7 +10,7 @@ namespace wacfrac
 
 // https://www.tomchaplin.xyz/blog/2018-11-02-exploring-the-mandelbrot-set/
 // https://linas.org/art-gallery/escape/escape.html
-auto colorize(colorization_algorithm ca, const std::vector<pixel>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> pixel {
+auto colorize(colorization_algorithm ca, const std::vector<pixel>& palette, std::size_t max_n, std::complex<long double> z, std::size_t n) -> pixel {
     if (n == max_n)
         return {0,0,0};
     switch (ca.type) {
@@ -26,7 +26,7 @@ auto colorize_discrete(colorization_method method, const std::vector<pixel>& pal
     }
     return {255, 0, 255};
 }
-auto colorize_continuous(colorization_method method, const std::vector<pixel>& palette, std::size_t max_n, std::complex<double> z, std::size_t n) -> pixel {
+auto colorize_continuous(colorization_method method, const std::vector<pixel>& palette, std::size_t max_n, std::complex<long double> z, std::size_t n) -> pixel {
     auto cont_n {n - std::log(std::log(magnitude(z))) / std::log(2.0)};
     auto n1     {static_cast<std::size_t>(std::floor(cont_n))};
     auto n2     {static_cast<std::size_t>(std::ceil(cont_n))};

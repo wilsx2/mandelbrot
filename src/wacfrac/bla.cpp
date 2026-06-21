@@ -7,7 +7,7 @@
 using namespace wacfrac;
 
 // https://philthompson.me/2023/Faster-Mandelbrot-Set-Rendering-with-BLA-Bivariate-Linear-Approximation.html
-bivariate_linear_approximator::bivariate_linear_approximator(const std::vector<std::complex<double>>& ref, std::size_t first_level)
+bivariate_linear_approximator::bivariate_linear_approximator(const std::vector<std::complex<long double>>& ref, std::size_t first_level)
     : _ref(ref)
     , _first_level(first_level)
     , _last_level(std::log2(_ref.size()))
@@ -21,19 +21,19 @@ bivariate_linear_approximator::bivariate_linear_approximator(const std::vector<s
     }
     _blas.resize(i);
 }
-bivariate_linear_approximator::bivariate_linear_approximator(double epsilon, std::complex<double> max_dc, const std::vector<std::complex<double>>& ref,  std::size_t first_level)
+bivariate_linear_approximator::bivariate_linear_approximator(double epsilon, std::complex<long double> max_dc, const std::vector<std::complex<long double>>& ref,  std::size_t first_level)
     : bivariate_linear_approximator(ref, first_level)
 {
     compute_blas(epsilon, max_dc);
 }
 
-bivariate_linear_approximator::bivariate_linear_approximator(double initial_epsilon, double tolerance, const std::vector<std::complex<double>>& probes, std::complex<double> max_dc, const std::vector<std::complex<double>>& ref, std::size_t first_level)
+bivariate_linear_approximator::bivariate_linear_approximator(double initial_epsilon, double tolerance, const std::vector<std::complex<long double>>& probes, std::complex<long double> max_dc, const std::vector<std::complex<long double>>& ref, std::size_t first_level)
     : bivariate_linear_approximator(ref, first_level)
 {
     std::vector<std::size_t> true_escape_times;
     true_escape_times.reserve(probes.size());
     std::ranges::transform(probes, std::back_inserter(true_escape_times),
-        [&ref](std::complex<double> p) -> std::size_t { return escape_perturbed(ref, p, ref.size()).second; });
+        [&ref](std::complex<long double> p) -> std::size_t { return escape_perturbed(ref, p, ref.size()).second; });
     
     // Perform binary search for ideal epsilon
     auto exponent {std::floor(std::log10(initial_epsilon))};
@@ -74,12 +74,12 @@ bivariate_linear_approximator::bivariate_linear_approximator(double initial_epsi
     }
 }
 
-auto bivariate_linear_approximator::escape_approximate(std::complex<double> dc) const -> std::tuple<std::complex<double>, std::size_t, std::size_t> {
+auto bivariate_linear_approximator::escape_approximate(std::complex<long double> dc) const -> std::tuple<std::complex<long double>, std::size_t, std::size_t> {
     auto ref_n {0uz};
     auto n {0uz};
     auto skipped {0uz};
-    std::complex<double> dz {0.0, 0.0};
-    std::complex<double> z {0.0, 0.0};
+    std::complex<long double> dz {0.0, 0.0};
+    std::complex<long double> z {0.0, 0.0};
     while (n < _ref.size() && !escaped(z)) {
         auto approximation = compute_zn(dc, dz, ref_n);
         if (approximation) {
@@ -95,7 +95,7 @@ auto bivariate_linear_approximator::escape_approximate(std::complex<double> dc) 
     return std::make_tuple(dz, n, skipped);
 }
 
-auto bivariate_linear_approximator::compute_zn(std::complex<double> dc, std::complex<double> dzm, std::size_t m) const -> std::optional<std::pair<std::complex<double>, std::size_t>> {
+auto bivariate_linear_approximator::compute_zn(std::complex<long double> dc, std::complex<long double> dzm, std::size_t m) const -> std::optional<std::pair<std::complex<long double>, std::size_t>> {
     auto bla = bla_at(m, _first_level);
     if (!bla || !bla->is_valid(dzm))
         return std::nullopt;
@@ -113,24 +113,24 @@ auto bivariate_linear_approximator::compute_zn(std::complex<double> dc, std::com
     return {{bla->approximate_dzn(dzm, dc), n}};
 }
 
-auto bivariate_linear_approximator::bla::is_valid(std::complex<double> dzm) const -> bool {
+auto bivariate_linear_approximator::bla::is_valid(std::complex<long double> dzm) const -> bool {
     return r > 0.0 && std::norm(dzm) < r*r;
 }
-auto bivariate_linear_approximator::bla::approximate_dzn(std::complex<double> dzm, std::complex<double> dc) const -> std::complex<double> {
+auto bivariate_linear_approximator::bla::approximate_dzn(std::complex<long double> dzm, std::complex<long double> dc) const -> std::complex<long double> {
     return a*dzm + b*dc;
 }
-auto bivariate_linear_approximator::compute_bla(double epsilon, std::complex<double> max_dc, std::size_t m, std::size_t n) const -> bla {
+auto bivariate_linear_approximator::compute_bla(double epsilon, std::complex<long double> max_dc, std::size_t m, std::size_t n) const -> bla {
     auto l {n - m};
-    auto a {2.0 * _ref.at(m) * static_cast<double>(l)};
-    auto b {static_cast<std::complex<double>>(1.0 * l)};
+    auto a {2.0L * _ref.at(m) * static_cast<long double>(l)};
+    auto b {static_cast<std::complex<long double>>(1.0L * l)};
     auto denom = std::abs(a);
-    auto r = denom > 0.0
+    auto r = denom > 0.0L
         ? (epsilon * std::abs(_ref[n]) - std::abs(b) * std::abs(max_dc)) / denom
         : -std::abs(max_dc);
     return {a,b,r};
 }
 
-auto bivariate_linear_approximator::compute_blas(double epsilon, std::complex<double> max_dc) -> void {
+auto bivariate_linear_approximator::compute_blas(double epsilon, std::complex<long double> max_dc) -> void {
     std::vector<bla> current_level (_ref.size() - 2);
     for (auto m : std::views::iota(1uz, _ref.size() - 1)) {
         auto bla = compute_bla(epsilon, max_dc, m, m + 1);
@@ -155,11 +155,11 @@ auto bivariate_linear_approximator::compute_blas(double epsilon, std::complex<do
     
     _blas.shrink_to_fit();
 }
-auto bivariate_linear_approximator::merge_blas(std::complex<double> max_dc, const bla& x, const bla& y) const -> bla {
+auto bivariate_linear_approximator::merge_blas(std::complex<long double> max_dc, const bla& x, const bla& y) const -> bla {
     auto a {x.a * y.a};
     auto b {y.a * x.b + y.b};
     auto denom = std::abs(a);
-    auto r = denom > 0.0
+    auto r = denom > 0.0L
         ? std::min(x.r, (y.r - std::abs(b) * std::abs(max_dc)) / denom)
         : std::min(x.r, y.r - std::abs(b) * std::abs(max_dc));
     return {a,b,r};
