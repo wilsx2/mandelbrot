@@ -28,7 +28,7 @@
             [X] Reference orbit
             [ ] Coefficient calculation
             [ ] Escape Time
-            [ ] Colorization
+            [X] Colorization
 [ ] Optimize CPU-bound tasks
     [ ] Period finding
     [ ] Nucleus finding
