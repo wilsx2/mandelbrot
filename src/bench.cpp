@@ -1,4 +1,6 @@
 #include "wacfrac/constants.hpp"
+#include "wacfrac/types.hpp"
+#include "wacfrac/viewport.hpp"
 #include <wacfrac/wacfrac.hpp>
 #include <benchmark/benchmark.h>
 using namespace boost::multiprecision;
@@ -56,6 +58,16 @@ static void colorize_continuous(benchmark::State& state) {
 }
 BENCHMARK(colorize_continuous);
 
+static void find_period(benchmark::State& state) {
+    auto c {wacfrac::poi::BIG_BANG};
+    c.precision(state.range(0));
+    wacfrac::multi_float d (1.0, wacfrac::viewport::required_iterations);
+    for (auto _ : state) {
+        auto nucleus {wacfrac::find_nucleus(c, state.range(1), state.range(2))};
+        benchmark::DoNotOptimize(nucleus);
+    }
+}
+
 constexpr unsigned long long get_fibonacci(size_t n) {
     if (n == 0) return 0;
     if (n == 1) return 1;
@@ -72,15 +84,16 @@ constexpr unsigned long long get_fibonacci(size_t n) {
 }
 
 static void find_nucleus(benchmark::State& state) {
-    auto c {wacfrac::poi::BIG_BANG};
-    c.precision(state.range(0));
+    wacfrac::viewport view {wacfrac::poi::BIG_BANG, 1.0};
+    view.zoomed(std::pow(1,state.range(0)));
+    view.precision(view.required_precision());
     for (auto _ : state) {
-        auto nucleus {wacfrac::find_nucleus(c, state.range(1), state.range(2))};
+        auto nucleus {wacfrac::find_nucleus(view.center, state.range(1), view.required_iterations())};
         benchmark::DoNotOptimize(nucleus);
     }
 }
 BENCHMARK(find_nucleus)->ArgsProduct({
-    {20, 100, 500, 1000}, // Precision
+    {0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1028}, // Zoom Exponent
     { // Period
         get_fibonacci(2), 
         get_fibonacci(4),
@@ -89,9 +102,7 @@ BENCHMARK(find_nucleus)->ArgsProduct({
         get_fibonacci(32),
         get_fibonacci(64),
     },
-    {16, 32, 64, 128, 256, 512, 1028} // Max Iterations
 })->Unit(benchmark::kMillisecond);
-// static void find_period(benchmark::State& state);
 // static void find_epsilon(benchmark::State& state);
 // static void compute_sa_coeffs(benchmark::State& state);
 // static void compute_bla_coeffs(benchmark::State& state);
