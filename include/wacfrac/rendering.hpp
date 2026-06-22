@@ -12,7 +12,7 @@ namespace wacfrac
 
 struct direct_eta { };
 struct perturbed_eta { };
-struct approximate_eta {
+struct sa_eta {
     std::size_t num_coefficients, probe_cols, probe_rows;
     double tolerance;
 };
@@ -20,7 +20,7 @@ struct bla_eta {
     double epsilon;
     std::size_t first_level;
 };
-using escape_time_algorithm = std::variant<direct_eta, perturbed_eta, approximate_eta, bla_eta>;
+using escape_time_algorithm = std::variant<direct_eta, perturbed_eta, sa_eta, bla_eta>;
 
 struct render_config {
     resolution  res;

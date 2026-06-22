@@ -16,16 +16,16 @@
     [X] Perturbation Theory
     [X] SA
     [X] BLA
-    [ ] FloatExp backend (eww)
+    [X] FloatExp backend (eww)
         [X] Class
-        [ ] Templatize perturbation type
+        [X] Templatize perturbation type
     [ ] Update benchmarks
         [ ] Precompute reference orbits for quick iteration (in the development sense)
         [ ] All types
         [ ] Full renders
             [ ] Period finding
             [ ] Nucleus finding
-            [ ] Reference orbit
+            [X] Reference orbit
             [ ] Coefficient calculation
             [ ] Escape Time
             [ ] Colorization

@@ -177,7 +177,7 @@ auto render(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     return std::visit(overloaded {
         [&](const direct_eta& _)        { (void) _; return render_direct<doubleexp_complex>(conf, buffer); },
         [&](const perturbed_eta& _)     { (void) _; return render_perturbed<std::complex<long double>>(conf, buffer); },
-        [&](const approximate_eta& _)   { (void) _; return render_sa<std::complex<long double>>(conf, buffer); },
+        [&](const sa_eta& _)            { (void) _; return render_sa<std::complex<long double>>(conf, buffer); },
         [&](const bla_eta& _)           { (void) _; return render_bla<doubleexp_complex>(conf, buffer); }
     }, conf.eta);
 }
