@@ -31,44 +31,54 @@ static auto render_direct(const render_config& conf, const std::span<pixel>& buf
         [&](std::size_t x, std::size_t y){
             auto raw = conf.view.sample(x, y, conf.res.width, conf.res.height);
             auto c = doubleexp_complex{static_cast<std::complex<long double>>(raw)};
-            return escape<doubleexp_complex>(c, conf.max_iterations);
+            auto [z, n] = escape<doubleexp_complex>(c, conf.max_iterations);
+            return std::pair<std::complex<long double>, std::size_t>{static_cast<std::complex<long double>>(z), n};
         }
     );
 }
 
+template <Complex T>
 static auto render_perturbed(const render_config& conf, const std::span<pixel>& buffer) -> bool {
-    std::vector<std::complex<long double>> reference = compute_reference(conf.view.center, conf.max_iterations);
+    std::vector<T> reference = compute_reference<T>(conf.view.center, conf.max_iterations);
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            std::complex<long double> dc {c - conf.view.center};
-            return escape_perturbed(reference, dc, conf.max_iterations);
+            T dc {static_cast<T>(c - conf.view.center)};
+            auto [z, n] = escape_perturbed<T>(reference, dc, conf.max_iterations);
+            return std::pair<std::complex<long double>, std::size_t>{static_cast<std::complex<long double>>(z), n};
         }
     );
 }
 
+template <Complex T>
 static auto render_sa(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     const auto& sa_conf {std::get<2>(conf.eta)};
-    auto reference = compute_reference(conf.view.center, conf.max_iterations);
-    series_approximator sa {reference, sa_conf.num_coefficients};
+    auto reference = compute_reference<T>(conf.view.center, conf.max_iterations);
+    series_approximator<T> sa {reference, sa_conf.num_coefficients};
     sa.compute_coeffs_while_valid(
-        conf.view.generate_probes(
-            sa_conf.probe_cols,
-            sa_conf.probe_rows
-        ),
+        [&]() -> std::vector<T> {
+            auto probes_raw = conf.view.generate_probes(sa_conf.probe_cols, sa_conf.probe_rows);
+            std::vector<T> probes;
+            probes.reserve(probes_raw.size());
+            for (auto p : probes_raw)
+                probes.push_back(static_cast<T>(p));
+            return probes;
+        }(),
         sa_conf.tolerance
     );
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            std::complex<long double> dc {c - conf.view.center};
+            T dc {static_cast<T>(c - conf.view.center)};
             auto dz = sa.approximate_delta_n(dc);
-            return escape_perturbed(reference, dc, conf.max_iterations, dz, sa.n());
+            auto [z, n] = escape_perturbed<T>(reference, dc, conf.max_iterations, dz, sa.n());
+            return std::pair<std::complex<long double>, std::size_t>{static_cast<std::complex<long double>>(z), n};
         }
     );
 }
 
 // https://philthompson.me/2023/Faster-Mandelbrot-Set-Rendering-with-BLA-Bivariate-Linear-Approximation.html
+template <Complex T>
 static auto render_bla(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     std::println("max_iter: {}", conf.max_iterations);
     std::println("finding period...");
@@ -80,7 +90,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     std::println("finding nucleus...");
     auto c_ref {find_nucleus(conf.view.center, view_period, 256uz)}; // TODO: Parameterize magic numbers
     std::println("calculating reference...");
-    auto reference {compute_reference(c_ref, conf.max_iterations, false)};
+    auto reference {compute_reference<T>(c_ref, conf.max_iterations, false)};
     auto c_ref_d {static_cast<std::complex<long double>>(c_ref)};
 
     std::println("ref size: {}, period: {}", reference.size(), view_period);
@@ -88,7 +98,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     for (auto p : periods) {
         if (p == view_period) continue;
         c_ref = find_nucleus(conf.view.center, p, 256uz); // TODO: Parameterize magic numbers
-        reference = compute_reference(c_ref, conf.max_iterations, false);
+        reference = compute_reference<T>(c_ref, conf.max_iterations, false);
         c_ref_d = static_cast<std::complex<long double>>(c_ref);
         auto nondegenerate = std::ranges::any_of(reference, [](auto z) { return std::abs(z) >= 1e-4; }); // TODO: See below
         if (nondegenerate) {
@@ -103,7 +113,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
         std::println("all periods degenerate, falling back to view center");
         c_ref = conf.view.center;
         c_ref_d = static_cast<std::complex<long double>>(c_ref);
-        reference = compute_reference(c_ref, conf.max_iterations, false);
+        reference = compute_reference<T>(c_ref, conf.max_iterations, false);
         std::println("ref size: {}", reference.size(), view_period);
     }
 
@@ -118,33 +128,37 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     if (std::abs(c_bl - c_ref_d) > std::abs(max_dc)) max_dc = c_bl - c_ref_d;
 
     const auto& bla_conf {std::get<3>(conf.eta)};
-    /*bivariate_linear_approximator bla { // TODO: Options to select between manual and automatic epsilon
+    /*bivariate_linear_approximator<T> bla { // TODO: Options to select between manual and automatic epsilon
         bla_conf.epsilon,
-        max_dc,
+        static_cast<T>(max_dc),
         reference,
         bla_conf.first_level
-    };*/ 
+    };*/
 
     std::println("calculating coeffs...");
-    bivariate_linear_approximator bla { // TODO: Parameterize magic numbers
-        1e-100, 1e-5, 
-        conf.view.generate_probes( // TODO: Dynamic probe count
-            16,
-            16
-        ),
-        max_dc,
+    bivariate_linear_approximator<T> bla {
+        1e-100, 1e-5,
+        [&]() -> std::vector<T> {
+            auto probes_raw = conf.view.generate_probes(16, 16);
+            std::vector<T> probes;
+            probes.reserve(probes_raw.size());
+            for (auto p : probes_raw)
+                probes.push_back(static_cast<T>(p));
+            return probes;
+        }(),
+        static_cast<T>(max_dc),
         reference,
         bla_conf.first_level
     };
-  
+
     std::println("rendering...");
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            std::complex<long double> dc {c - c_ref};
-            std::print("{} + i{},", dc.real(), dc.imag());
+            T dc {static_cast<T>(c - c_ref)};
+            std::print("{} + i{},", static_cast<long double>(dc.real()), static_cast<long double>(dc.imag()));
             auto [dz, n, _] = bla.escape_approximate(dc);
-            return std::make_pair(dz, n);
+            return std::pair<std::complex<long double>, std::size_t>{static_cast<std::complex<long double>>(dz), n};
         }
     );
 }
@@ -154,10 +168,14 @@ template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 auto render(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     return std::visit(overloaded {
         [&](const direct_eta& _)        { (void) _; return render_direct(conf, buffer); },
-        [&](const perturbed_eta& _)     { (void) _; return render_perturbed(conf, buffer); },
-        [&](const approximate_eta& _)   { (void) _; return render_sa(conf, buffer); },
-        [&](const bla_eta& _)           { (void) _; return render_bla(conf, buffer); }
+        [&](const perturbed_eta& _)     { (void) _; return render_perturbed<std::complex<long double>>(conf, buffer); },
+        [&](const approximate_eta& _)   { (void) _; return render_sa<std::complex<long double>>(conf, buffer); },
+        [&](const bla_eta& _)           { (void) _; return render_bla<std::complex<long double>>(conf, buffer); }
     }, conf.eta);
 }
+
+template static auto render_perturbed<std::complex<long double>>(const render_config&, const std::span<pixel>&) -> bool;
+template static auto render_sa<std::complex<long double>>(const render_config&, const std::span<pixel>&) -> bool;
+template static auto render_bla<std::complex<long double>>(const render_config&, const std::span<pixel>&) -> bool;
 
 }   // namespace wacfrac

@@ -1,56 +1,20 @@
-#include <wacfrac/orbit.hpp>
-#include <complex>
-#include <tuple>
-#include <utility>
-#include <vector>
+#include <wacfrac/orbit.tpp>
 
 namespace wacfrac
 {
 
-auto rebase_reference(const std::vector<std::complex<long double>>& ref, std::size_t ref_n, std::complex<long double> dz) -> std::tuple<std::size_t, std::complex<long double>, std::complex<long double>> {
-    if (ref_n >= ref.size()) {
-        return {0uz, dz, dz};
-    }
+template auto rebase_reference<std::complex<double>>(const std::vector<std::complex<double>>& ref, std::size_t ref_n, std::complex<double> dz) -> std::tuple<std::size_t, std::complex<double>, std::complex<double>>;
+template auto compute_next_perturbation<std::complex<double>>(const std::vector<std::complex<double>>& ref, std::size_t ref_n, std::complex<double> dc, std::complex<double> dz) -> std::tuple<std::size_t, std::complex<double>, std::complex<double>>;
+template auto escape_perturbed<std::complex<double>>(const std::vector<std::complex<double>>& ref, std::complex<double> dc, std::size_t max_n, std::complex<double> dz, std::size_t n) -> std::pair<std::complex<double>, std::size_t>;
+template auto compute_reference<std::complex<double>>(multi_complex c, std::size_t max_n, bool do_escape) -> std::vector<std::complex<double>>;
 
-    auto z {ref[ref_n] + dz};
+template auto rebase_reference<std::complex<long double>>(const std::vector<std::complex<long double>>& ref, std::size_t ref_n, std::complex<long double> dz) -> std::tuple<std::size_t, std::complex<long double>, std::complex<long double>>;
+template auto compute_next_perturbation<std::complex<long double>>(const std::vector<std::complex<long double>>& ref, std::size_t ref_n, std::complex<long double> dc, std::complex<long double> dz) -> std::tuple<std::size_t, std::complex<long double>, std::complex<long double>>;
+template auto escape_perturbed<std::complex<long double>>(const std::vector<std::complex<long double>>& ref, std::complex<long double> dc, std::size_t max_n, std::complex<long double> dz, std::size_t n) -> std::pair<std::complex<long double>, std::size_t>;
+template auto compute_reference<std::complex<long double>>(multi_complex c, std::size_t max_n, bool do_escape) -> std::vector<std::complex<long double>>;
 
-    if (std::norm(z) < std::norm(dz)) {
-        dz = z;
-        ref_n = 0;
-    }
-    return {ref_n, dz, z};
-}
-
-auto compute_next_perturbation(const std::vector<std::complex<long double>>& ref, std::size_t ref_n, std::complex<long double> dc, std::complex<long double> dz) -> std::tuple<std::size_t, std::complex<long double>, std::complex<long double>> {
-    dz = 2.0L * dz * ref[ref_n] + dz * dz + dc;
-    ++ref_n;
-    return rebase_reference(ref, ref_n, dz);
-}
-
-// https://fractalforums.org/index.php?topic=4360.0
-auto escape_perturbed(const std::vector<std::complex<long double>>& ref, std::complex<long double> dc, std::size_t max_n, std::complex<long double> dz, std::size_t n) -> std::pair<std::complex<long double>, std::size_t> {
-    auto ref_n {n};
-    if (ref_n >= ref.size()) {
-        return {{}, 0};
-    }
-
-    auto z0 {ref[ref_n] + dz};
-    return escape_generic(z0, n, max_n, [&](std::complex<long double> z) {
-        std::tie(ref_n, dz, z) = compute_next_perturbation(ref, ref_n, dc, dz);
-        return z;
-    });
-}
-
-auto compute_reference(multi_complex c, std::size_t max_n, bool do_escape) -> std::vector<std::complex<long double>> {
-    std::vector<std::complex<long double>> reference { {0.0, 0.0} };
-
-    multi_complex z {0.0, 0.0};
-    for (auto n {0uz}; n < max_n - 1 && (!do_escape || !escaped(z)); ++n) {
-        z = compute_next_z(z, c);
-        reference.emplace_back(static_cast<std::complex<long double>>(z));
-    }
-
-    return reference;
-}
-
+template auto rebase_reference<doubleexp_complex>(const std::vector<doubleexp_complex>& ref, std::size_t ref_n, doubleexp_complex dz) -> std::tuple<std::size_t, doubleexp_complex, doubleexp_complex>;
+template auto compute_next_perturbation<doubleexp_complex>(const std::vector<doubleexp_complex>& ref, std::size_t ref_n, doubleexp_complex dc, doubleexp_complex dz) -> std::tuple<std::size_t, doubleexp_complex, doubleexp_complex>;
+template auto escape_perturbed<doubleexp_complex>(const std::vector<doubleexp_complex>& ref, doubleexp_complex dc, std::size_t max_n, doubleexp_complex dz, std::size_t n) -> std::pair<doubleexp_complex, std::size_t>;
+template auto compute_reference<doubleexp_complex>(multi_complex c, std::size_t max_n, bool do_escape) -> std::vector<doubleexp_complex>;
 }   // namespace wacfrac

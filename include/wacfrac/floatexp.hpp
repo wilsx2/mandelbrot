@@ -136,6 +136,7 @@ APPLY_X_TO_TYPES
 #undef X
 
 // Comparison
+
 template<std::floating_point M, std::integral E>
 inline int floatexp<M, E>::compare(const floatexp& o) const noexcept {
     // Zero cases
@@ -582,6 +583,53 @@ struct number_category<wacfrac::floatexp<M, E>>
     : std::integral_constant<int, 1> {};
 
 } // namespace boost::multiprecision
+
+namespace std {
+
+template <std::floating_point M, std::integral E, boost::multiprecision::expression_template_option ET>
+class numeric_limits<boost::multiprecision::number<wacfrac::floatexp<M, E>, ET>>
+{
+    using number_type = boost::multiprecision::number<wacfrac::floatexp<M, E>, ET>;
+
+public:
+    static constexpr bool is_specialized = true;
+    static constexpr int digits       = std::numeric_limits<M>::digits;
+    static constexpr int digits10     = std::numeric_limits<M>::digits10;
+    static constexpr int max_digits10 = std::numeric_limits<M>::max_digits10;
+    static constexpr bool is_signed   = true;
+    static constexpr bool is_integer  = false;
+    static constexpr bool is_exact    = false;
+    static constexpr int radix        = std::numeric_limits<M>::radix;
+
+    static constexpr int min_exponent   = std::numeric_limits<M>::min_exponent;
+    static constexpr int min_exponent10 = std::numeric_limits<M>::min_exponent10;
+    static constexpr int max_exponent   = std::numeric_limits<M>::max_exponent;
+    static constexpr int max_exponent10 = std::numeric_limits<M>::max_exponent10;
+
+    static constexpr bool has_infinity      = false;
+    static constexpr bool has_quiet_NaN     = false;
+    static constexpr bool has_signaling_NaN = false;
+    static constexpr float_denorm_style has_denorm = denorm_absent;
+    static constexpr bool has_denorm_loss   = false;
+    static constexpr bool is_iec559         = false;
+    static constexpr bool is_bounded        = true;
+    static constexpr bool is_modulo         = false;
+    static constexpr bool traps             = false;
+    static constexpr bool tinyness_before   = false;
+    static constexpr float_round_style round_style = round_to_nearest;
+
+    static constexpr number_type(min)()      noexcept { return number_type{std::numeric_limits<M>::min()}; }
+    static constexpr number_type(max)()      noexcept { return number_type{std::numeric_limits<M>::max()}; }
+    static constexpr number_type lowest()    noexcept { return number_type{-std::numeric_limits<M>::max()}; }
+    static constexpr number_type epsilon()   noexcept { return number_type{std::numeric_limits<M>::epsilon()}; }
+    static constexpr number_type round_error() noexcept { return number_type{0.5L}; }
+    static constexpr number_type infinity()      noexcept { return number_type{0}; }
+    static constexpr number_type quiet_NaN()     noexcept { return number_type{0}; }
+    static constexpr number_type signaling_NaN() noexcept { return number_type{0}; }
+    static constexpr number_type denorm_min()    noexcept { return number_type{0}; }
+};
+
+} // namespace std
 
 namespace wacfrac {
 
