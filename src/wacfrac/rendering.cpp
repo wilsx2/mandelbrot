@@ -14,6 +14,15 @@
 namespace wacfrac
 {
 
+template <Complex T>
+auto to_complex(multi_complex z) -> T {
+    using CT = complex_value_type_t<T>;
+    return T{
+        static_cast<CT>(boost::multiprecision::real(z)),
+        static_cast<CT>(boost::multiprecision::imag(z))
+    };
+}
+
 template <std::invocable<std::size_t, std::size_t> F>
 static auto render_generic(const render_config& conf, const std::span<pixel>& buffer, F&& escape_fn) -> bool {
     if (conf.res.area() != buffer.size())
@@ -92,7 +101,6 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     auto c_ref {find_nucleus(conf.view.center, view_period, 256uz)}; // TODO: Parameterize magic numbers
     std::println("calculating reference...");
     auto reference {compute_reference<T>(c_ref, conf.max_iterations, false)};
-    auto c_ref_d {static_cast<std::complex<long double>>(c_ref)};
 
     std::println("ref size: {}, period: {}", reference.size(), view_period);
 
@@ -100,8 +108,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
         if (p == view_period) continue;
         c_ref = find_nucleus(conf.view.center, p, 256uz); // TODO: Parameterize magic numbers
         reference = compute_reference<T>(c_ref, conf.max_iterations, false);
-        c_ref_d = static_cast<std::complex<long double>>(c_ref);
-        auto nondegenerate = std::ranges::any_of(reference, [](auto z) { return std::abs(z) >= 1e-4; }); // TODO: See below
+        auto nondegenerate = std::ranges::any_of(reference, [](auto z) { using std::abs; return abs(z) >= 1e-4; }); // TODO: See below
         if (nondegenerate) {
             view_period = p;
             std::println("trying deeper period: {}", view_period);
@@ -109,24 +116,24 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
         }
     }
 
-    auto degenerate = std::ranges::none_of(reference, [](auto z) { return std::abs(z) >= 1e-4; }); // TODO: Parameterize degeneration threshhold
+    auto degenerate = std::ranges::none_of(reference, [](auto z) { using std::abs; return abs(z) >= 1e-4; }); // TODO: Parameterize degeneration threshhold
     if (reference.empty() || degenerate) {
         std::println("all periods degenerate, falling back to view center");
         c_ref = conf.view.center;
-        c_ref_d = static_cast<std::complex<long double>>(c_ref);
         reference = compute_reference<T>(c_ref, conf.max_iterations, false);
         std::println("ref size: {}", reference.size(), view_period);
     }
 
-    auto c_tr = static_cast<std::complex<long double>>(conf.view.sample(conf.res.width, conf.res.height, conf.res.width, conf.res.height));
-    auto c_tl = static_cast<std::complex<long double>>(conf.view.sample(0, conf.res.height, conf.res.width, conf.res.height));
-    auto c_br = static_cast<std::complex<long double>>(conf.view.sample(conf.res.width, 0, conf.res.width, conf.res.height));
-    auto c_bl = static_cast<std::complex<long double>>(conf.view.sample(0, 0, conf.res.width, conf.res.height));
+    auto c_tr = (conf.view.sample(conf.res.width, conf.res.height, conf.res.width, conf.res.height));
+    auto c_tl = (conf.view.sample(0, conf.res.height, conf.res.width, conf.res.height));
+    auto c_br = (conf.view.sample(conf.res.width, 0, conf.res.width, conf.res.height));
+    auto c_bl = (conf.view.sample(0, 0, conf.res.width, conf.res.height));
 
-    auto max_dc = c_tr - c_ref_d;
-    if (std::abs(c_tl - c_ref_d) > std::abs(max_dc)) max_dc = c_tl - c_ref_d;
-    if (std::abs(c_br - c_ref_d) > std::abs(max_dc)) max_dc = c_br - c_ref_d;
-    if (std::abs(c_bl - c_ref_d) > std::abs(max_dc)) max_dc = c_bl - c_ref_d;
+    using boost::multiprecision::abs;
+    auto max_dc = multi_complex{c_tr - c_ref};
+    if (abs(multi_complex(c_tl - c_ref)) > abs(max_dc)) max_dc = multi_complex(c_tl - c_ref);
+    if (abs(multi_complex(c_br - c_ref)) > abs(max_dc)) max_dc = multi_complex(c_br - c_ref);
+    if (abs(multi_complex(c_bl - c_ref)) > abs(max_dc)) max_dc = multi_complex(c_bl - c_ref);
 
     const auto& bla_conf {std::get<3>(conf.eta)};
     /*bivariate_linear_approximator<T> bla { // TODO: Options to select between manual and automatic epsilon
@@ -147,7 +154,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
                 probes.push_back(static_cast<T>(p));
             return probes;
         }(),
-        static_cast<T>(max_dc),
+        to_complex<T>(max_dc),
         reference,
         bla_conf.first_level
     };
@@ -156,7 +163,7 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto c = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            T dc {static_cast<T>(c - c_ref)};
+            T dc {to_complex<T>(static_cast<multi_complex>(c - c_ref))};
             std::print("{} + i{},", static_cast<long double>(dc.real()), static_cast<long double>(dc.imag()));
             auto [dz, n, _] = bla.escape_approximate(dc);
             return std::pair<std::complex<long double>, std::size_t>{static_cast<std::complex<long double>>(dz), n};
@@ -171,7 +178,7 @@ auto render(const render_config& conf, const std::span<pixel>& buffer) -> bool {
         [&](const direct_eta& _)        { (void) _; return render_direct<doubleexp_complex>(conf, buffer); },
         [&](const perturbed_eta& _)     { (void) _; return render_perturbed<std::complex<long double>>(conf, buffer); },
         [&](const approximate_eta& _)   { (void) _; return render_sa<std::complex<long double>>(conf, buffer); },
-        [&](const bla_eta& _)           { (void) _; return render_bla<std::complex<long double>>(conf, buffer); }
+        [&](const bla_eta& _)           { (void) _; return render_bla<doubleexp_complex>(conf, buffer); }
     }, conf.eta);
 }
 
