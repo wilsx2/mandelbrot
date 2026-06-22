@@ -14,15 +14,6 @@
 namespace wacfrac
 {
 
-template <Complex T>
-auto to_complex(multi_complex z) -> T {
-    using CT = complex_value_type_t<T>;
-    return T{
-        static_cast<CT>(boost::multiprecision::real(z)),
-        static_cast<CT>(boost::multiprecision::imag(z))
-    };
-}
-
 template <std::invocable<std::size_t, std::size_t> F>
 static auto render_generic(const render_config& conf, const std::span<pixel>& buffer, F&& escape_fn) -> bool {
     if (conf.res.area() != buffer.size())
@@ -66,14 +57,7 @@ static auto render_sa(const render_config& conf, const std::span<pixel>& buffer)
     auto reference = compute_reference<T>(conf.view.center, conf.max_iterations);
     series_approximator<T> sa {reference, sa_conf.num_coefficients};
     sa.compute_coeffs_while_valid(
-        [&]() -> std::vector<T> {
-            auto probes_raw = conf.view.generate_probes(sa_conf.probe_cols, sa_conf.probe_rows);
-            std::vector<T> probes;
-            probes.reserve(probes_raw.size());
-            for (auto p : probes_raw)
-                probes.push_back(static_cast<T>(p));
-            return probes;
-        }(),
+        conf.view.generate_probes<T>(sa_conf.probe_cols, sa_conf.probe_rows),
         sa_conf.tolerance
     );
     return render_generic(conf, buffer,
@@ -145,15 +129,8 @@ static auto render_bla(const render_config& conf, const std::span<pixel>& buffer
 
     std::println("calculating coeffs...");
     bivariate_linear_approximator<T> bla {
-        1e-100, 1e-5,
-        [&]() -> std::vector<T> {
-            auto probes_raw = conf.view.generate_probes(16, 16);
-            std::vector<T> probes;
-            probes.reserve(probes_raw.size());
-            for (auto p : probes_raw)
-                probes.push_back(static_cast<T>(p));
-            return probes;
-        }(),
+        1e-100, 1e-5, // TODO: Replace magic nums
+        conf.view.generate_probes<T>(4, 4), // TODO: Replace magic nums
         to_complex<T>(max_dc),
         reference,
         bla_conf.first_level

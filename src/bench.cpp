@@ -1,7 +1,3 @@
-#include "wacfrac/analysis.hpp"
-#include "wacfrac/constants.hpp"
-#include "wacfrac/types.hpp"
-#include "wacfrac/viewport.hpp"
 #include <wacfrac/wacfrac.hpp>
 #include <benchmark/benchmark.h>
 using namespace boost::multiprecision;
@@ -102,6 +98,19 @@ BENCHMARK(find_nucleus)->ArgsProduct({
         get_fibonacci(16)
     },
 })->Unit(benchmark::kMillisecond);
+
+template <wacfrac::Complex T>
+static void compute_sa_coefficients(benchmark::State& state) {
+    auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::multi_float(10.0),state.range(0)));
+    view.precision(view.required_precision());
+    auto reference = compute_reference<T>(view.center, view.required_iterations());
+    wacfrac::series_approximator<T> sa {reference, state.range(0)};
+    sa.compute_coeffs_while_valid(
+        view.generate_probes<T>(state.range(1), state.range(2)),
+        std::pow(10.0, -state.range(3))
+    );
+}
+
 // static void find_epsilon(benchmark::State& state);
 // static void compute_sa_coeffs(benchmark::State& state);
 // static void compute_bla_coeffs(benchmark::State& state);

@@ -1,4 +1,5 @@
-#include <wacfrac/viewport.hpp>
+#include <wacfrac/viewport.tpp>
+#include "wacfrac/types.hpp"
 #include <cmath>
 
 namespace wacfrac
@@ -19,31 +20,9 @@ auto viewport::sample(std::size_t x, std::size_t y, std::size_t width, std::size
     return multi_complex(re, im);
 }
 
-auto viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<long double>> {
-    std::vector<std::complex<long double>> probes;
-    std::complex<long double> interval {
-        static_cast<long double>(dimensions.real()/cols),
-        static_cast<long double>(dimensions.imag()/rows)
-    };
-    if (interval.real() == 0.0 || interval.imag() == 0.0) {
-        probes.emplace_back(0.0, 0.0);
-        return probes;
-    }
-    std::complex<long double> start {
-        static_cast<long double>(cols % 2 == 0 ? -dimensions.real()/2.0 : (-dimensions.real() + interval.real())/2.0),
-        static_cast<long double>(rows % 2 == 0 ? -dimensions.imag()/2.0 : (-dimensions.imag() + interval.imag())/2.0)
-    };
-    std::complex<long double> end {
-        static_cast<long double>(+dimensions.real()/2.0),
-        static_cast<long double>(+dimensions.imag()/2.0)
-    };
-    for (long double dx = start.real(); dx <= end.real(); dx += interval.real()) {
-        for (long double dy = start.imag(); dy <= end.imag(); dy += interval.imag()) {
-            probes.emplace_back(dx, dy);
-        }
-    }
-    return probes;
-}
+template auto viewport::generate_probes<std::complex<double>>(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<double>>;
+template auto viewport::generate_probes<std::complex<long double>>(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<long double>>;
+template auto viewport::generate_probes<doubleexp_complex>(std::size_t cols, std::size_t rows) const -> std::vector<doubleexp_complex>;
 
 auto viewport::required_precision() const -> std::size_t {
     auto zoom = static_cast<double>(dimensions.real());

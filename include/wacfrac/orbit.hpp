@@ -11,22 +11,6 @@
 namespace wacfrac
 {
 
-template <typename T>
-concept Complex = requires(T a, T b) {
-    { a.real() };
-    { a.imag() };
-    T{0.0, 0.0};
-    { a + b } -> std::convertible_to<T>;
-    { a - b } -> std::convertible_to<T>;
-    { a * b } -> std::convertible_to<T>;
-    { a / b } -> std::convertible_to<T>;
-    { -a } -> std::convertible_to<T>;
-    { a += b } -> std::same_as<T&>;
-    { a -= b } -> std::same_as<T&>;
-    { a *= b } -> std::same_as<T&>;
-    { a /= b } -> std::same_as<T&>;
-};
-
 template <Complex T>
 auto square_magnitude(const T& a) {
     return a.real()*a.real() + a.imag()*a.imag();

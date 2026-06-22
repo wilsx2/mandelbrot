@@ -9,3 +9,5 @@
 #include <wacfrac/rendering.hpp>
 #include <wacfrac/resolution.hpp>
 #include <wacfrac/io.hpp>
+#include <wacfrac/bla.hpp>
+#include <wacfrac/sa.hpp>
