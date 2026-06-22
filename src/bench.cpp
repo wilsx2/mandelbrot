@@ -103,16 +103,36 @@ template <wacfrac::Complex T>
 static void compute_sa_coefficients(benchmark::State& state) {
     auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::multi_float(10.0),state.range(0)));
     view.precision(view.required_precision());
-    auto reference = compute_reference<T>(view.center, view.required_iterations());
-    wacfrac::series_approximator<T> sa {reference, state.range(0)};
-    sa.compute_coeffs_while_valid(
-        view.generate_probes<T>(state.range(1), state.range(2)),
-        std::pow(10.0, -state.range(3))
-    );
+    auto reference = wacfrac::compute_reference<T>(view.center, view.required_iterations());
+    wacfrac::series_approximator<T> sa {reference, static_cast<std::size_t>(state.range(1))};
+    
+    for (auto _ : state) {
+        sa.compute_coeffs_while_valid(
+            view.generate_probes<T>(state.range(2), state.range(2)),
+            std::pow(10.0, -state.range(3))
+        );
+    }
 }
+BENCHMARK_TEMPLATE(compute_sa_coefficients, std::complex<double>)->ArgsProduct({
+    {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048}, // Zoom Factor Exponent
+    {1, 2, 4, 8, 16, 32, 64}, // Num Coeffs
+    {1, 2, 4, 8}, // Probe Rows/Cols
+    {1, 2, 4, 8}, // Tolerance Negative Exponent
+});
+BENCHMARK_TEMPLATE(compute_sa_coefficients, std::complex<long double>)->ArgsProduct({
+    {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048}, // Zoom Factor Exponent
+    {1, 2, 4, 8, 16, 32, 64}, // Num Coeffs
+    {1, 2, 4, 8}, // Probe Rows/Cols
+    {1, 2, 4, 8}, // Tolerance Negative Exponent
+});
+BENCHMARK_TEMPLATE(compute_sa_coefficients, wacfrac::doubleexp_complex)->ArgsProduct({
+    {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048}, // Zoom Factor Exponent
+    {1, 2, 4, 8, 16, 32, 64}, // Num Coeffs
+    {1, 2, 4, 8}, // Probe Rows/Cols
+    {1, 2, 4, 8}, // Tolerance Negative Exponent
+});
 
 // static void find_epsilon(benchmark::State& state);
-// static void compute_sa_coeffs(benchmark::State& state);
 // static void compute_bla_coeffs(benchmark::State& state);
 
 // static void render_directly(benchmark::State& state);
