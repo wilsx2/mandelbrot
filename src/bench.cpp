@@ -1,3 +1,4 @@
+#include "wacfrac/analysis.hpp"
 #include "wacfrac/constants.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/viewport.hpp"
@@ -59,14 +60,14 @@ static void colorize_continuous(benchmark::State& state) {
 BENCHMARK(colorize_continuous);
 
 static void find_period(benchmark::State& state) {
-    auto c {wacfrac::poi::BIG_BANG};
-    c.precision(state.range(0));
-    wacfrac::multi_float d (1.0, wacfrac::viewport::required_iterations);
+    auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(std::pow(10,state.range(0)));
+    view.precision(view.required_precision());
     for (auto _ : state) {
-        auto nucleus {wacfrac::find_nucleus(c, state.range(1), state.range(2))};
-        benchmark::DoNotOptimize(nucleus);
+        auto periods {wacfrac::find_period_ball(view.center, view.dimensions.real() / 2.0, view.dimensions.imag() / 2.0, view.required_iterations(), true)};
+        benchmark::DoNotOptimize(periods);
     }
 }
+BENCHMARK(find_period)->RangeMultiplier(2)->Range(0, 2048)->Unit(benchmark::kMillisecond);
 
 constexpr unsigned long long get_fibonacci(size_t n) {
     if (n == 0) return 0;
@@ -84,8 +85,7 @@ constexpr unsigned long long get_fibonacci(size_t n) {
 }
 
 static void find_nucleus(benchmark::State& state) {
-    wacfrac::viewport view {wacfrac::poi::BIG_BANG, 1.0};
-    view.zoomed(std::pow(1,state.range(0)));
+    auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(std::pow(10,state.range(0)));
     view.precision(view.required_precision());
     for (auto _ : state) {
         auto nucleus {wacfrac::find_nucleus(view.center, state.range(1), view.required_iterations())};
@@ -93,14 +93,12 @@ static void find_nucleus(benchmark::State& state) {
     }
 }
 BENCHMARK(find_nucleus)->ArgsProduct({
-    {0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1028}, // Zoom Exponent
+    {0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024}, // Zoom Exponent
     { // Period
         get_fibonacci(2), 
         get_fibonacci(4),
         get_fibonacci(8),
-        get_fibonacci(16),
-        get_fibonacci(32),
-        get_fibonacci(64),
+        get_fibonacci(16)
     },
 })->Unit(benchmark::kMillisecond);
 // static void find_epsilon(benchmark::State& state);
