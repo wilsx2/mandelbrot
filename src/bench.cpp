@@ -59,15 +59,16 @@ static void colorize_continuous(benchmark::State& state) {
 }
 BENCHMARK(colorize_continuous);
 
-static void find_period(benchmark::State& state) {
-    auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(std::pow(10,state.range(0)));
+static void find_period(benchmark::State& state, bool do_cont) {
+    auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::multi_float(10.0),state.range(0)));
     view.precision(view.required_precision());
     for (auto _ : state) {
-        auto periods {wacfrac::find_period_ball(view.center, view.dimensions.real() / 2.0, view.dimensions.imag() / 2.0, view.required_iterations(), true)};
+        auto periods {wacfrac::find_period_ball(view.center, view.dimensions.real() / 2.0, view.dimensions.imag() / 2.0, view.required_iterations(), do_cont)};
         benchmark::DoNotOptimize(periods);
     }
 }
-BENCHMARK(find_period)->RangeMultiplier(2)->Range(0, 2048)->Unit(benchmark::kMillisecond);
+BENCHMARK_CAPTURE(find_period, first, false)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_CAPTURE(find_period, all, true)   ->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 
 constexpr unsigned long long get_fibonacci(size_t n) {
     if (n == 0) return 0;
@@ -85,7 +86,7 @@ constexpr unsigned long long get_fibonacci(size_t n) {
 }
 
 static void find_nucleus(benchmark::State& state) {
-    auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(std::pow(10,state.range(0)));
+    auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::multi_float(10.0),state.range(0)));
     view.precision(view.required_precision());
     for (auto _ : state) {
         auto nucleus {wacfrac::find_nucleus(view.center, state.range(1), view.required_iterations())};
