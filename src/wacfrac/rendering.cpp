@@ -26,12 +26,13 @@ static auto render_generic(const render_config& conf, const std::span<pixel>& bu
     return true;
 }
 
+template <Complex T>
 static auto render_direct(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     return render_generic(conf, buffer,
         [&](std::size_t x, std::size_t y){
             auto raw = conf.view.sample(x, y, conf.res.width, conf.res.height);
-            auto c = doubleexp_complex{static_cast<std::complex<long double>>(raw)};
-            auto [z, n] = escape<doubleexp_complex>(c, conf.max_iterations);
+            auto c = T{static_cast<std::complex<long double>>(raw)};
+            auto [z, n] = escape<T>(c, conf.max_iterations);
             return std::pair<std::complex<long double>, std::size_t>{static_cast<std::complex<long double>>(z), n};
         }
     );
@@ -167,13 +168,14 @@ template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 auto render(const render_config& conf, const std::span<pixel>& buffer) -> bool {
     return std::visit(overloaded {
-        [&](const direct_eta& _)        { (void) _; return render_direct(conf, buffer); },
+        [&](const direct_eta& _)        { (void) _; return render_direct<doubleexp_complex>(conf, buffer); },
         [&](const perturbed_eta& _)     { (void) _; return render_perturbed<std::complex<long double>>(conf, buffer); },
         [&](const approximate_eta& _)   { (void) _; return render_sa<std::complex<long double>>(conf, buffer); },
         [&](const bla_eta& _)           { (void) _; return render_bla<std::complex<long double>>(conf, buffer); }
     }, conf.eta);
 }
 
+template static auto render_direct<doubleexp_complex>(const render_config&, const std::span<pixel>&) -> bool;
 template static auto render_perturbed<std::complex<long double>>(const render_config&, const std::span<pixel>&) -> bool;
 template static auto render_sa<std::complex<long double>>(const render_config&, const std::span<pixel>&) -> bool;
 template static auto render_bla<std::complex<long double>>(const render_config&, const std::span<pixel>&) -> bool;
