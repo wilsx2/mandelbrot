@@ -1,16 +1,21 @@
 #include "wacfrac/bla.hpp"
 #include "wacfrac/color.hpp"
+#include "wacfrac/log.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/wacfrac.hpp"
 #include "argumentum/argparse.h"
-#include <print>
 #include <format>
 #include <string>
 #include <cstdlib>
 #include <cstddef>
 #include <functional>
+#include <chrono>
+#include <atomic>
 
 int main(int argc, char *argv[]) {
+    wacfrac::logging::init();
+    LOG_INFO << "Mandelbrot Set Plotter starting";
+
     // Parse arguments
     auto parser = argumentum::argument_parser{};
     auto params = parser.params();
@@ -60,6 +65,14 @@ int main(int argc, char *argv[]) {
     if (!parser.parse_args(argc, argv)) {
         std::exit(EXIT_FAILURE);
     }
+
+    LOG_INFO << "Configuration: output=" << filepath
+             << " dimensions=" << dimensions[0] << "x" << dimensions[1]
+             << " focus=(" << focus[0] << ", " << focus[1] << ")"
+             << " zoom=" << scale
+             << " max_iterations=" << max_iterations
+             << " precision=" << precision;
+
     wacfrac::multi_float zoom_scale (scale, 1000);
 
     // Plot and render
@@ -80,22 +93,35 @@ int main(int argc, char *argv[]) {
     zoom_scale.precision(precision);
     view.precision(precision);
 
-    std::println("Rendering plot to \"{}\"", filepath);
-
     wacfrac::resolution res {dimensions[0], dimensions[1]};
 
+    LOG_INFO << "Viewport: center=(" << view.center << ") dimensions=(" << view.dimensions << ")";
+    LOG_INFO << "Resolution: " << res.width << "x" << res.height
+             << " (" << res.area() << " pixels)";
+    LOG_INFO << "Using " << max_iterations << " max iterations with "
+             << precision << " decimal digits precision";
+
+    auto t_start = std::chrono::steady_clock::now();
+
     auto [c_ref, ref] = view.find_periodic_reference<std::complex<double>>(max_iterations, 64uz, 64uz);
+    LOG_INFO << "Found periodic reference at (" << c_ref << ") with orbit length " << ref.size();
     wacfrac::bivariate_linear_approximator<std::complex<double>> bla {
-        1e-30, 1e-3,
+        1e-30, 1e-6,
         view.generate_probes<std::complex<double>>(4, 4),
         wacfrac::to_complex<std::complex<double>>(view.compute_max_dc(c_ref)),
         ref, 0
     };
 
     std::vector<wacfrac::pixel> pixels(res.area());
+    LOG_INFO << "Rendering " << res.area() << " pixels...";
+    auto total_skipped = std::atomic<std::uint64_t>{0};
     wacfrac::perturbed_render<std::complex<double>>(
         pixels, res, view,
-        [&bla](auto dc){ return bla.escape_approximate(dc); },
+        [&bla, &total_skipped](auto dc) {
+            auto result = bla.escape_approximate(dc);
+            total_skipped += std::get<2>(result);
+            return result;
+        },
         [max_iterations](std::size_t n) {
             return wacfrac::colorize_unescaped(
                 wacfrac::pixel{0,0,0},
@@ -105,6 +131,11 @@ int main(int argc, char *argv[]) {
         },
         c_ref
     );
+    auto t_render = std::chrono::steady_clock::now();
+    auto avg_skipped = static_cast<double>(total_skipped) / res.area();
+    LOG_INFO << "Render complete in "
+             << std::chrono::duration_cast<std::chrono::milliseconds>(t_render - t_start).count()
+             << "ms (avg skipped: " << avg_skipped << ")";
 
     wacfrac::write_ppm(filepath, res, pixels);
 }

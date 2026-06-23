@@ -1,4 +1,5 @@
 #include "wacfrac/viewport.hpp"
+#include "wacfrac/log.hpp"
 #include <complex>
 #include <wacfrac/viewport.tpp>
 #include "wacfrac/types.hpp"
@@ -13,6 +14,8 @@ void viewport::precision(std::size_t value) {
 }
 
 auto viewport::zoomed(multi_float factor) const -> viewport {
+    LOG_DEBUG << "Zooming viewport by factor " << factor
+              << " (new dimensions: " << (dimensions / factor) << ")";
     return {center, dimensions / factor};
 }
 

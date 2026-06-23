@@ -7,7 +7,7 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS log log_setup)
 find_package(Argumentum CONFIG REQUIRED)
 find_package(Python 3.14 COMPONENTS Interpreter Development.Module REQUIRED)
 execute_process(
@@ -39,6 +39,7 @@ add_library(libwacfrac STATIC
     src/wacfrac/rendering.cpp
     src/wacfrac/io.cpp
     src/wacfrac/bla.cpp
+    src/wacfrac/log.cpp
 )
 set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libwacfrac PUBLIC
@@ -46,6 +47,8 @@ target_include_directories(libwacfrac PUBLIC
 )
 target_link_libraries(libwacfrac PUBLIC
     Boost::headers
+    Boost::log
+    Boost::log_setup
     TBB::tbb
     mpc
     mpfr

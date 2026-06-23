@@ -1,6 +1,7 @@
 #pragma once
 
 #include <wacfrac/bla.hpp>
+#include <wacfrac/log.hpp>
 #include <wacfrac/orbit.hpp>
 #include <cstddef>
 #include <optional>
@@ -29,13 +30,22 @@ template <Complex T>
 bivariate_linear_approximator<T>::bivariate_linear_approximator(double epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level)
     : bivariate_linear_approximator(ref, first_level)
 {
+    LOG_DEBUG << "Computing BLA with epsilon=" << epsilon
+              << " first_level=" << first_level
+              << " ref.size=" << ref.size();
     compute_blas(epsilon, max_dc);
+    LOG_DEBUG << "BLA computed: " << _blas.size() << " coefficients across "
+              << _columns.size() << " columns, levels " << _first_level
+              << "-" << _last_level;
 }
 
 template <Complex T>
 bivariate_linear_approximator<T>::bivariate_linear_approximator(double initial_epsilon, double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level)
     : bivariate_linear_approximator(ref, first_level)
 {
+    LOG_INFO << "Searching for optimal BLA epsilon: initial_epsilon=" << initial_epsilon
+             << " tolerance=" << tolerance << " probes=" << probes.size();
+
     std::vector<std::size_t> true_escape_times;
     true_escape_times.reserve(probes.size());
     std::ranges::transform(probes, std::back_inserter(true_escape_times),
@@ -66,15 +76,21 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(double initial_e
             total_skipped += skipped;
         }
         if (!all_correct) {
+            LOG_TRACE << "BLA epsilon search iter " << iter << ": epsilon=" << epsilon
+                      << " too high (probe escape mismatch)";
             upper = epsilon;
             break;
         }
 
         auto avg_skipped {total_skipped / static_cast<double>(probes.size())};
         if (avg_skipped > prev_avg_skipped) {
+            LOG_TRACE << "BLA epsilon search iter " << iter << ": epsilon=" << epsilon
+                      << " avg_skipped=" << avg_skipped << " (improving)";
             prev_avg_skipped = avg_skipped;
             lower = epsilon;
         } else {
+            LOG_TRACE << "BLA epsilon search iter " << iter << ": epsilon=" << epsilon
+                      << " avg_skipped=" << avg_skipped << " (converged)";
             break;
         }
     }
@@ -92,6 +108,7 @@ auto bivariate_linear_approximator<T>::escape_approximate(T dc) const -> std::tu
         if (approximation) {
             auto m {ref_n};
             std::tie(dz, ref_n) = *approximation;
+            skipped += ref_n - m;
             n += ref_n - m;
             std::tie(ref_n, dz, z) = rebase_reference<T>(_ref, ref_n, dz);
         } else {

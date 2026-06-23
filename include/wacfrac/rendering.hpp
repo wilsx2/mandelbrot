@@ -1,6 +1,7 @@
 #pragma once
 
 #include <wacfrac/color.hpp>
+#include <wacfrac/log.hpp>
 #include <wacfrac/orbit.hpp>
 #include <wacfrac/viewport.hpp>
 #include <wacfrac/resolution.hpp>
@@ -13,6 +14,8 @@ namespace wacfrac
 
 template <std::invocable<std::size_t, std::size_t> F, typename G>
 void screen_render(std::span<pixel> pixels, const resolution& res, F&& escape_fn, G&& color_fn) {
+    LOG_DEBUG << "Screen render: " << res.width << "x" << res.height
+              << " (" << res.area() << " pixels, parallel)";
     auto coords {res.coordinates()};
     std::for_each(std::execution::par, coords.begin(), coords.end(),[&](auto&& coord){
         auto [y, x] = coord;

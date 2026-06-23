@@ -1,4 +1,5 @@
 #include <wacfrac/viewport.hpp>
+#include <wacfrac/log.hpp>
 #include <wacfrac/orbit.hpp>
 #include <wacfrac/analysis.hpp>
 
@@ -41,8 +42,12 @@ template<Complex T>
 auto viewport::find_periodic_reference(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<multi_complex, std::vector<T>> {
     auto half_dx = dimensions.real() / 2.0;
     auto half_dy = dimensions.imag() / 2.0;
+    LOG_INFO << "Searching for periodic reference (max_n=" << max_n
+             << ", period_iter=" << find_period_iter
+             << ", nucleus_iter=" << find_nucleus_iter << ")";
     auto periods = find_period_ball(center, half_dx, half_dy, find_period_iter, true);
     auto view_period = periods.empty() ? 1uz : periods.front();
+    LOG_INFO << "View period=" << view_period << " (" << periods.size() << " candidates)";
 
     // Find first non-degenerate reference
     auto c_ref {find_nucleus(center, view_period, find_nucleus_iter)};
@@ -50,9 +55,11 @@ auto viewport::find_periodic_reference(std::size_t max_n, std::size_t find_perio
 
     for (auto p : periods) {
         if (p == view_period) continue;
+        LOG_DEBUG << "Trying period " << p << " for non-degenerate reference";
         c_ref = find_nucleus(center, p, find_nucleus_iter);
         reference = compute_reference<T>(c_ref, max_n, false);
         if (!is_reference_degenerate(reference)) {
+            LOG_DEBUG << "Found non-degenerate reference at period " << p;
             view_period = p;
             break;
         }
@@ -61,6 +68,7 @@ auto viewport::find_periodic_reference(std::size_t max_n, std::size_t find_perio
     // Fallback to center if none found
     auto degenerate = is_reference_degenerate(reference); 
     if (reference.empty() || degenerate) {
+        LOG_WARN << "No suitable periodic reference found, falling back to view center";
         c_ref = center;
         reference = compute_reference<T>(c_ref, max_n, false);
     }
