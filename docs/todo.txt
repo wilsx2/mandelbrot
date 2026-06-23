@@ -20,8 +20,9 @@
         [X] Class
         [X] Templatize perturbation type
     [ ] Use reference period to accelerate calculation (currently just adds computation time and does nothing)
-[ ] Refactoring
-    [ ] Abandon unfortunate render_config system
+[X] Refactoring
+    [X] Abandon unfortunate render_config system
+    [ ] Colorize not ugly
 [ ] Update benchmarks
     [ ] Precompute reference orbits for quick iteration (in the development sense)
     [X] All types

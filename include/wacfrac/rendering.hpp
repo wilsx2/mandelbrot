@@ -14,11 +14,11 @@ template <std::invocable<std::size_t, std::size_t> F, typename G>
 void screen_render(std::ostream& os, const resolution& res, F&& escape_fn, G&& color_fn) {
     for (auto [y, x] : res.coordinates()) {
         auto result = escape_fn(x, y);
-        decltype(auto) z = std::get<0>(result);
-        decltype(auto) n = std::get<1>(result);
 
+        std::size_t n {std::get<1>(result)};
         auto pixel {[&]() {
-            if constexpr (std::invocable<G, decltype(z), decltype(n)>) {
+            if constexpr (std::invocable<G, std::complex<float>, decltype(n)>) {
+                std::complex<float> z {std::get<0>(result)};
                 return color_fn(z, n);
             } else if constexpr (std::invocable<G, decltype(n)>) {
                 return color_fn(n);

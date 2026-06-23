@@ -89,23 +89,16 @@ int main(int argc, char *argv[]) {
     }
 
     auto [c_ref, ref] = view.find_periodic_reference<wacfrac::doubleexp_complex>(max_iterations, max_iterations, 256uz);
-    wacfrac::bivariate_linear_approximator<wacfrac::doubleexp_complex> bla { 1e-30, 1e-3, ref, 0 };
+    wacfrac::bivariate_linear_approximator<wacfrac::doubleexp_complex> bla {
+        1e-30, 1e-3,
+        view.generate_probes<wacfrac::doubleexp_complex>(4, 4),
+        wacfrac::to_complex<wacfrac::doubleexp_complex>(view.compute_max_dc(c_ref)),
+        ref, 0
+    };
     wacfrac::perturbed_render<wacfrac::doubleexp_complex>(
         file, res, view,
-        [&](wacfrac::doubleexp_complex dc){ return bla.escape_approximate(dc); },
-        [&](wacfrac::doubleexp_complex z, std::size_t n) -> wacfrac::pixel {
-            if (n == max_iterations) {
-                return {0,0,0};
-            }
-            
-            auto lookup = std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ultra);
-            return wacfrac::colorize_continuous(std::move(lookup),
-                std::complex<float>{static_cast<float>(z.real()), static_cast<float>(z.imag())},
-                n
-            );
-            //(void) z;
-            //return wacfrac::colorize_looped(wacfrac::palette::ultra, n);
-        },
+        [&bla](auto dc){ return bla.escape_approximate(dc); },
+        std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ultra),
         c_ref
     );
 }
