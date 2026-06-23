@@ -1,3 +1,5 @@
+#include "wacfrac/constants.hpp"
+#include "wacfrac/viewport.hpp"
 #include <wacfrac/wacfrac.hpp>
 #include <benchmark/benchmark.h>
 using namespace boost::multiprecision;
@@ -18,25 +20,26 @@ BENCHMARK_TEMPLATE(compute_next_z, wacfrac::doubleexp_complex);
 BENCHMARK_TEMPLATE(compute_next_z, mpc_complex_100);
 BENCHMARK_TEMPLATE(compute_next_z, mpc_complex_1000);
 
-template<wacfrac::Complex T, std::size_t N = 256, std::size_t P = 256>
+template<wacfrac::Complex T>
 static void compute_reference(benchmark::State& state) {
-    wacfrac::multi_complex c (0.0, 0.0, P);
-
+    auto scale {boost::multiprecision::pow(wacfrac::multi_float(10.0),-state.range(0))};
+    auto c {wacfrac::poi::BIG_BANG};
+    c.precision(wacfrac::required_precision(scale));
     for (auto _ : state) {
-        auto ref = wacfrac::compute_reference<T>(c, N);
+        auto ref {wacfrac::compute_reference<T>(c, wacfrac::required_iterations(scale))};
         benchmark::DoNotOptimize(ref);
     }
 }
-BENCHMARK_TEMPLATE(compute_reference, std::complex<double>)->Unit(benchmark::kMicrosecond);
-BENCHMARK_TEMPLATE(compute_reference, std::complex<long double>)->Unit(benchmark::kMicrosecond);
-BENCHMARK_TEMPLATE(compute_reference, wacfrac::doubleexp_complex)->Unit(benchmark::kMicrosecond);
+BENCHMARK_TEMPLATE(compute_reference, std::complex<double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference, std::complex<long double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference, wacfrac::doubleexp_complex)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 
 static void colorize_looped_bench(benchmark::State& state) {
     for (auto _ : state) {
-        auto pix = wacfrac::colorize_looped(
+        auto pix {wacfrac::colorize_looped(
             {{0,0,0},{255,255,255}},
             0
-        );
+        )};
         benchmark::DoNotOptimize(pix);
     }
 }
@@ -55,16 +58,16 @@ static void colorize_continuous_bench(benchmark::State& state) {
 }
 BENCHMARK(colorize_continuous_bench);
 
-static void find_period(benchmark::State& state, bool do_cont) {
-    auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::multi_float(10.0),state.range(0)));
-    view.precision(view.required_precision());
+static void find_periods(benchmark::State& state) {
+    auto scale {boost::multiprecision::pow(wacfrac::multi_float(10.0),-state.range(0))};
+    auto c {wacfrac::poi::BIG_BANG};
+    c.precision(wacfrac::required_precision(scale));
     for (auto _ : state) {
-        auto periods {wacfrac::find_period_ball(view.center, view.dimensions.real() / 2.0, view.dimensions.imag() / 2.0, view.required_iterations(), do_cont)};
+        auto periods {wacfrac::find_period_ball(c, scale / 2.0, scale / 2.0, wacfrac::required_iterations(scale), true)};
         benchmark::DoNotOptimize(periods);
     }
 }
-BENCHMARK_CAPTURE(find_period, first, false)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
-BENCHMARK_CAPTURE(find_period, all, true)   ->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK(find_periods)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 
 constexpr unsigned long long get_fibonacci(size_t n) {
     if (n == 0) return 0;

@@ -22,5 +22,7 @@ struct viewport {
     template<Complex T>
     auto find_periodic_reference(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<multi_complex, std::vector<T>>;
 };
+auto required_precision(multi_float zoom_factor) -> std::size_t;
+auto required_iterations(multi_float zoom_factor, double modifier = 250.0, double factor = 50.0, double exponent = 1.5) -> std::size_t;
 
 }   // namespace wacfrac
