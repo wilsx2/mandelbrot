@@ -15,6 +15,7 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nanobind_ROOT)
 find_package(nanobind CONFIG REQUIRED)
 find_package(benchmark REQUIRED)
+find_package(TBB REQUIRED)
 
 # find_package(PkgConfig REQUIRED)
 # pkg_check_modules(ffmpeg REQUIRED IMPORTED_TARGET ffmpeg)
@@ -45,6 +46,7 @@ target_include_directories(libwacfrac PUBLIC
 )
 target_link_libraries(libwacfrac PUBLIC
     Boost::headers
+    TBB::tbb
     mpc
     mpfr
     gmp
