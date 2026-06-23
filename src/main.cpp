@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
         std::exit(EXIT_FAILURE);
     }
 
-    auto [c_ref, ref] = view.find_periodic_reference<wacfrac::doubleexp_complex>(max_iterations, max_iterations, 256uz);
+    auto [c_ref, ref] = view.find_periodic_reference<wacfrac::doubleexp_complex>(max_iterations, 64uz, 64uz);
     wacfrac::bivariate_linear_approximator<wacfrac::doubleexp_complex> bla {
         1e-30, 1e-3,
         view.generate_probes<wacfrac::doubleexp_complex>(4, 4),
@@ -98,7 +98,13 @@ int main(int argc, char *argv[]) {
     wacfrac::perturbed_render<wacfrac::doubleexp_complex>(
         file, res, view,
         [&bla](auto dc){ return bla.escape_approximate(dc); },
-        std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ultra),
+        [max_iterations](std::size_t n) {
+            return wacfrac::colorize_unescaped(
+                wacfrac::pixel{0,0,0},
+                std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ultra),
+                max_iterations, n
+            );
+        },
         c_ref
     );
 }

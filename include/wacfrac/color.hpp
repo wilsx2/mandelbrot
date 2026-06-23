@@ -26,6 +26,13 @@ auto colorize_continuous(F&& lookup, std::complex<float> z, std::size_t n) -> pi
     auto color2 {lookup(n2)};
     return lerp_pixel(color1, color2, std::fmod(cont_n, 1.0));
 }
+
+template <std::invocable<std::size_t> F>
+auto colorize_unescaped(pixel color, F&& fallback, std::size_t max_n, std::size_t n) -> pixel {
+    if (n == max_n)
+        return color;
+    return fallback(n);
+}
 auto colorize_normal(const std::vector<pixel>& palette, std::size_t max_n, std::size_t n) -> pixel;
 auto colorize_looped(const std::vector<pixel>& palette, std::size_t n) -> pixel;
 

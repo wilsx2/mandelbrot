@@ -22,7 +22,7 @@
     [ ] Use reference period to accelerate calculation (currently just adds computation time and does nothing)
 [X] Refactoring
     [X] Abandon unfortunate render_config system
-    [ ] Colorize not ugly
+    [X] Colorize w/ special color for non-escaping
 [ ] Update benchmarks
     [ ] Precompute reference orbits for quick iteration (in the development sense)
     [X] All types
