@@ -1,4 +1,6 @@
 #include <wacfrac/viewport.hpp>
+#include <wacfrac/orbit.hpp>
+#include <wacfrac/analysis.hpp>
 
 namespace wacfrac {
 
@@ -32,6 +34,38 @@ auto viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std:
         }
     }
     return probes;
+}
+
+// https://philthompson.me/2023/Faster-Mandelbrot-Set-Rendering-with-BLA-Bivariate-Linear-Approximation.html
+template<Complex T>
+auto viewport::find_periodic_reference(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<multi_complex, std::vector<T>> {
+    auto half_dx = dimensions.real() / 2.0;
+    auto half_dy = dimensions.imag() / 2.0;
+    auto periods = find_period_ball(center, half_dx, half_dy, find_period_iter, true);
+    auto view_period = periods.empty() ? 1uz : periods.front();
+
+    // Find first non-degenerate reference
+    auto c_ref {find_nucleus(center, view_period, find_nucleus_iter)};
+    auto reference {compute_reference<T>(c_ref, max_n, false)};
+
+    for (auto p : periods) {
+        if (p == view_period) continue;
+        c_ref = find_nucleus(center, p, find_nucleus_iter);
+        reference = compute_reference<T>(c_ref, max_n, false);
+        if (!is_reference_degenerate(reference)) {
+            view_period = p;
+            break;
+        }
+    }
+
+    // Fallback to center if none found
+    auto degenerate = is_reference_degenerate(reference); 
+    if (reference.empty() || degenerate) {
+        c_ref = center;
+        reference = compute_reference<T>(c_ref, max_n, false);
+    }
+
+    return std::make_pair(c_ref, reference);
 }
 
 } // namespace wacfrac 

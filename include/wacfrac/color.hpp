@@ -6,8 +6,6 @@
 #include <tuple>
 #include <vector>
 #include <complex>
-#include <ranges>
-#include <functional>
 
 namespace wacfrac
 {
@@ -17,17 +15,19 @@ using color = std::tuple<float,float,float>;
 enum class color_encoding { rgb , hsv , hcl };
 
 // colorization
-enum class colorization_type { discrete , continuous };
-enum class colorization_method { normal , looped };
-struct colorization_algorithm {
-    colorization_type type;
-    colorization_method method;
-};
-auto colorize(colorization_algorithm ca, const std::vector<pixel>& palette, std::size_t max_n, std::complex<long double> z, std::size_t n) -> pixel;
-auto colorize_discrete(colorization_method method, const std::vector<pixel>& palette, std::size_t max_n, std::size_t n) -> pixel;
-auto colorize_continuous(colorization_method method, const std::vector<pixel>& palette, std::size_t max_n, std::complex<long double> z, std::size_t n) -> pixel;
-auto palette_lookup_normal(const std::vector<pixel>& palette, std::size_t max_n, std::size_t n) -> pixel;
-auto palette_lookup_looped(const std::vector<pixel>& palette, std::size_t n) -> pixel;
+// https://www.tomchaplin.xyz/blog/2018-11-02-exploring-the-mandelbrot-set/
+// https://linas.org/art-gallery/escape/escape.html
+template <std::invocable<std::size_t> F>
+auto colorize_continuous(F&& lookup, std::complex<float> z, std::size_t n) -> pixel {
+    auto cont_n {n - std::log(std::log(std::abs(z))) / std::log(2.0)};
+    auto n1     {static_cast<std::size_t>(std::floor(cont_n))};
+    auto n2     {static_cast<std::size_t>(std::ceil(cont_n))};
+    auto color1 {lookup(n1)};
+    auto color2 {lookup(n2)};
+    return lerp_pixel(color1, color2, std::fmod(cont_n, 1.0));
+}
+auto colorize_normal(const std::vector<pixel>& palette, std::size_t max_n, std::size_t n) -> pixel;
+auto colorize_looped(const std::vector<pixel>& palette, std::size_t n) -> pixel;
 
 // manipulation
 auto lerp_pixel(pixel a, pixel b, float percentile) -> pixel;

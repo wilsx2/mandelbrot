@@ -1,43 +1,19 @@
+#include <concepts>
 #include <vector>
 #include <wacfrac/color.hpp>
 #include <wacfrac/orbit.hpp>
 
 #include <algorithm>
+#include <ranges>
 #include <cmath>
 
 namespace wacfrac
 {
 
-// https://www.tomchaplin.xyz/blog/2018-11-02-exploring-the-mandelbrot-set/
-// https://linas.org/art-gallery/escape/escape.html
-auto colorize(colorization_algorithm ca, const std::vector<pixel>& palette, std::size_t max_n, std::complex<long double> z, std::size_t n) -> pixel {
-    if (n == max_n)
-        return {0,0,0};
-    switch (ca.type) {
-        case colorization_type::discrete:   return colorize_discrete(ca.method, palette, max_n, n); break;
-        case colorization_type::continuous: return colorize_continuous(ca.method, palette, max_n, z, n); break;
-    }
-    return {255, 0, 255};
-}
-auto colorize_discrete(colorization_method method, const std::vector<pixel>& palette, std::size_t max_n, std::size_t n) -> pixel {
-    switch (method) {
-        case colorization_method::normal: return palette_lookup_normal(palette, max_n, n);
-        case colorization_method::looped: return palette_lookup_looped(palette, n);
-    }
-    return {255, 0, 255};
-}
-auto colorize_continuous(colorization_method method, const std::vector<pixel>& palette, std::size_t max_n, std::complex<long double> z, std::size_t n) -> pixel {
-    auto cont_n {n - std::log(std::log(magnitude(z))) / std::log(2.0)};
-    auto n1     {static_cast<std::size_t>(std::floor(cont_n))};
-    auto n2     {static_cast<std::size_t>(std::ceil(cont_n))};
-    auto color1 {colorize_discrete(method, palette, max_n, n1)};
-    auto color2 {colorize_discrete(method, palette, max_n, n2)};
-    return lerp_pixel(color1, color2, std::fmod(cont_n, 1.0));
-}
-auto palette_lookup_normal(const std::vector<pixel>& palette, std::size_t max_n, std::size_t n) -> pixel {
+auto colorize_normal(const std::vector<pixel>& palette, std::size_t max_n, std::size_t n) -> pixel {
     return palette.at(std::floor((n / static_cast<float>(max_n)) * static_cast<float>(palette.size() - 1)));
 }
-auto palette_lookup_looped(const std::vector<pixel>& palette, std::size_t n) -> pixel {
+auto colorize_looped(const std::vector<pixel>& palette, std::size_t n) -> pixel {
     return palette.at(n % palette.size());
 }
 

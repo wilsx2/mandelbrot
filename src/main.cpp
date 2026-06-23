@@ -1,3 +1,6 @@
+#include "wacfrac/bla.hpp"
+#include "wacfrac/color.hpp"
+#include "wacfrac/types.hpp"
 #include "wacfrac/wacfrac.hpp"
 #include "argumentum/argparse.h"
 #include <print>
@@ -5,6 +8,7 @@
 #include <string>
 #include <cstdlib>
 #include <cstddef>
+#include <functional>
 
 int main(int argc, char *argv[]) {
     // Parse arguments
@@ -59,40 +63,49 @@ int main(int argc, char *argv[]) {
     wacfrac::multi_float zoom_scale (scale, 1000);
 
     // Plot and render
-    wacfrac::viewport v {
+    wacfrac::viewport view {
         wacfrac::poi::BIG_BANG,
         //{focus[0], focus[1], precision},
         {1.0, 1.0}
     };
-    v = v.zoomed(zoom_scale);
+    view = view.zoomed(zoom_scale);
 
     if (max_iterations == 0)
-        max_iterations = v.required_iterations();
+        max_iterations = view.required_iterations();
     if (precision == 0)
-        precision = v.required_precision();
+        precision = view.required_precision();
 
     wacfrac::multi_float::default_precision(precision);
     wacfrac::multi_complex::default_precision(precision);
     zoom_scale.precision(precision);
-    v.precision(precision);
+    view.precision(precision);
 
     std::println("Rendering plot to \"{}\"", filepath);
 
-    wacfrac::render_config conf {
-        .res            = {dimensions[0], dimensions[1]},
-        .view           = v,
-        .max_iterations = max_iterations,
-        .palette        = wacfrac::generate_palette(32, wacfrac::color_encoding::hcl, {{.9f,.8f,.1f}, {1.f,1.f,1.f}, {.7f,.5f,.5f}}),
-        .eta            = wacfrac::bla_eta {
-            .epsilon =  1e-2,
-            .first_level = 0
-        },
-        .ca             = {
-            wacfrac::colorization_type::continuous,
-            wacfrac::colorization_method::looped
-        }
-    };
+    wacfrac::resolution res {dimensions[0], dimensions[1]};
+    auto file = wacfrac::open_ppm(filepath, res);
+    if (!file.is_open()) {
+        std::exit(EXIT_FAILURE);
+    }
 
-    bool success = wacfrac::save_to_ppm(filepath, conf);
-    std::exit(success ? EXIT_SUCCESS : EXIT_FAILURE);
+    auto [c_ref, ref] = view.find_periodic_reference<wacfrac::doubleexp_complex>(max_iterations, max_iterations, 256uz);
+    wacfrac::bivariate_linear_approximator<wacfrac::doubleexp_complex> bla { 1e-30, 1e-3, ref, 0 };
+    wacfrac::perturbed_render<wacfrac::doubleexp_complex>(
+        file, res, view,
+        [&](wacfrac::doubleexp_complex dc){ return bla.escape_approximate(dc); },
+        [&](wacfrac::doubleexp_complex z, std::size_t n) -> wacfrac::pixel {
+            if (n == max_iterations) {
+                return {0,0,0};
+            }
+            
+            auto lookup = std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ultra);
+            return wacfrac::colorize_continuous(std::move(lookup),
+                std::complex<float>{static_cast<float>(z.real()), static_cast<float>(z.imag())},
+                n
+            );
+            //(void) z;
+            //return wacfrac::colorize_looped(wacfrac::palette::ultra, n);
+        },
+        c_ref
+    );
 }

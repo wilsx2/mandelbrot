@@ -31,29 +31,29 @@ BENCHMARK_TEMPLATE(compute_reference, std::complex<double>)->Unit(benchmark::kMi
 BENCHMARK_TEMPLATE(compute_reference, std::complex<long double>)->Unit(benchmark::kMicrosecond);
 BENCHMARK_TEMPLATE(compute_reference, wacfrac::doubleexp_complex)->Unit(benchmark::kMicrosecond);
 
-static void colorize_discrete(benchmark::State& state) {
+static void colorize_looped_bench(benchmark::State& state) {
     for (auto _ : state) {
-        auto pix = wacfrac::colorize_discrete(
-            wacfrac::colorization_method::looped,
+        auto pix = wacfrac::colorize_looped(
             {{0,0,0},{255,255,255}},
-            256, 0
+            0
         );
         benchmark::DoNotOptimize(pix);
     }
 }
-BENCHMARK(colorize_discrete);
+BENCHMARK(colorize_looped_bench);
 
-static void colorize_continuous(benchmark::State& state) {
+static void colorize_continuous_bench(benchmark::State& state) {
+    auto lookup = [](std::size_t n) -> wacfrac::pixel {
+        return wacfrac::colorize_looped({{0,0,0},{255,255,255}}, n);
+    };
     for (auto _ : state) {
         auto pix = wacfrac::colorize_continuous(
-            wacfrac::colorization_method::looped,
-            {{0,0,0},{255,255,255}},
-            256, {0.0,0.0}, 0
+            lookup, {0.0f, 0.0f}, 0
         );
         benchmark::DoNotOptimize(pix);
     }
 }
-BENCHMARK(colorize_continuous);
+BENCHMARK(colorize_continuous_bench);
 
 static void find_period(benchmark::State& state, bool do_cont) {
     auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::multi_float(10.0),state.range(0)));
@@ -104,13 +104,16 @@ static void compute_sa_coefficients(benchmark::State& state) {
     auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::multi_float(10.0),state.range(0)));
     view.precision(view.required_precision());
     auto reference = wacfrac::compute_reference<T>(view.center, view.required_iterations());
-    wacfrac::series_approximator<T> sa {reference, static_cast<std::size_t>(state.range(1))};
     
     for (auto _ : state) {
-        sa.compute_coeffs_while_valid(
-            view.generate_probes<T>(state.range(2), state.range(2)),
+        auto probes = view.generate_probes<T>(state.range(2), state.range(2));
+        wacfrac::series_approximator<T> sa {
+            reference,
+            static_cast<std::size_t>(state.range(1)),
+            probes,
             std::pow(10.0, -state.range(3))
-        );
+        };
+        benchmark::DoNotOptimize(sa);
     }
 }
 BENCHMARK_TEMPLATE(compute_sa_coefficients, std::complex<double>)->ArgsProduct({

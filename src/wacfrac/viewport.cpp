@@ -1,3 +1,5 @@
+#include "wacfrac/viewport.hpp"
+#include <complex>
 #include <wacfrac/viewport.tpp>
 #include "wacfrac/types.hpp"
 #include <cmath>
@@ -20,9 +22,25 @@ auto viewport::sample(std::size_t x, std::size_t y, std::size_t width, std::size
     return multi_complex(re, im);
 }
 
-template auto viewport::generate_probes<std::complex<double>>(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<double>>;
-template auto viewport::generate_probes<std::complex<long double>>(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<long double>>;
-template auto viewport::generate_probes<doubleexp_complex>(std::size_t cols, std::size_t rows) const -> std::vector<doubleexp_complex>;
+auto viewport::compute_max_dc(multi_complex c) const -> multi_complex {
+    multi_complex c_tl {center - dimensions / 2.0};
+    multi_complex c_tr {
+        center.real() + dimensions.real() / 2.0,
+        center.imag() - dimensions.imag() / 2.0
+    };
+    multi_complex c_br {center + dimensions / 2.0};
+    multi_complex c_bl {
+        center.real() - dimensions.real() / 2.0,
+        center.imag() + dimensions.imag() / 2.0
+    };
+
+    using boost::multiprecision::abs;
+    auto max_dc {multi_complex{c_tl - c}};
+    if (abs(multi_complex(c_tr - c)) > abs(max_dc)) max_dc = multi_complex(c_tr - c);
+    if (abs(multi_complex(c_br - c)) > abs(max_dc)) max_dc = multi_complex(c_br - c);
+    if (abs(multi_complex(c_bl - c)) > abs(max_dc)) max_dc = multi_complex(c_bl - c);
+    return max_dc;
+}
 
 auto viewport::required_precision() const -> std::size_t {
     auto zoom = static_cast<double>(dimensions.real());
@@ -43,5 +61,13 @@ auto viewport::required_iterations(double modifier, double factor, double expone
     }
     return modifier + factor * std::pow(std::log10(1.0 / zoom), exponent);
 }
+
+template auto viewport::generate_probes<std::complex<double>>(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<double>>;
+template auto viewport::generate_probes<std::complex<long double>>(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<long double>>;
+template auto viewport::generate_probes<doubleexp_complex>(std::size_t cols, std::size_t rows) const -> std::vector<doubleexp_complex>;
+
+template auto viewport::find_periodic_reference<std::complex<double>>(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<multi_complex, std::vector<std::complex<double>>>;
+template auto viewport::find_periodic_reference<std::complex<long double>>(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<multi_complex, std::vector<std::complex<long double>>>;
+template auto viewport::find_periodic_reference<doubleexp_complex>(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<multi_complex, std::vector<doubleexp_complex>>;
 
 }   // namespace wacfrac

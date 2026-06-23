@@ -23,7 +23,7 @@ auto magnitude(const T& a) {
 
 template <Complex T>
 auto escaped(const T& a) {
-    constexpr double escape_radius {8.0};
+    constexpr double escape_radius {8.0}; // TODO: Parameterize, basically necessary to be >2 for continuous coloring
     return square_magnitude(a) > escape_radius*escape_radius;
 }
 

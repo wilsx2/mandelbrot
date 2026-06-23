@@ -19,16 +19,19 @@
     [X] FloatExp backend (eww)
         [X] Class
         [X] Templatize perturbation type
-    [ ] Update benchmarks
-        [ ] Precompute reference orbits for quick iteration (in the development sense)
-        [X] All types
-        [ ] Full renders
-            [X] Period finding
-            [X] Nucleus finding
-            [X] Reference orbit
-            [ ] Coefficient calculation
-            [ ] Escape Time
-            [X] Colorization
+    [ ] Use reference period to accelerate calculation (currently just adds computation time and does nothing)
+[ ] Refactoring
+    [ ] Abandon unfortunate render_config system
+[ ] Update benchmarks
+    [ ] Precompute reference orbits for quick iteration (in the development sense)
+    [X] All types
+    [ ] Full renders
+        [X] Period finding
+        [X] Nucleus finding
+        [X] Reference orbit
+        [ ] Coefficient calculation
+        [ ] Escape Time
+        [X] Colorization
 [ ] Optimize CPU-bound tasks
     [ ] Period finding
     [ ] Nucleus finding

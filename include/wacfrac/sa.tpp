@@ -15,6 +15,25 @@ series_approximator<T>::series_approximator(const std::vector<T>& reference_orbi
     if (coefficient_count > 0)
         _curr_coeffs[0] = T{1.0, 0.0};
 }
+template <Complex T>
+series_approximator<T>::series_approximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, std::size_t n)
+    : series_approximator(reference_orbit, coefficient_count)
+{
+    compute_coeffs(n);
+}
+
+template <Complex T>
+series_approximator<T>::series_approximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, const std::vector<T>& probes, double validity_threshold)
+    : series_approximator(reference_orbit, coefficient_count)
+{
+    compute_coeffs_while_valid(probes, validity_threshold);
+}
+
+template <Complex T>
+auto series_approximator<T>::approximate_escape(T dc) const -> std::pair<T, std::size_t> {
+    auto dz = this->approximate_delta_n(dc);
+    return escape_perturbed<T>(_reference_orbit, dc, _reference_orbit.size(), dz, _n);
+}
 
 template <Complex T>
 void series_approximator<T>::resize(std::size_t coefficient_count) {
