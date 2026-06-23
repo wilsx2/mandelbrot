@@ -83,20 +83,18 @@ int main(int argc, char *argv[]) {
     std::println("Rendering plot to \"{}\"", filepath);
 
     wacfrac::resolution res {dimensions[0], dimensions[1]};
-    auto file = wacfrac::open_ppm(filepath, res);
-    if (!file.is_open()) {
-        std::exit(EXIT_FAILURE);
-    }
 
-    auto [c_ref, ref] = view.find_periodic_reference<wacfrac::doubleexp_complex>(max_iterations, 64uz, 64uz);
-    wacfrac::bivariate_linear_approximator<wacfrac::doubleexp_complex> bla {
+    auto [c_ref, ref] = view.find_periodic_reference<std::complex<double>>(max_iterations, 64uz, 64uz);
+    wacfrac::bivariate_linear_approximator<std::complex<double>> bla {
         1e-30, 1e-3,
-        view.generate_probes<wacfrac::doubleexp_complex>(4, 4),
-        wacfrac::to_complex<wacfrac::doubleexp_complex>(view.compute_max_dc(c_ref)),
+        view.generate_probes<std::complex<double>>(4, 4),
+        wacfrac::to_complex<std::complex<double>>(view.compute_max_dc(c_ref)),
         ref, 0
     };
-    wacfrac::perturbed_render<wacfrac::doubleexp_complex>(
-        file, res, view,
+
+    std::vector<wacfrac::pixel> pixels(res.area());
+    wacfrac::perturbed_render<std::complex<double>>(
+        pixels, res, view,
         [&bla](auto dc){ return bla.escape_approximate(dc); },
         [max_iterations](std::size_t n) {
             return wacfrac::colorize_unescaped(
@@ -107,4 +105,6 @@ int main(int argc, char *argv[]) {
         },
         c_ref
     );
+
+    wacfrac::write_ppm(filepath, res, pixels);
 }

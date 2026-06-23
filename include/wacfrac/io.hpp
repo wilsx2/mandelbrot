@@ -1,12 +1,12 @@
 #pragma once
 
 #include <wacfrac/rendering.hpp>
-#include <fstream>
+#include <span>
 #include <string_view>
 
 namespace wacfrac
 {
 
-auto open_ppm(std::string_view filename, resolution res) -> std::ofstream;
+void write_ppm(std::string_view filename, resolution res, std::span<const pixel> pixels);
 
 }   // namespace wacfrac

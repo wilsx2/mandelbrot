@@ -4,24 +4,21 @@
 #include <wacfrac/orbit.hpp>
 #include <wacfrac/viewport.hpp>
 #include <wacfrac/resolution.hpp>
-#include <array>
-#include <iostream>
+#include <span>
 #include <cstddef>
 
 namespace wacfrac
 {
 
 template <std::invocable<std::size_t, std::size_t> F, typename G>
-void screen_render(std::ostream& os, const resolution& res, F&& escape_fn, G&& color_fn) {
-    constexpr auto batch_size {8192uz};
-    std::array<pixel, batch_size> batch;
+void screen_render(std::span<pixel> pixels, const resolution& res, F&& escape_fn, G&& color_fn) {
     auto i {0uz};
 
     for (auto [y, x] : res.coordinates()) {
         auto result = escape_fn(x, y);
 
         std::size_t n {std::get<1>(result)};
-        batch[i++] = [&]() {
+        pixels[i++] = [&]() {
             if constexpr (std::invocable<G, std::complex<float>, decltype(n)>) {
                 std::complex<float> z {std::get<0>(result)};
                 return color_fn(z, n);
@@ -31,26 +28,18 @@ void screen_render(std::ostream& os, const resolution& res, F&& escape_fn, G&& c
                 static_assert(false, "color_fn does not accept (z, n) or (n)");
             }
         }();
-
-        if (i == batch_size) {
-            os.write(reinterpret_cast<const char*>(batch.data()), i * sizeof(pixel));
-            i = 0;
-        }
     }
-
-    if (i > 0)
-        os.write(reinterpret_cast<const char*>(batch.data()), i * sizeof(pixel));
 }
 
 template <Complex T, std::invocable<T> F, typename G>
-void absolute_render(std::ostream& os, const resolution& res, const viewport& view, F&& escape_fn, G&& color_fn) {
+void absolute_render(std::span<pixel> pixels, const resolution& res, const viewport& view, F&& escape_fn, G&& color_fn) {
     using CT = complex_value_type_t<T>;
 
     auto c_start = to_complex<T>(view.sample(0, 0, res.width, res.height));
     auto d_re = static_cast<CT>(static_cast<double>(view.dimensions.real() / multi_float(res.width)));
     auto d_im = static_cast<CT>(static_cast<double>(view.dimensions.imag() / multi_float(res.height)));
 
-    screen_render(os, res,
+    screen_render(pixels, res,
         [c_start, d_re, d_im, &escape_fn](std::size_t x, std::size_t y) {
             T c = c_start + T(static_cast<CT>(x) * d_re, static_cast<CT>(y) * d_im);
             return escape_fn(c);
@@ -60,14 +49,14 @@ void absolute_render(std::ostream& os, const resolution& res, const viewport& vi
 }
 
 template <Complex T, std::invocable<T> F, typename G>
-void perturbed_render(std::ostream& os, const resolution& res, const viewport& view, F&& escape_fn, G&& color_fn, multi_complex ref_center) {
+void perturbed_render(std::span<pixel> pixels, const resolution& res, const viewport& view, F&& escape_fn, G&& color_fn, multi_complex ref_center) {
     using CT = complex_value_type_t<T>;
 
     auto dc_start = to_complex<T>(view.sample(0, 0, res.width, res.height) - ref_center);
     auto d_re = static_cast<CT>(static_cast<double>(view.dimensions.real() / multi_float(res.width)));
     auto d_im = static_cast<CT>(static_cast<double>(view.dimensions.imag() / multi_float(res.height)));
 
-    screen_render(os, res,
+    screen_render(pixels, res,
         [dc_start, d_re, d_im, &escape_fn](std::size_t x, std::size_t y) {
             T dc = dc_start + T(static_cast<CT>(x) * d_re, static_cast<CT>(y) * d_im);
             return escape_fn(dc);
