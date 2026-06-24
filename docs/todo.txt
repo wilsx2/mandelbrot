@@ -45,18 +45,20 @@
 [ ] Interactivity
     [X] Interchangable Escape Time Algorithms
     [X] Color Palette Parameter and Generator
-    [ ] Parameterize all the things
-    [ ] Progress bar and time estimate in CLI
-    [ ] Post-render report (time, skipped iterations, etc)
-    [ ] Lazy frame/filename generator for zoom videos
-    [ ] Video generation in CLI
-    [ ] Video segmentation
-    [ ] Composition w/ ffmpeg
+    [X] Logging
+    [X] Zoom renderer
+    [ ] Milestone logging for screen render
+    [ ] Parameterize all the things (CLI)
+        [ ] Modes
+        [ ] Colors
+        [ ] Numbers
+        [ ] Types
+        [ ] Video
+    [ ] Composition Scripts w/ ffmpeg
         [ ] Encoding
-        [ ] Videos
+        [ ] Videos (segmented)
         [ ] Tiled images
-    [ ] Final Python Bindings
-    [ ] Export Python Package
+    [ ] Remove python bindings
 [ ] Parallelism
     [ ] CUDA for per-pixel calculations
     [ ] ? BLA coefficients w/ CUDA ?

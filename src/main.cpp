@@ -103,19 +103,19 @@ int main(int argc, char *argv[]) {
 
     auto t_start = std::chrono::steady_clock::now();
 
-    auto [c_ref, ref] = view.find_periodic_reference<std::complex<double>>(max_iterations, 64uz, 64uz);
+    auto [c_ref, ref] = view.find_periodic_reference<std::complex<long double>>(max_iterations, 64uz, 64uz);
     LOG_INFO << "Found periodic reference at (" << c_ref << ") with orbit length " << ref.size();
-    wacfrac::bivariate_linear_approximator<std::complex<double>> bla {
-        1e-30, 1e-6,
-        view.generate_probes<std::complex<double>>(4, 4),
-        wacfrac::to_complex<std::complex<double>>(view.compute_max_dc(c_ref)),
+    wacfrac::bivariate_linear_approximator<std::complex<long double>> bla {
+        1.0e-114, 1e-6,
+        view.generate_probes<std::complex<long double>>(3, 3),
+        wacfrac::to_complex<std::complex<long double>>(view.compute_max_dc(c_ref)),
         ref, 0
     };
 
     std::vector<wacfrac::pixel> pixels(res.area());
     LOG_INFO << "Rendering " << res.area() << " pixels...";
     auto total_skipped = std::atomic<std::uint64_t>{0};
-    wacfrac::perturbed_render<std::complex<double>>(
+    wacfrac::perturbed_render<std::complex<long double>>(
         pixels, res, view,
         [&bla, &total_skipped](auto dc) {
             auto result = bla.escape_approximate(dc);

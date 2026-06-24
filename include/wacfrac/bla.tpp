@@ -43,6 +43,7 @@ template <Complex T>
 bivariate_linear_approximator<T>::bivariate_linear_approximator(double initial_epsilon, double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level)
     : bivariate_linear_approximator(ref, first_level)
 {
+    // using CT = complex_value_type_t<T>;
     LOG_INFO << "Searching for optimal BLA epsilon: initial_epsilon=" << initial_epsilon
              << " tolerance=" << tolerance << " probes=" << probes.size();
 
@@ -51,15 +52,29 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(double initial_e
     std::ranges::transform(probes, std::back_inserter(true_escape_times),
         [&ref](T p) -> std::size_t { return escape_perturbed<T>(ref, p, ref.size()).second; });
 
-    auto exponent {std::floor(std::log10(initial_epsilon))};
-    auto coeff {initial_epsilon / std::pow(10, exponent)};
-    auto upper {coeff * std::pow(10.0, exponent * 2.0)};
-    auto lower {coeff * std::pow(10.0, exponent / 2.0)};
-    if (upper < lower) std::swap(upper, lower);
-    auto prev_avg_skipped {0.0};
-    constexpr auto upper_limit {100uz};
+    using std::floor;
+    using std::log10;
+    using std::pow;
+    using std::swap;
+    using boost::multiprecision::floor;
+    using boost::multiprecision::log10;
+    using boost::multiprecision::pow;
+    auto exponent {floor(log10(initial_epsilon))};
+    auto coeff {initial_epsilon / pow(10, exponent)};
+    auto upper {exponent * 4.0};
+    auto lower {exponent / 4.0};
+    LOG_TRACE << "Optimal BLA epsilon search bounds: upper=" << upper
+              << " lower=" << lower << " middle=" << (upper + lower) / 2.0;
+    if (upper < lower) {
+        swap(upper, lower);
+        LOG_TRACE << "Optimal BLA epsilon search bounds swapped: upper=" << upper
+                  << " lower=" << lower;
+    }
+    auto prev_avg_skipped {-1.0};
+    constexpr auto upper_limit {32uz};
     for (auto iter {0uz}; iter < upper_limit; ++iter) {
-        auto epsilon = (upper + lower) / 2.0;
+        auto middle {(upper + lower) / 2.0};
+        auto epsilon {static_cast<double>(coeff * pow(10.0, middle))};
         compute_blas(epsilon, max_dc);
 
         auto all_correct {true};
@@ -78,8 +93,8 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(double initial_e
         if (!all_correct) {
             LOG_TRACE << "BLA epsilon search iter " << iter << ": epsilon=" << epsilon
                       << " too high (probe escape mismatch)";
-            upper = epsilon;
-            break;
+            upper = middle;
+            continue;
         }
 
         auto avg_skipped {total_skipped / static_cast<double>(probes.size())};
@@ -87,7 +102,7 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(double initial_e
             LOG_TRACE << "BLA epsilon search iter " << iter << ": epsilon=" << epsilon
                       << " avg_skipped=" << avg_skipped << " (improving)";
             prev_avg_skipped = avg_skipped;
-            lower = epsilon;
+            lower = middle;
         } else {
             LOG_TRACE << "BLA epsilon search iter " << iter << ": epsilon=" << epsilon
                       << " avg_skipped=" << avg_skipped << " (converged)";
