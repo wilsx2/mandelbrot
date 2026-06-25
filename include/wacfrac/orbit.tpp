@@ -52,16 +52,14 @@ auto compute_reference(multi_complex c, std::size_t max_n, bool do_escape) -> st
     LOG_DEBUG << "Computing reference orbit at (" << c << ") max_n=" << max_n
               << " do_escape=" << do_escape;
 
-    std::vector<T> reference { T{0.0, 0.0} };
+    std::vector<T> reference;
+    reference.reserve(max_n);
+    reference.emplace_back(to_complex<T>(multi_complex{0.0, 0.0}));
 
-    multi_complex z {0.0, 0.0};
-    for (auto n {0uz}; n < max_n - 1 && (!do_escape || !escaped(z)); ++n) {
-        z = compute_next_z(z, c);
-        using CT = complex_value_type_t<T>;
-        reference.emplace_back(
-            static_cast<CT>(boost::multiprecision::real(z)),
-            static_cast<CT>(boost::multiprecision::imag(z))
-        );
+    multi_complex z{0.0, 0.0};
+    for (auto n{0uz}; n < max_n - 1 && (!do_escape || !escaped(z)); ++n) {
+        z = z * z + c;
+        reference.emplace_back(to_complex<T>(z));
     }
 
     LOG_DEBUG << "Reference orbit computed: " << reference.size()

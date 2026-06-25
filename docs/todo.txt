@@ -37,16 +37,12 @@
     [ ] Nucleus finding
     [ ] Reference orbit
     [ ] Coefficient calculation
-[ ] Finding zoom point
-    [X] Newton's method applied to nucleus finding
-    [ ] NM applied to finding bond points
-    [ ] Find bonded nucleus
-    [ ] Apply recursively to find infinitely small nucleus
 [ ] Interactivity
     [X] Interchangable Escape Time Algorithms
     [X] Color Palette Parameter and Generator
     [X] Logging
     [X] Zoom renderer
+    [X] Remove python bindings
     [ ] Milestone logging for screen render
     [ ] Parameterize all the things (CLI)
         [ ] Modes
@@ -58,7 +54,6 @@
         [ ] Encoding
         [ ] Videos (segmented)
         [ ] Tiled images
-    [ ] Remove python bindings
 [ ] Parallelism
     [ ] CUDA for per-pixel calculations
     [ ] ? BLA coefficients w/ CUDA ?

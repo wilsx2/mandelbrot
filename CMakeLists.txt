@@ -9,11 +9,6 @@ endif()
 
 find_package(Boost REQUIRED COMPONENTS log log_setup)
 find_package(Argumentum CONFIG REQUIRED)
-find_package(Python 3.14 COMPONENTS Interpreter Development.Module REQUIRED)
-execute_process(
-  COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
-  OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nanobind_ROOT)
-find_package(nanobind CONFIG REQUIRED)
 find_package(benchmark REQUIRED)
 find_package(TBB REQUIRED)
 
@@ -27,6 +22,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_options(-Wall -Wextra -Werror)
+add_compile_options(-Wno-error=array-bounds) # Suppress false positives from Boost headers
 add_compile_options("$<$<CONFIG:Release>:-O3>")
 
 # Static Library
@@ -68,7 +64,3 @@ target_link_libraries(wacfrac PRIVATE
     libwacfrac
     Argumentum::argumentum
 )
-
-# Python Package
-# nanobind_add_module(wacfracpy src/bindings.cpp)
-# target_link_libraries(wacfracpy PRIVATE libwacfrac)

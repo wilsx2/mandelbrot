@@ -5,6 +5,7 @@
 #include "wacfrac/wacfrac.hpp"
 #include "argumentum/argparse.h"
 #include <format>
+#include <cmath>
 #include <string>
 #include <cstdlib>
 #include <cstddef>
@@ -78,7 +79,6 @@ int main(int argc, char *argv[]) {
     // Plot and render
     wacfrac::viewport view {
         wacfrac::poi::BIG_BANG,
-        //{focus[0], focus[1], precision},
         {1.0, 1.0}
     };
     view = view.zoomed(zoom_scale);
@@ -88,10 +88,17 @@ int main(int argc, char *argv[]) {
     if (precision == 0)
         precision = view.required_precision();
 
-    wacfrac::multi_float::default_precision(precision);
-    wacfrac::multi_complex::default_precision(precision);
-    zoom_scale.precision(precision);
-    view.precision(precision);
+    auto compute_precision = std::min<std::size_t>(precision, 256);
+    auto ref_precision = std::max(compute_precision, std::min<std::size_t>(precision, 1000));
+
+    // Default precision for temporary multi_float/complex operations
+    wacfrac::multi_float::default_precision(compute_precision);
+    wacfrac::multi_complex::default_precision(compute_precision);
+
+    // Keep viewport at ref_precision so coordinate arithmetic
+    // (e.g., pixel - reference) preserves per-pixel differences.
+    view.precision(ref_precision);
+    zoom_scale.precision(compute_precision);
 
     wacfrac::resolution res {dimensions[0], dimensions[1]};
 
@@ -99,23 +106,37 @@ int main(int argc, char *argv[]) {
     LOG_INFO << "Resolution: " << res.width << "x" << res.height
              << " (" << res.area() << " pixels)";
     LOG_INFO << "Using " << max_iterations << " max iterations with "
-             << precision << " decimal digits precision";
+             << precision << " decimal digits precision (compute="
+             << compute_precision << ", ref=" << ref_precision << ")";
 
-    auto t_start = std::chrono::steady_clock::now();
+    // Use view center as reference with do_escape=true.
+    // This keeps dc = pixel - ref tiny (order of viewport_width),
+    // so per-pixel variation is resolvable in doubleexp even at extreme zooms.
+    wacfrac::multi_complex c_ref = view.center;
 
-    auto [c_ref, ref] = view.find_periodic_reference<std::complex<long double>>(max_iterations, 64uz, 64uz);
-    LOG_INFO << "Found periodic reference at (" << c_ref << ") with orbit length " << ref.size();
-    wacfrac::bivariate_linear_approximator<std::complex<long double>> bla {
-        1.0e-114, 1e-6,
-        view.generate_probes<std::complex<long double>>(3, 3),
-        wacfrac::to_complex<std::complex<long double>>(view.compute_max_dc(c_ref)),
-        ref, 0
-    };
+    wacfrac::multi_float::default_precision(ref_precision);
+    wacfrac::multi_complex::default_precision(ref_precision);
+    auto ref = wacfrac::compute_reference<wacfrac::doubleexp_complex>(c_ref, max_iterations, true);
+    wacfrac::multi_float::default_precision(compute_precision);
+    wacfrac::multi_complex::default_precision(compute_precision);
+
+    LOG_INFO << "Reference at view center with orbit length " << ref.size();
+
+    auto t_render = std::chrono::steady_clock::now();
 
     std::vector<wacfrac::pixel> pixels(res.area());
-    LOG_INFO << "Rendering " << res.area() << " pixels...";
+
+    LOG_INFO << "Rendering " << res.area() << " pixels (perturbed)...";
     auto total_skipped = std::atomic<std::uint64_t>{0};
-    wacfrac::perturbed_render<std::complex<long double>>(
+
+    auto last_level = static_cast<std::size_t>(std::log2(ref.size()));
+    auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
+
+    auto max_dc = wacfrac::to_complex<wacfrac::doubleexp_complex>(view.compute_max_dc(c_ref));
+    wacfrac::bivariate_linear_approximator<wacfrac::doubleexp_complex> bla {
+        1.0e-10, max_dc, ref, first_level
+    };
+    wacfrac::perturbed_render<wacfrac::doubleexp_complex>(
         pixels, res, view,
         [&bla, &total_skipped](auto dc) {
             auto result = bla.escape_approximate(dc);
@@ -131,11 +152,12 @@ int main(int argc, char *argv[]) {
         },
         c_ref
     );
-    auto t_render = std::chrono::steady_clock::now();
     auto avg_skipped = static_cast<double>(total_skipped) / res.area();
-    LOG_INFO << "Render complete in "
-             << std::chrono::duration_cast<std::chrono::milliseconds>(t_render - t_start).count()
-             << "ms (avg skipped: " << avg_skipped << ")";
+    LOG_INFO << "Perturbed render complete (avg skipped: " << avg_skipped << ")";
+
+    auto render_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t_render);
+    LOG_INFO << "Render took " << render_ms.count() << "ms";
 
     wacfrac::write_ppm(filepath, res, pixels);
 }

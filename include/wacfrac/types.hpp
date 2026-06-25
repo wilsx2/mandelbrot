@@ -49,13 +49,46 @@ concept Complex = requires(T a, T b) {
     { a /= b } -> std::same_as<T&>;
 };
 
+template <typename Real>
+auto to_real(const multi_float& val) -> Real {
+    using number_doubleexp = boost::multiprecision::number<doubleexp>;
+    if constexpr (std::is_same_v<Real, doubleexp>) {
+        if (val.is_zero()) return doubleexp{};
+        mpfr_exp_t e;
+        double m = mpfr_get_d_2exp(&e, val.backend().data(), MPFR_RNDN);
+        doubleexp result;
+        result.mantissa = m;
+        result.exponent = static_cast<int64_t>(e);
+        return result;
+    } else if constexpr (std::is_same_v<Real, number_doubleexp>) {
+        return number_doubleexp{to_real<doubleexp>(val)};
+    } else {
+        return static_cast<Real>(val);
+    }
+}
+
+template <typename Real, typename Number>
+auto to_real(const Number& val) -> Real {
+    using number_doubleexp = boost::multiprecision::number<doubleexp>;
+    if constexpr (std::is_same_v<Real, doubleexp> || std::is_same_v<Real, number_doubleexp>) {
+        return to_real<Real>(static_cast<multi_float>(val));
+    } else {
+        return static_cast<Real>(val);
+    }
+}
+
 template <Complex T>
 auto to_complex(multi_complex z) -> T {
     using CT = complex_value_type_t<T>;
     return T{
-        static_cast<CT>(boost::multiprecision::real(z)),
-        static_cast<CT>(boost::multiprecision::imag(z))
+        to_real<CT>(boost::multiprecision::real(z)),
+        to_real<CT>(boost::multiprecision::imag(z))
     };
+}
+
+template <>
+inline auto to_complex<multi_complex>(multi_complex z) -> multi_complex {
+    return z;
 }
 
 }   // namespace wacfrac

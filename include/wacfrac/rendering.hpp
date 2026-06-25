@@ -40,8 +40,8 @@ void absolute_render(std::span<pixel> pixels, const resolution& res, const viewp
     using CT = complex_value_type_t<T>;
 
     auto c_start = to_complex<T>(view.sample(0, 0, res.width, res.height));
-    auto d_re = static_cast<CT>(static_cast<double>(view.dimensions.real() / multi_float(res.width)));
-    auto d_im = static_cast<CT>(static_cast<double>(view.dimensions.imag() / multi_float(res.height)));
+    auto d_re = to_real<CT>(view.dimensions.real() / multi_float(res.width));
+    auto d_im = to_real<CT>(view.dimensions.imag() / multi_float(res.height));
 
     screen_render(pixels, res,
         [c_start, d_re, d_im, &escape_fn](std::size_t x, std::size_t y) {
@@ -57,8 +57,8 @@ void perturbed_render(std::span<pixel> pixels, const resolution& res, const view
     using CT = complex_value_type_t<T>;
 
     auto dc_start = to_complex<T>(view.sample(0, 0, res.width, res.height) - ref_center);
-    auto d_re = static_cast<CT>(static_cast<double>(view.dimensions.real() / multi_float(res.width)));
-    auto d_im = static_cast<CT>(static_cast<double>(view.dimensions.imag() / multi_float(res.height)));
+    auto d_re = to_real<CT>(view.dimensions.real() / multi_float(res.width));
+    auto d_im = to_real<CT>(view.dimensions.imag() / multi_float(res.height));
 
     screen_render(pixels, res,
         [dc_start, d_re, d_im, &escape_fn](std::size_t x, std::size_t y) {

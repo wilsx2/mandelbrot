@@ -19,7 +19,10 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(const std::vecto
 {
     auto i {0uz};
     for (auto m : std::views::iota(1uz, ref.size() - 1)) {
-        auto size {1 + std::min(static_cast<std::size_t>(std::countr_zero(m - 1)), _last_level - _first_level)};
+        auto cz {static_cast<std::size_t>(std::countr_zero(m - 1))};
+        auto size {cz >= _first_level
+            ? 1 + std::min(cz - _first_level, _last_level - _first_level)
+            : 0uz};
         _columns.at(m - 1) = {i, size};
         i += size;
     }
@@ -149,6 +152,9 @@ auto bivariate_linear_approximator<T>::compute_zn(T dc, T dzm, std::size_t m) co
             break;
         }
     }
+
+    if (n >= _ref.size())
+        return std::nullopt;
 
     return {{bla->approximate_dzn(dzm, dc), n}};
 }
