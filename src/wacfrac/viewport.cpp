@@ -63,9 +63,9 @@ template auto viewport::find_periodic_reference<doubleexp_complex>(std::size_t m
 
 auto required_precision(multi_float zoom) -> std::size_t {
     if (zoom <= 1.0) {
-        return static_cast<std::size_t>(-boost::multiprecision::log10(zoom) + 4);
+        return static_cast<std::size_t>(-boost::multiprecision::log10(zoom) + 10);
     }
-    return static_cast<std::size_t>(static_cast<double>(boost::multiprecision::log10(1.0 / zoom)) + 4.0);
+    return static_cast<std::size_t>(static_cast<double>(boost::multiprecision::log10(1.0 / zoom)) + 10.0);
 }
 auto required_iterations(multi_float zoom, double modifier, double factor, double exponent) -> std::size_t {
     if (zoom > 1.0)

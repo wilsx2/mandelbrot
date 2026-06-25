@@ -91,12 +91,9 @@ int main(int argc, char *argv[]) {
     auto compute_precision = std::min<std::size_t>(precision, 256);
     auto ref_precision = std::max(compute_precision, std::min<std::size_t>(precision, 1000));
 
-    // Default precision for temporary multi_float/complex operations
     wacfrac::multi_float::default_precision(compute_precision);
     wacfrac::multi_complex::default_precision(compute_precision);
 
-    // Keep viewport at ref_precision so coordinate arithmetic
-    // (e.g., pixel - reference) preserves per-pixel differences.
     view.precision(ref_precision);
     zoom_scale.precision(compute_precision);
 
@@ -109,9 +106,6 @@ int main(int argc, char *argv[]) {
              << precision << " decimal digits precision (compute="
              << compute_precision << ", ref=" << ref_precision << ")";
 
-    // Use view center as reference with do_escape=true.
-    // This keeps dc = pixel - ref tiny (order of viewport_width),
-    // so per-pixel variation is resolvable in doubleexp even at extreme zooms.
     wacfrac::multi_complex c_ref = view.center;
 
     wacfrac::multi_float::default_precision(ref_precision);
@@ -135,7 +129,7 @@ int main(int argc, char *argv[]) {
     auto max_dc = wacfrac::to_complex<wacfrac::doubleexp_complex>(view.compute_max_dc(c_ref));
     auto probes = view.generate_probes<wacfrac::doubleexp_complex>(3, 3);
     wacfrac::bivariate_linear_approximator<wacfrac::doubleexp_complex> bla {
-        1.0, 1e-6, probes, max_dc, ref, first_level
+        1e-8, probes, max_dc, ref, first_level
     };
     wacfrac::perturbed_render<wacfrac::doubleexp_complex>(
         pixels, res, view,

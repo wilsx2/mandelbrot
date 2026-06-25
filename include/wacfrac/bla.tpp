@@ -44,8 +44,8 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(double epsilon, 
 }
 
 template <Complex T>
-bivariate_linear_approximator<T>::bivariate_linear_approximator(double initial_epsilon, double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level)
-    : bivariate_linear_approximator(ref, 0uz)
+bivariate_linear_approximator<T>::bivariate_linear_approximator(double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level)
+    : bivariate_linear_approximator(ref, first_level)
 {
     LOG_INFO << "Searching for optimal BLA epsilon: tolerance=" << tolerance
              << " probes=" << probes.size();
@@ -55,7 +55,6 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(double initial_e
     std::ranges::transform(probes, std::back_inserter(true_escape_times),
         [&ref](T p) -> std::size_t { return escape_perturbed<T>(ref, p, ref.size()).second; });
 
-    (void)initial_epsilon;
     (void)first_level;
     using Real = complex_value_type_t<T>;
 
@@ -68,16 +67,11 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(double initial_e
 
     auto max_dc_abs = abs(max_dc);
 
-    // epsilon_base = |max_dc| / max|ref| is the minimum epsilon for which
-    // level-0 BLAs have positive radius at the most favorable reference point.
     auto epsilon_base = max_ref_abs > Real{0} ? max_dc_abs / max_ref_abs : max_dc_abs;
     if (epsilon_base == Real{0}) {
         epsilon_base = Real{std::numeric_limits<double>::min()};
     }
 
-    // Search in log10 space: epsilon = epsilon_base * 10^offset
-    // offset range: from 0.001x to 10^(log10(ref.size()) + 6) x epsilon_base
-    // This sweeps from far-too-small to aggressively-large epsilon values.
     double log10_base;
     if constexpr (std::is_floating_point_v<Real>) {
         log10_base = static_cast<double>(std::log10(epsilon_base));

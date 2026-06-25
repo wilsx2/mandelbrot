@@ -11,7 +11,7 @@ template <Complex T = std::complex<long double>>
 class bivariate_linear_approximator {
     public:
     bivariate_linear_approximator(double epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0);
-    bivariate_linear_approximator(double initial_epsilon, double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0);
+    bivariate_linear_approximator(double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0);
     auto escape_approximate(T dc) const -> std::tuple<T, std::size_t, std::size_t>;
 
     private:

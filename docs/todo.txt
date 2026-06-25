@@ -23,6 +23,8 @@
 [X] Refactoring
     [X] Abandon unfortunate render_config system
     [X] Colorize w/ special color for non-escaping
+    [ ] CamelCase classes and UPPER_SNAKE_CASE constants
+    [ ] std::print to log
 [ ] Update benchmarks
     [X] All types
     [ ] Full renders
@@ -45,6 +47,8 @@
     [X] Remove python bindings
     [ ] Milestone logging for screen render
     [ ] Parameterize all the things (CLI)
+        [ ] Escape Radius
+        [ ] Log Level
         [ ] Modes
         [ ] Colors
         [ ] Numbers
