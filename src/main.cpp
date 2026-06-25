@@ -133,8 +133,9 @@ int main(int argc, char *argv[]) {
     auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
 
     auto max_dc = wacfrac::to_complex<wacfrac::doubleexp_complex>(view.compute_max_dc(c_ref));
+    auto probes = view.generate_probes<wacfrac::doubleexp_complex>(3, 3);
     wacfrac::bivariate_linear_approximator<wacfrac::doubleexp_complex> bla {
-        1.0e-10, max_dc, ref, first_level
+        1.0, 1e-6, probes, max_dc, ref, first_level
     };
     wacfrac::perturbed_render<wacfrac::doubleexp_complex>(
         pixels, res, view,

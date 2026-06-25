@@ -481,6 +481,21 @@ inline void eval_sqrt(floatexp<M, E>& b, const floatexp<M, E>& cb) {
     detail::normalize(b);
 }
 
+// Log10
+template<std::floating_point M, std::integral E>
+inline void eval_log10(floatexp<M, E>& b, const floatexp<M, E>& cb) {
+    if (cb.mantissa == M(0)) {
+        throw std::overflow_error("log10 of zero");
+    }
+    if (cb.mantissa < M(0)) {
+        throw std::domain_error("log10 of negative number");
+    }
+    b.mantissa = static_cast<M>(std::log10(cb.mantissa)
+        + static_cast<long double>(cb.exponent) * std::log10(2.0L));
+    b.exponent = 0;
+    detail::normalize(b);
+}
+
 // Classification / sign / abs
 
 template<std::floating_point M, std::integral E>

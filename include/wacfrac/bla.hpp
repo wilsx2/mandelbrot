@@ -29,8 +29,8 @@ class bivariate_linear_approximator {
             return a*dzm + b*dc;
         }
     };
-    auto compute_bla(double epsilon, T max_dc, std::size_t m, std::size_t n) const -> bla;
-    auto compute_blas(double epsilon, T max_dc) -> void;
+    auto compute_bla(complex_value_type_t<T> epsilon, T max_dc, std::size_t m, std::size_t n) const -> bla;
+    auto compute_blas(complex_value_type_t<T> epsilon, T max_dc) -> void;
     auto merge_blas(T max_dc, const bla& x, const bla& y) const -> bla;
     auto compute_zn(T dc, T dzm, std::size_t m) const -> std::optional<std::pair<T, std::size_t>>;
 
