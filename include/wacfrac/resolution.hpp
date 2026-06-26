@@ -5,7 +5,7 @@
 
 namespace wacfrac {
 
-struct resolution {
+struct Resolution {
     std::size_t width, height;
     inline auto area() const {
         return width * height;

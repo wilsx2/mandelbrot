@@ -6,9 +6,9 @@
 
 namespace wacfrac {
 
-auto find_nucleus(multi_complex c, std::size_t period, std::size_t max_iterations) -> multi_complex;
+auto find_nucleus(MultiComplex c, std::size_t period, std::size_t max_iterations) -> MultiComplex;
 
-auto find_period_ball(multi_complex c0, multi_float dx, multi_float dy, std::size_t max_iterations, bool do_cont) -> std::vector<std::size_t>;
+auto find_period_ball(MultiComplex c0, MultiFloat dx, MultiFloat dy, std::size_t max_iterations, bool do_cont) -> std::vector<std::size_t>;
 
 template<Complex T, typename F = double>
 auto is_reference_degenerate(const std::vector<T>& ref, F tolerance = 1e-3) -> bool {

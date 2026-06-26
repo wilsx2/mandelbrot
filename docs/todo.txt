@@ -25,7 +25,7 @@
     [X] Abandon unfortunate render_config system
     [X] Colorize w/ special color for non-escaping
     [ ] CamelCase classes and UPPER_SNAKE_CASE constants
-    [ ] std::print to log
+    [X] print to log
 [ ] Update benchmarks
     [X] All types
     [ ] Full renders

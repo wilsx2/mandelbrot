@@ -10,46 +10,46 @@
 namespace wacfrac
 {
 
-auto colorize_normal(const std::vector<pixel>& palette, std::size_t max_n, std::size_t n) -> pixel {
+auto colorize_normal(const std::vector<Pixel>& palette, std::size_t max_n, std::size_t n) -> Pixel {
     return palette.at(std::floor((n / static_cast<float>(max_n)) * static_cast<float>(palette.size() - 1)));
 }
-auto colorize_looped(const std::vector<pixel>& palette, std::size_t n) -> pixel {
+auto colorize_looped(const std::vector<Pixel>& palette, std::size_t n) -> Pixel {
     return palette.at(n % palette.size());
 }
 
-auto lerp_pixel(pixel a, pixel b, float percentile) -> pixel {
-    return pixel(
+auto lerp_pixel(Pixel a, Pixel b, float percentile) -> Pixel {
+    return Pixel(
         std::lerp(a.r, b.r, percentile),
         std::lerp(a.g, b.g, percentile),
         std::lerp(a.b, b.b, percentile)
     );
 }
 
-auto lerp_color(color a, color b, float percentile) -> color {
-    return color(
+auto lerp_color(Color a, Color b, float percentile) -> Color {
+    return Color(
         std::lerp(std::get<0>(a), std::get<0>(b), percentile),
         std::lerp(std::get<1>(a), std::get<1>(b), percentile),
         std::lerp(std::get<2>(a), std::get<2>(b), percentile)
     );
 }
 
-auto to_pixel(color_encoding e, color c) -> pixel {
+auto to_pixel(ColorEncoding e, Color c) -> Pixel {
     switch (e) {
-        case color_encoding::rgb: return std::apply(rgb_to_pixel, c);
-        case color_encoding::hsv: return std::apply(hsv_to_pixel, c);
-        case color_encoding::hcl: return std::apply(hcl_to_pixel, c);
+        case ColorEncoding::Rgb: return std::apply(rgb_to_pixel, c);
+        case ColorEncoding::Hsv: return std::apply(hsv_to_pixel, c);
+        case ColorEncoding::Hcl: return std::apply(hcl_to_pixel, c);
     }
   return {255, 0, 255};
 }
 
-auto rgb_to_pixel(float r, float g, float b) -> pixel {
+auto rgb_to_pixel(float r, float g, float b) -> Pixel {
     r = std::clamp(r, 0.f, 1.f);
     g = std::clamp(g, 0.f, 1.f);
     b = std::clamp(b, 0.f, 1.f);
-    return pixel(r*255, g*255, b*255);
+    return Pixel(r*255, g*255, b*255);
 }
 
-auto hsv_to_pixel(float h, float s, float v) -> pixel {
+auto hsv_to_pixel(float h, float s, float v) -> Pixel {
     h = std::clamp(h, 0.f, 1.f);
     s = std::clamp(s, 0.f, 1.f);
     v = std::clamp(v, 0.f, 1.f);
@@ -78,7 +78,7 @@ auto hsv_to_pixel(float h, float s, float v) -> pixel {
     };
 }
 
-auto hcl_to_pixel(float h, float c, float l) -> pixel {
+auto hcl_to_pixel(float h, float c, float l) -> Pixel {
     h = std::clamp(h, 0.f, 1.f);
     c = std::clamp(c, 0.f, 1.f);
     l = std::clamp(l, 0.f, 1.f);
@@ -112,10 +112,10 @@ auto hcl_to_pixel(float h, float c, float l) -> pixel {
 }
 
 template <typename T, std::invocable<T, T, float> F>
-static auto generate_palette(std::size_t size, std::initializer_list<T> samples, F&& generate) -> std::vector<pixel> {
+static auto generate_palette(std::size_t size, std::initializer_list<T> samples, F&& generate) -> std::vector<Pixel> {
     if (size == 0 || samples.size() == 0) return {};
       
-      std::vector<pixel> palette(size);
+      std::vector<Pixel> palette(size);
       const auto samples_view = std::views::all(samples);
       const std::size_t num_segments = samples.size() - 1;
 
@@ -136,12 +136,12 @@ static auto generate_palette(std::size_t size, std::initializer_list<T> samples,
       return palette;
 }
 
-auto generate_palette(std::size_t size, std::initializer_list<pixel> samples) -> std::vector<pixel> {
+auto generate_palette(std::size_t size, std::initializer_list<Pixel> samples) -> std::vector<Pixel> {
     return generate_palette(size, samples, lerp_pixel);
 }
 
-auto generate_palette(std::size_t size, color_encoding encoding, std::initializer_list<color> samples) -> std::vector<pixel> {
-    return generate_palette(size, samples, [encoding](color a, color b, float progress){
+auto generate_palette(std::size_t size, ColorEncoding encoding, std::initializer_list<Color> samples) -> std::vector<Pixel> {
+    return generate_palette(size, samples, [encoding](Color a, Color b, float progress){
         return to_pixel(encoding, lerp_color(a, b, progress));
     });
 }

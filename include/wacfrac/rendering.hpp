@@ -13,8 +13,8 @@ namespace wacfrac
 {
 
 template <std::invocable<std::size_t, std::size_t> F, typename G>
-void screen_render(std::span<pixel> pixels, const resolution& res, F&& escape_fn, G&& color_fn) {
-    logging::print(logging::severity::debug, "Screen render: {}x{} ({} pixels, parallel)", res.width, res.height, res.area());
+void screen_render(std::span<Pixel> pixels, const Resolution& res, F&& escape_fn, G&& color_fn) {
+    logging::print(logging::Severity::Debug, "Screen render: {}x{} ({} pixels, parallel)", res.width, res.height, res.area());
     auto coords {res.coordinates()};
     std::for_each(std::execution::par, coords.begin(), coords.end(),[&](auto&& coord){
         auto [y, x] = coord;
@@ -35,12 +35,12 @@ void screen_render(std::span<pixel> pixels, const resolution& res, F&& escape_fn
 }
 
 template <Complex T, std::invocable<T> F, typename G>
-void absolute_render(std::span<pixel> pixels, const resolution& res, const viewport& view, F&& escape_fn, G&& color_fn) {
-    using CT = complex_value_type_t<T>;
+void absolute_render(std::span<Pixel> pixels, const Resolution& res, const Viewport& view, F&& escape_fn, G&& color_fn) {
+    using CT = ComplexValueTypeT<T>;
 
     auto c_start = to_complex<T>(view.sample(0, 0, res.width, res.height));
-    auto d_re = to_real<CT>(view.dimensions.real() / multi_float(res.width));
-    auto d_im = to_real<CT>(view.dimensions.imag() / multi_float(res.height));
+    auto d_re = to_real<CT>(view.dimensions.real() / MultiFloat(res.width));
+    auto d_im = to_real<CT>(view.dimensions.imag() / MultiFloat(res.height));
 
     screen_render(pixels, res,
         [c_start, d_re, d_im, &escape_fn](std::size_t x, std::size_t y) {
@@ -52,12 +52,12 @@ void absolute_render(std::span<pixel> pixels, const resolution& res, const viewp
 }
 
 template <Complex T, std::invocable<T> F, typename G>
-void perturbed_render(std::span<pixel> pixels, const resolution& res, const viewport& view, F&& escape_fn, G&& color_fn, multi_complex ref_center) {
-    using CT = complex_value_type_t<T>;
+void perturbed_render(std::span<Pixel> pixels, const Resolution& res, const Viewport& view, F&& escape_fn, G&& color_fn, MultiComplex ref_center) {
+    using CT = ComplexValueTypeT<T>;
 
     auto dc_start = to_complex<T>(view.sample(0, 0, res.width, res.height) - ref_center);
-    auto d_re = to_real<CT>(view.dimensions.real() / multi_float(res.width));
-    auto d_im = to_real<CT>(view.dimensions.imag() / multi_float(res.height));
+    auto d_re = to_real<CT>(view.dimensions.real() / MultiFloat(res.width));
+    auto d_im = to_real<CT>(view.dimensions.imag() / MultiFloat(res.height));
 
     screen_render(pixels, res,
         [dc_start, d_re, d_im, &escape_fn](std::size_t x, std::size_t y) {

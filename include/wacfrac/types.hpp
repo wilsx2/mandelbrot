@@ -9,29 +9,29 @@
 namespace wacfrac
 {
 
-using multi_float   = boost::multiprecision::mpfr_float;
-using multi_complex = boost::multiprecision::mpc_complex;
-using doubleexp_complex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<doubleexp>>;
-// using singleexp_complex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<singleexp>>; Unused
-// using quadexp_complex   = boost::multiprecision::complex_adaptor<quadexp>; Unused
+using MultiFloat   = boost::multiprecision::mpfr_float;
+using MultiComplex = boost::multiprecision::mpc_complex;
+using DoubleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<DoubleExp>>;
+// using SingleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<SingleExp>>; Unused
+// using QuadExpComplex   = boost::multiprecision::complex_adaptor<QuadExp>; Unused
 
 namespace detail {
 
 template <typename T, typename = void>
-struct complex_value_type_impl {};
+struct ComplexValueTypeImpl {};
 
 template <typename T>
-struct complex_value_type_impl<T, std::void_t<typename T::value_type>> {
+struct ComplexValueTypeImpl<T, std::void_t<typename T::value_type>> {
     using type = typename T::value_type;
 };
 
 } // namespace detail
 
 template <typename T>
-struct complex_value_type : detail::complex_value_type_impl<T> {};
+struct ComplexValueType : detail::ComplexValueTypeImpl<T> {};
 
 template <typename T>
-using complex_value_type_t = typename complex_value_type<T>::type;
+using ComplexValueTypeT = typename ComplexValueType<T>::type;
 
 template <typename T>
 concept Complex = requires(T a, T b) {
@@ -50,18 +50,18 @@ concept Complex = requires(T a, T b) {
 };
 
 template <typename Real>
-auto to_real(const multi_float& val) -> Real {
-    using number_doubleexp = boost::multiprecision::number<doubleexp>;
-    if constexpr (std::is_same_v<Real, doubleexp>) {
-        if (val.is_zero()) return doubleexp{};
+auto to_real(const MultiFloat& val) -> Real {
+    using NumberDoubleExp = boost::multiprecision::number<DoubleExp>;
+    if constexpr (std::is_same_v<Real, DoubleExp>) {
+        if (val.is_zero()) return DoubleExp{};
         mpfr_exp_t e;
         double m = mpfr_get_d_2exp(&e, val.backend().data(), MPFR_RNDN);
-        doubleexp result;
+        DoubleExp result;
         result.mantissa = m;
         result.exponent = static_cast<int64_t>(e);
         return result;
-    } else if constexpr (std::is_same_v<Real, number_doubleexp>) {
-        return number_doubleexp{to_real<doubleexp>(val)};
+    } else if constexpr (std::is_same_v<Real, NumberDoubleExp>) {
+        return NumberDoubleExp{to_real<DoubleExp>(val)};
     } else {
         return static_cast<Real>(val);
     }
@@ -69,17 +69,17 @@ auto to_real(const multi_float& val) -> Real {
 
 template <typename Real, typename Number>
 auto to_real(const Number& val) -> Real {
-    using number_doubleexp = boost::multiprecision::number<doubleexp>;
-    if constexpr (std::is_same_v<Real, doubleexp> || std::is_same_v<Real, number_doubleexp>) {
-        return to_real<Real>(static_cast<multi_float>(val));
+    using NumberDoubleExp = boost::multiprecision::number<DoubleExp>;
+    if constexpr (std::is_same_v<Real, DoubleExp> || std::is_same_v<Real, NumberDoubleExp>) {
+        return to_real<Real>(static_cast<MultiFloat>(val));
     } else {
         return static_cast<Real>(val);
     }
 }
 
 template <Complex T>
-auto to_complex(multi_complex z) -> T {
-    using CT = complex_value_type_t<T>;
+auto to_complex(MultiComplex z) -> T {
+    using CT = ComplexValueTypeT<T>;
     return T{
         to_real<CT>(boost::multiprecision::real(z)),
         to_real<CT>(boost::multiprecision::imag(z))
@@ -87,7 +87,7 @@ auto to_complex(multi_complex z) -> T {
 }
 
 template <>
-inline auto to_complex<multi_complex>(multi_complex z) -> multi_complex {
+inline auto to_complex<MultiComplex>(MultiComplex z) -> MultiComplex {
     return z;
 }
 

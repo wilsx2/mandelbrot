@@ -14,7 +14,7 @@
 
 int main(int argc, char *argv[]) {
     wacfrac::logging::init();
-    wacfrac::logging::print(wacfrac::logging::severity::info, "Mandelbrot Set Plotter starting");
+    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Mandelbrot Set Plotter starting");
 
     // Parse arguments
     auto parser = argumentum::argument_parser{};
@@ -66,12 +66,12 @@ int main(int argc, char *argv[]) {
         std::exit(EXIT_FAILURE);
     }
 
-    wacfrac::logging::print(wacfrac::logging::severity::info, "Configuration: output={} dimensions={}x{} focus=({}, {}) zoom={} max_iterations={} precision={}", filepath, dimensions[0], dimensions[1], focus[0], focus[1], scale, max_iterations, precision);
+    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Configuration: output={} dimensions={}x{} focus=({}, {}) zoom={} max_iterations={} precision={}", filepath, dimensions[0], dimensions[1], focus[0], focus[1], scale, max_iterations, precision);
 
-    wacfrac::multi_float zoom_scale (scale, 1000);
+    wacfrac::MultiFloat zoom_scale (scale, 1000);
 
     // Plot and render
-    wacfrac::viewport view {
+    wacfrac::Viewport view {
         wacfrac::poi::BIG_BANG,
         {1.0, 1.0}
     };
@@ -85,44 +85,44 @@ int main(int argc, char *argv[]) {
     auto compute_precision = std::min<std::size_t>(precision, 256);
     auto ref_precision = std::max(compute_precision, std::min<std::size_t>(precision, 1000));
 
-    wacfrac::multi_float::default_precision(compute_precision);
-    wacfrac::multi_complex::default_precision(compute_precision);
+    wacfrac::MultiFloat::default_precision(compute_precision);
+    wacfrac::MultiComplex::default_precision(compute_precision);
 
     view.precision(ref_precision);
     zoom_scale.precision(compute_precision);
 
-    wacfrac::resolution res {dimensions[0], dimensions[1]};
+    wacfrac::Resolution res {dimensions[0], dimensions[1]};
 
-    wacfrac::logging::print(wacfrac::logging::severity::info, "Viewport: center=({}) dimensions=({})", view.center, view.dimensions);
-    wacfrac::logging::print(wacfrac::logging::severity::info, "Resolution: {}x{} ({} pixels)", res.width, res.height, res.area());
-    wacfrac::logging::print(wacfrac::logging::severity::info, "Using {} max iterations with {} decimal digits precision (compute={}, ref={})", max_iterations, precision, compute_precision, ref_precision);
+    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Viewport: center=({}) dimensions=({})", view.center, view.dimensions);
+    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Resolution: {}x{} ({} pixels)", res.width, res.height, res.area());
+    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Using {} max iterations with {} decimal digits precision (compute={}, ref={})", max_iterations, precision, compute_precision, ref_precision);
 
-    wacfrac::multi_complex c_ref = view.center;
+    wacfrac::MultiComplex c_ref = view.center;
 
-    wacfrac::multi_float::default_precision(ref_precision);
-    wacfrac::multi_complex::default_precision(ref_precision);
-    auto ref = wacfrac::compute_reference<wacfrac::doubleexp_complex>(c_ref, max_iterations, true);
-    wacfrac::multi_float::default_precision(compute_precision);
-    wacfrac::multi_complex::default_precision(compute_precision);
+    wacfrac::MultiFloat::default_precision(ref_precision);
+    wacfrac::MultiComplex::default_precision(ref_precision);
+    auto ref = wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations, true);
+    wacfrac::MultiFloat::default_precision(compute_precision);
+    wacfrac::MultiComplex::default_precision(compute_precision);
 
-    wacfrac::logging::print(wacfrac::logging::severity::info, "Reference at view center with orbit length {}", ref.size());
+    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Reference at view center with orbit length {}", ref.size());
 
     auto t_render = std::chrono::steady_clock::now();
 
-    std::vector<wacfrac::pixel> pixels(res.area());
+    std::vector<wacfrac::Pixel> pixels(res.area());
 
-    wacfrac::logging::print(wacfrac::logging::severity::info, "Rendering {} pixels (perturbed)...", res.area());
+    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Rendering {} pixels (perturbed)...", res.area());
     auto total_skipped = std::atomic<std::uint64_t>{0};
 
     auto last_level = static_cast<std::size_t>(std::log2(ref.size()));
     auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
 
-    auto max_dc = wacfrac::to_complex<wacfrac::doubleexp_complex>(view.compute_max_dc(c_ref));
-    auto probes = view.generate_probes<wacfrac::doubleexp_complex>(3, 3);
-    wacfrac::bivariate_linear_approximator<wacfrac::doubleexp_complex> bla {
+    auto max_dc = wacfrac::to_complex<wacfrac::DoubleExpComplex>(view.compute_max_dc(c_ref));
+    auto probes = view.generate_probes<wacfrac::DoubleExpComplex>(3, 3);
+    wacfrac::BivariateLinearApproximator<wacfrac::DoubleExpComplex> bla {
         1e-8, probes, max_dc, ref, first_level
     };
-    wacfrac::perturbed_render<wacfrac::doubleexp_complex>(
+    wacfrac::perturbed_render<wacfrac::DoubleExpComplex>(
         pixels, res, view,
         [&bla, &total_skipped](auto dc) {
             auto result = bla.escape_approximate(dc);
@@ -131,19 +131,19 @@ int main(int argc, char *argv[]) {
         },
         [max_iterations](std::size_t n) {
             return wacfrac::colorize_unescaped(
-                wacfrac::pixel{0,0,0},
-                std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ultra),
+                wacfrac::Pixel{0,0,0},
+                std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ULTRA),
                 max_iterations, n
             );
         },
         c_ref
     );
     auto avg_skipped = static_cast<double>(total_skipped) / res.area();
-    wacfrac::logging::print(wacfrac::logging::severity::info, "Perturbed render complete (avg skipped: {})", avg_skipped);
+    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Perturbed render complete (avg skipped: {})", avg_skipped);
 
     auto render_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t_render);
-    wacfrac::logging::print(wacfrac::logging::severity::info, "Render took {}ms", render_ms.count());
+    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Render took {}ms", render_ms.count());
 
     wacfrac::write_ppm(filepath, res, pixels);
 }

@@ -8,13 +8,13 @@
 
 namespace wacfrac::logging {
 
-enum class severity {
-    trace   = 0,
-    debug   = 1,
-    info    = 2,
-    warning = 3,
-    error   = 4,
-    fatal   = 5
+enum class Severity {
+    Trace   = 0,
+    Debug   = 1,
+    Info    = 2,
+    Warning = 3,
+    Error   = 4,
+    Fatal   = 5
 };
 
 void init();
@@ -40,8 +40,8 @@ void format_impl(std::ostringstream& oss, std::string_view fmt, T&& arg, Args&&.
 } // namespace detail
 
 template<typename... Args>
-inline void print(severity level, std::string_view fmt, Args&&... args) {
-    static boost::log::sources::severity_logger<severity> logger {};
+inline void print(Severity level, std::string_view fmt, Args&&... args) {
+    static boost::log::sources::severity_logger<Severity> logger {};
     static const char* strings[] = {
         "trace", "debug", "info", "warning", "error", "fatal"
     };

@@ -7,16 +7,16 @@
 namespace wacfrac {
 
 template <Complex T = std::complex<long double>>
-class series_approximator {
+class SeriesApproximator {
     public:
-    series_approximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, std::size_t n);
-    series_approximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, const std::vector<T>& probes, double validity_threshold = 1e-6);
+    SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, std::size_t n);
+    SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, const std::vector<T>& probes, double validity_threshold = 1e-6);
     auto approximate_escape(T dc) const -> std::pair<T, std::size_t>;
     auto approximate_delta_n(T delta_0) const -> T;
     auto n() const -> std::size_t;
 
     private:
-    series_approximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count);
+    SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count);
     void resize(std::size_t coefficient_count);
     void compute_coeffs(std::size_t n);
     void compute_coeffs_while_valid(const std::vector<T>& deltas, double threshold = 1e-6);

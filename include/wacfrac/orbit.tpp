@@ -48,20 +48,20 @@ auto escape_perturbed(const std::vector<T>& ref, T dc, std::size_t max_n, T dz, 
 }
 
 template <Complex T>
-auto compute_reference(multi_complex c, std::size_t max_n, bool do_escape) -> std::vector<T> {
-    logging::print(logging::severity::debug, "Computing reference orbit at ({}) max_n={} do_escape={}", c, max_n, do_escape);
+auto compute_reference(MultiComplex c, std::size_t max_n, bool do_escape) -> std::vector<T> {
+    logging::print(logging::Severity::Debug, "Computing reference orbit at ({}) max_n={} do_escape={}", c, max_n, do_escape);
 
     std::vector<T> reference;
     reference.reserve(max_n);
-    reference.emplace_back(to_complex<T>(multi_complex{0.0, 0.0}));
+    reference.emplace_back(to_complex<T>(MultiComplex{0.0, 0.0}));
 
-    multi_complex z{0.0, 0.0};
+    MultiComplex z{0.0, 0.0};
     for (auto n{0uz}; n < max_n - 1 && (!do_escape || !escaped(z)); ++n) {
         z = z * z + c;
         reference.emplace_back(to_complex<T>(z));
     }
 
-    logging::print(logging::severity::debug, "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
+    logging::print(logging::Severity::Debug, "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
     return reference;
 }
 

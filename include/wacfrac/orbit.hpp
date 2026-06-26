@@ -57,6 +57,6 @@ template <Complex T = std::complex<long double>>
 auto escape_perturbed(const std::vector<T>& ref, T dc, std::size_t max_n, T dz = {0.0, 0.0}, std::size_t n = 0) -> std::pair<T, std::size_t>;
 
 template <Complex T = std::complex<long double>>
-auto compute_reference(multi_complex c, std::size_t max_n, bool do_escape = true) -> std::vector<T>;
+auto compute_reference(MultiComplex c, std::size_t max_n, bool do_escape = true) -> std::vector<T>;
 
 }   // namespace wacfrac

@@ -16,13 +16,13 @@ static void compute_next_z(benchmark::State& state) {
 BENCHMARK_TEMPLATE(compute_next_z, std::complex<float>);
 BENCHMARK_TEMPLATE(compute_next_z, std::complex<double>);
 BENCHMARK_TEMPLATE(compute_next_z, std::complex<long double>);
-BENCHMARK_TEMPLATE(compute_next_z, wacfrac::doubleexp_complex);
+BENCHMARK_TEMPLATE(compute_next_z, wacfrac::DoubleExpComplex);
 BENCHMARK_TEMPLATE(compute_next_z, mpc_complex_100);
 BENCHMARK_TEMPLATE(compute_next_z, mpc_complex_1000);
 
 template<wacfrac::Complex T>
 static void compute_reference(benchmark::State& state) {
-    auto scale {boost::multiprecision::pow(wacfrac::multi_float(10.0),-state.range(0))};
+    auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
     auto c {wacfrac::poi::BIG_BANG};
     c.precision(wacfrac::required_precision(scale));
     for (auto _ : state) {
@@ -32,7 +32,7 @@ static void compute_reference(benchmark::State& state) {
 }
 BENCHMARK_TEMPLATE(compute_reference, std::complex<double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(compute_reference, std::complex<long double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(compute_reference, wacfrac::doubleexp_complex)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference, wacfrac::DoubleExpComplex)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 
 static void colorize_looped_bench(benchmark::State& state) {
     for (auto _ : state) {
@@ -46,7 +46,7 @@ static void colorize_looped_bench(benchmark::State& state) {
 BENCHMARK(colorize_looped_bench);
 
 static void colorize_continuous_bench(benchmark::State& state) {
-    auto lookup = [](std::size_t n) -> wacfrac::pixel {
+    auto lookup = [](std::size_t n) -> wacfrac::Pixel {
         return wacfrac::colorize_looped({{0,0,0},{255,255,255}}, n);
     };
     for (auto _ : state) {
@@ -59,7 +59,7 @@ static void colorize_continuous_bench(benchmark::State& state) {
 BENCHMARK(colorize_continuous_bench);
 
 static void find_periods(benchmark::State& state) {
-    auto scale {boost::multiprecision::pow(wacfrac::multi_float(10.0),-state.range(0))};
+    auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
     auto c {wacfrac::poi::BIG_BANG};
     c.precision(wacfrac::required_precision(scale));
     for (auto _ : state) {
@@ -85,7 +85,7 @@ constexpr unsigned long long get_fibonacci(size_t n) {
 }
 
 static void find_nucleus(benchmark::State& state) {
-    auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::multi_float(10.0),state.range(0)));
+    auto view = wacfrac::Viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::MultiFloat(10.0),state.range(0)));
     view.precision(view.required_precision());
     for (auto _ : state) {
         auto nucleus {wacfrac::find_nucleus(view.center, state.range(1), view.required_iterations())};
@@ -104,13 +104,13 @@ BENCHMARK(find_nucleus)->ArgsProduct({
 
 template <wacfrac::Complex T>
 static void compute_sa_coefficients(benchmark::State& state) {
-    auto view = wacfrac::viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::multi_float(10.0),state.range(0)));
+    auto view = wacfrac::Viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(boost::multiprecision::pow(wacfrac::MultiFloat(10.0),state.range(0)));
     view.precision(view.required_precision());
     auto reference = wacfrac::compute_reference<T>(view.center, view.required_iterations());
     
     for (auto _ : state) {
         auto probes = view.generate_probes<T>(state.range(2), state.range(2));
-        wacfrac::series_approximator<T> sa {
+        wacfrac::SeriesApproximator<T> sa {
             reference,
             static_cast<std::size_t>(state.range(1)),
             probes,
@@ -131,7 +131,7 @@ BENCHMARK_TEMPLATE(compute_sa_coefficients, std::complex<long double>)->ArgsProd
     {1, 2, 4, 8}, // Probe Rows/Cols
     {1, 2, 4, 8}, // Tolerance Negative Exponent
 });
-BENCHMARK_TEMPLATE(compute_sa_coefficients, wacfrac::doubleexp_complex)->ArgsProduct({
+BENCHMARK_TEMPLATE(compute_sa_coefficients, wacfrac::DoubleExpComplex)->ArgsProduct({
     {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048}, // Zoom Factor Exponent
     {1, 2, 4, 8, 16, 32, 64}, // Num Coeffs
     {1, 2, 4, 8}, // Probe Rows/Cols

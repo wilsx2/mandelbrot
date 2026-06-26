@@ -6,8 +6,8 @@
 namespace wacfrac {
 
 template<Complex T>
-auto viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<T> {
-    using CT = complex_value_type_t<T>;
+auto Viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<T> {
+    using CT = ComplexValueTypeT<T>;
     std::vector<T> probes;
     T dimensions_t {
         static_cast<CT>(dimensions.real()),
@@ -39,13 +39,13 @@ auto viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std:
 
 // https://philthompson.me/2023/Faster-Mandelbrot-Set-Rendering-with-BLA-Bivariate-Linear-Approximation.html
 template<Complex T>
-auto viewport::find_periodic_reference(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<multi_complex, std::vector<T>> {
+auto Viewport::find_periodic_reference(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<T>> {
     auto half_dx = dimensions.real() / 2.0;
     auto half_dy = dimensions.imag() / 2.0;
-    logging::print(logging::severity::info, "Searching for periodic reference (max_n={}, period_iter={}, nucleus_iter={})", max_n, find_period_iter, find_nucleus_iter);
+    logging::print(logging::Severity::Info, "Searching for periodic reference (max_n={}, period_iter={}, nucleus_iter={})", max_n, find_period_iter, find_nucleus_iter);
     auto periods = find_period_ball(center, half_dx, half_dy, find_period_iter, true);
     auto view_period = periods.empty() ? 1uz : periods.front();
-    logging::print(logging::severity::info, "View period={} ({} candidates)", view_period, periods.size());
+    logging::print(logging::Severity::Info, "View period={} ({} candidates)", view_period, periods.size());
 
     // Find first non-degenerate reference
     auto c_ref {find_nucleus(center, view_period, find_nucleus_iter)};
@@ -53,11 +53,11 @@ auto viewport::find_periodic_reference(std::size_t max_n, std::size_t find_perio
 
     for (auto p : periods) {
         if (p == view_period) continue;
-        logging::print(logging::severity::debug, "Trying period {} for non-degenerate reference", p);
+        logging::print(logging::Severity::Debug, "Trying period {} for non-degenerate reference", p);
         c_ref = find_nucleus(center, p, find_nucleus_iter);
         reference = compute_reference<T>(c_ref, max_n, false);
         if (!is_reference_degenerate(reference)) {
-            logging::print(logging::severity::debug, "Found non-degenerate reference at period {}", p);
+            logging::print(logging::Severity::Debug, "Found non-degenerate reference at period {}", p);
             view_period = p;
             break;
         }
@@ -66,7 +66,7 @@ auto viewport::find_periodic_reference(std::size_t max_n, std::size_t find_perio
     // Fallback to center if none found
     auto degenerate = is_reference_degenerate(reference); 
     if (reference.empty() || degenerate) {
-        logging::print(logging::severity::warning, "No suitable periodic reference found, falling back to view center");
+        logging::print(logging::Severity::Warning, "No suitable periodic reference found, falling back to view center");
         c_ref = center;
         reference = compute_reference<T>(c_ref, max_n, false);
     }

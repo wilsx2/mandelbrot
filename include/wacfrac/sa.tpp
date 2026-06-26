@@ -7,7 +7,7 @@
 namespace wacfrac {
 
 template <Complex T>
-series_approximator<T>::series_approximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count)
+SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count)
     : _reference_orbit(reference_orbit)
     , _curr_coeffs(coefficient_count, T{0.0, 0.0})
     , _next_coeffs(coefficient_count)
@@ -17,31 +17,31 @@ series_approximator<T>::series_approximator(const std::vector<T>& reference_orbi
         _curr_coeffs[0] = T{1.0, 0.0};
 }
 template <Complex T>
-series_approximator<T>::series_approximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, std::size_t n)
-    : series_approximator(reference_orbit, coefficient_count)
+SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, std::size_t n)
+    : SeriesApproximator(reference_orbit, coefficient_count)
 {
-    logging::print(logging::severity::debug, "Computing SA coefficients: count={} n={} ref.size={}", coefficient_count, n, reference_orbit.size());
+    logging::print(logging::Severity::Debug, "Computing SA coefficients: count={} n={} ref.size={}", coefficient_count, n, reference_orbit.size());
     compute_coeffs(n);
-    logging::print(logging::severity::debug, "SA computed: {} steps, {} coefficients", _n, _curr_coeffs.size());
+    logging::print(logging::Severity::Debug, "SA computed: {} steps, {} coefficients", _n, _curr_coeffs.size());
 }
 
 template <Complex T>
-series_approximator<T>::series_approximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, const std::vector<T>& probes, double validity_threshold)
-    : series_approximator(reference_orbit, coefficient_count)
+SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, const std::vector<T>& probes, double validity_threshold)
+    : SeriesApproximator(reference_orbit, coefficient_count)
 {
-    logging::print(logging::severity::debug, "Computing SA coefficients (validity-driven): count={} threshold={} probes={}", coefficient_count, validity_threshold, probes.size());
+    logging::print(logging::Severity::Debug, "Computing SA coefficients (validity-driven): count={} threshold={} probes={}", coefficient_count, validity_threshold, probes.size());
     compute_coeffs_while_valid(probes, validity_threshold);
-    logging::print(logging::severity::debug, "SA computed: {} steps, {} coefficients", _n, _curr_coeffs.size());
+    logging::print(logging::Severity::Debug, "SA computed: {} steps, {} coefficients", _n, _curr_coeffs.size());
 }
 
 template <Complex T>
-auto series_approximator<T>::approximate_escape(T dc) const -> std::pair<T, std::size_t> {
+auto SeriesApproximator<T>::approximate_escape(T dc) const -> std::pair<T, std::size_t> {
     auto dz = this->approximate_delta_n(dc);
     return escape_perturbed<T>(_reference_orbit, dc, _reference_orbit.size(), dz, _n);
 }
 
 template <Complex T>
-void series_approximator<T>::resize(std::size_t coefficient_count) {
+void SeriesApproximator<T>::resize(std::size_t coefficient_count) {
     _n = 1;
     _curr_coeffs.resize(coefficient_count);
     _next_coeffs.resize(coefficient_count);
@@ -52,7 +52,7 @@ void series_approximator<T>::resize(std::size_t coefficient_count) {
 }
 
 template <Complex T>
-void series_approximator<T>::compute_next_coeffs() {
+void SeriesApproximator<T>::compute_next_coeffs() {
     for (auto&& c : std::views::iota(0uz, _next_coeffs.size())) {
         _next_coeffs[c] = T{2.0, 0.0} * _reference_orbit[_n] * _curr_coeffs[c];
         if (c == 0) {
@@ -67,7 +67,7 @@ void series_approximator<T>::compute_next_coeffs() {
 }
 
 template <Complex T>
-void series_approximator<T>::compute_coeffs(std::size_t n) {
+void SeriesApproximator<T>::compute_coeffs(std::size_t n) {
     for (auto i {0uz}; i < n && _n < _reference_orbit.size(); ++i) {
         compute_next_coeffs();
         std::swap(_curr_coeffs, _next_coeffs);
@@ -76,7 +76,7 @@ void series_approximator<T>::compute_coeffs(std::size_t n) {
 }
 
 template <Complex T>
-void series_approximator<T>::compute_coeffs_while_valid(const std::vector<T>& deltas, double threshold) {
+void SeriesApproximator<T>::compute_coeffs_while_valid(const std::vector<T>& deltas, double threshold) {
     while (_n < _reference_orbit.size()) {
         compute_next_coeffs();
         std::swap(_curr_coeffs, _next_coeffs);
@@ -99,7 +99,7 @@ void series_approximator<T>::compute_coeffs_while_valid(const std::vector<T>& de
 }
 
 template <Complex T>
-auto series_approximator<T>::approximate_delta_n(T delta_0) const -> T {
+auto SeriesApproximator<T>::approximate_delta_n(T delta_0) const -> T {
     T z_n {0.0, 0.0};
     T c_pow {1.0, 0.0};
     for (auto& coeff : _curr_coeffs) {
@@ -110,7 +110,7 @@ auto series_approximator<T>::approximate_delta_n(T delta_0) const -> T {
 }
 
 template <Complex T>
-auto series_approximator<T>::is_valid(T delta_0, double threshold) const -> bool {
+auto SeriesApproximator<T>::is_valid(T delta_0, double threshold) const -> bool {
     T c_pow {1.0, 0.0};
     T prev_term {0.0, 0.0};
     for (std::size_t i = 0; i < _curr_coeffs.size(); ++i) {
@@ -118,7 +118,7 @@ auto series_approximator<T>::is_valid(T delta_0, double threshold) const -> bool
         T term = _curr_coeffs[i] * c_pow;
         if (i > 0) {
             using std::abs;
-            if (abs(term) > static_cast<complex_value_type_t<T>>(threshold) * abs(prev_term))
+            if (abs(term) > static_cast<ComplexValueTypeT<T>>(threshold) * abs(prev_term))
                 return false;
         }
         prev_term = term;
@@ -127,7 +127,7 @@ auto series_approximator<T>::is_valid(T delta_0, double threshold) const -> bool
 }
 
 template <Complex T>
-auto series_approximator<T>::n() const -> std::size_t {
+auto SeriesApproximator<T>::n() const -> std::size_t {
     return _n;
 }
 

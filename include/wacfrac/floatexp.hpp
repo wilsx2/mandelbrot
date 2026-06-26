@@ -19,7 +19,7 @@
 namespace wacfrac {
 
 template<std::floating_point M, std::integral E>
-struct floatexp {
+struct FloatExp {
     using signed_types = std::tuple<std::int8_t, std::int16_t, std::int32_t, std::int64_t, std::intmax_t>;
     using unsigned_types = std::tuple<std::uint8_t, std::uint16_t, std::uint32_t, std::uint64_t, std::uintmax_t>;
     using float_types = std::tuple<float, double, long double>;
@@ -28,37 +28,37 @@ struct floatexp {
     M mantissa;
     E exponent;
 
-    floatexp() : mantissa(0), exponent(0) {}
-    floatexp(const floatexp&) = default;
-    floatexp& operator=(const floatexp&) = default;
+    FloatExp() : mantissa(0), exponent(0) {}
+    FloatExp(const FloatExp&) = default;
+    FloatExp& operator=(const FloatExp&) = default;
 
-    floatexp(float a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(double a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(long double a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(std::int8_t a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(std::int16_t a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(std::int32_t a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(std::int64_t a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(std::uint8_t a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(std::uint16_t a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(std::uint32_t a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(std::uint64_t a) : mantissa(0), exponent(0) { *this = a; }
-    floatexp(const char* s) : mantissa(0), exponent(0) { *this = s; }
+    FloatExp(float a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(double a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(long double a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(std::int8_t a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(std::int16_t a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(std::int32_t a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(std::int64_t a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(std::uint8_t a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(std::uint16_t a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(std::uint32_t a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(std::uint64_t a) : mantissa(0), exponent(0) { *this = a; }
+    FloatExp(const char* s) : mantissa(0), exponent(0) { *this = s; }
 
-    floatexp& operator=(float a);
-    floatexp& operator=(double a);
-    floatexp& operator=(long double a);
-    floatexp& operator=(std::int8_t a);
-    floatexp& operator=(std::int16_t a);
-    floatexp& operator=(std::int32_t a);
-    floatexp& operator=(std::int64_t a);
-    floatexp& operator=(std::uint8_t a);
-    floatexp& operator=(std::uint16_t a);
-    floatexp& operator=(std::uint32_t a);
-    floatexp& operator=(std::uint64_t a);
-    floatexp& operator=(const char* s);
+    FloatExp& operator=(float a);
+    FloatExp& operator=(double a);
+    FloatExp& operator=(long double a);
+    FloatExp& operator=(std::int8_t a);
+    FloatExp& operator=(std::int16_t a);
+    FloatExp& operator=(std::int32_t a);
+    FloatExp& operator=(std::int64_t a);
+    FloatExp& operator=(std::uint8_t a);
+    FloatExp& operator=(std::uint16_t a);
+    FloatExp& operator=(std::uint32_t a);
+    FloatExp& operator=(std::uint64_t a);
+    FloatExp& operator=(const char* s);
 
-    int compare(const floatexp& other) const noexcept;
+    int compare(const FloatExp& other) const noexcept;
 
     int compare(float a) const;
     int compare(double a) const;
@@ -72,22 +72,22 @@ struct floatexp {
     int compare(std::uint32_t a) const;
     int compare(std::uint64_t a) const;
 
-    void swap(floatexp& other) noexcept;
+    void swap(FloatExp& other) noexcept;
     std::string str(std::streamsize ss, std::ios_base::fmtflags ff) const;
     void negate();
 
 
-    floatexp& operator+=(const floatexp& o);
-    floatexp& operator-=(const floatexp& o);
-    floatexp& operator*=(const floatexp& o);
-    floatexp& operator/=(const floatexp& o);
+    FloatExp& operator+=(const FloatExp& o);
+    FloatExp& operator-=(const FloatExp& o);
+    FloatExp& operator*=(const FloatExp& o);
+    FloatExp& operator/=(const FloatExp& o);
 
-    floatexp& operator++();
-    floatexp operator++(int);
-    floatexp& operator--();
-    floatexp operator--(int);
+    FloatExp& operator++();
+    FloatExp operator++(int);
+    FloatExp& operator--();
+    FloatExp operator--(int);
 
-    floatexp operator-() const;
+    FloatExp operator-() const;
 };
 
 // Implementation helpers
@@ -95,7 +95,7 @@ struct floatexp {
 namespace detail {
 
 template<std::floating_point M, std::integral E>
-void normalize(floatexp<M, E>& x) {
+void normalize(FloatExp<M, E>& x) {
     if (x.mantissa == 0) {
         x.exponent = 0;
         return;
@@ -124,8 +124,8 @@ void normalize(floatexp<M, E>& x) {
 
 #define X(T)                                            \
     template<std::floating_point M, std::integral E>              \
-    inline floatexp<M, E>&                               \
-    floatexp<M, E>::operator=(T a) {                     \
+    inline FloatExp<M, E>&                               \
+    FloatExp<M, E>::operator=(T a) {                     \
         if (a == 0) { mantissa = 0; exponent = 0; return *this; } \
         int e;                                                    \
         mantissa = std::frexp(static_cast<M>(a), &e);             \
@@ -138,7 +138,7 @@ APPLY_X_TO_TYPES
 // Comparison
 
 template<std::floating_point M, std::integral E>
-inline int floatexp<M, E>::compare(const floatexp& o) const noexcept {
+inline int FloatExp<M, E>::compare(const FloatExp& o) const noexcept {
     // Zero cases
     if (mantissa == 0 && o.mantissa == 0) return 0;
     if (mantissa == 0) return o.mantissa > 0 ? -1 : 1;
@@ -171,8 +171,8 @@ inline int floatexp<M, E>::compare(const floatexp& o) const noexcept {
 
 #define X(T) \
     template<std::floating_point M, std::integral E> \
-    inline int floatexp<M, E>::compare(T a) const { \
-        floatexp t; \
+    inline int FloatExp<M, E>::compare(T a) const { \
+        FloatExp t; \
         t.mantissa = 0; t.exponent = 0; \
         if (a != 0) { int e; t.mantissa = std::frexp(static_cast<M>(a), &e); t.exponent = e; } \
         return compare(t);                                                       \
@@ -184,8 +184,8 @@ APPLY_X_TO_TYPES
 // String assignment
 
 template<std::floating_point M, std::integral E>
-inline floatexp<M, E>&
-floatexp<M, E>::operator=(const char* s) {
+inline FloatExp<M, E>&
+FloatExp<M, E>::operator=(const char* s) {
     char* end;
     long double val = std::strtold(s, &end);
     if (end == s) throw std::runtime_error("Invalid number string");
@@ -196,13 +196,13 @@ floatexp<M, E>::operator=(const char* s) {
 // swap / str / negate
 
 template<std::floating_point M, std::integral E>
-inline void floatexp<M, E>::swap(floatexp& other) noexcept {
+inline void FloatExp<M, E>::swap(FloatExp& other) noexcept {
     std::swap(mantissa, other.mantissa);
     std::swap(exponent, other.exponent);
 }
 
 template<std::floating_point M, std::integral E>
-inline std::string floatexp<M, E>::str(std::streamsize ss, std::ios_base::fmtflags ff) const {
+inline std::string FloatExp<M, E>::str(std::streamsize ss, std::ios_base::fmtflags ff) const {
     long double v = static_cast<long double>(mantissa);
     if (exponent >= std::numeric_limits<int>::min() && exponent <= std::numeric_limits<int>::max())
         v = std::ldexp(v, static_cast<int>(exponent));
@@ -219,15 +219,15 @@ inline std::string floatexp<M, E>::str(std::streamsize ss, std::ios_base::fmtfla
 }
 
 template<std::floating_point M, std::integral E>
-inline void floatexp<M, E>::negate() {
+inline void FloatExp<M, E>::negate() {
     mantissa = -mantissa;
 }
 
 // Compound assignment
 
 template<std::floating_point M, std::integral E>
-inline floatexp<M, E>&
-floatexp<M, E>::operator+=(const floatexp& o) {
+inline FloatExp<M, E>&
+FloatExp<M, E>::operator+=(const FloatExp& o) {
     if (o.mantissa == 0) return *this;
     if (mantissa == 0) { mantissa = o.mantissa; exponent = o.exponent; return *this; }
 
@@ -249,17 +249,17 @@ floatexp<M, E>::operator+=(const floatexp& o) {
 }
 
 template<std::floating_point M, std::integral E>
-inline floatexp<M, E>&
-floatexp<M, E>::operator-=(const floatexp& o) {
+inline FloatExp<M, E>&
+FloatExp<M, E>::operator-=(const FloatExp& o) {
     if (o.mantissa == 0) return *this;
-    floatexp neg = o;
+    FloatExp neg = o;
     neg.negate();
     return *this += neg;
 }
 
 template<std::floating_point M, std::integral E>
-inline floatexp<M, E>&
-floatexp<M, E>::operator*=(const floatexp& o) {
+inline FloatExp<M, E>&
+FloatExp<M, E>::operator*=(const FloatExp& o) {
     if (mantissa == 0) return *this;
     if (o.mantissa == 0) { mantissa = 0; exponent = 0; return *this; }
     mantissa *= o.mantissa;
@@ -269,8 +269,8 @@ floatexp<M, E>::operator*=(const floatexp& o) {
 }
 
 template<std::floating_point M, std::integral E>
-inline floatexp<M, E>&
-floatexp<M, E>::operator/=(const floatexp& o) {
+inline FloatExp<M, E>&
+FloatExp<M, E>::operator/=(const FloatExp& o) {
     if (o.mantissa == 0) throw std::overflow_error("Division by zero");
     if (mantissa == 0) return *this;
     mantissa /= o.mantissa;
@@ -281,40 +281,40 @@ floatexp<M, E>::operator/=(const floatexp& o) {
 
 //  Increment / Decrement
 template<std::floating_point M, std::integral E>
-inline floatexp<M, E>&
-floatexp<M, E>::operator++() {
-    *this += floatexp(1.0L);
+inline FloatExp<M, E>&
+FloatExp<M, E>::operator++() {
+    *this += FloatExp(1.0L);
     return *this;
 }
 
 template<std::floating_point M, std::integral E>
-inline floatexp<M, E>
-floatexp<M, E>::operator++(int) {
-    floatexp tmp(*this);
+inline FloatExp<M, E>
+FloatExp<M, E>::operator++(int) {
+    FloatExp tmp(*this);
     ++*this;
     return tmp;
 }
 
 template<std::floating_point M, std::integral E>
-inline floatexp<M, E>&
-floatexp<M, E>::operator--() {
-    *this -= floatexp(1.0L);
+inline FloatExp<M, E>&
+FloatExp<M, E>::operator--() {
+    *this -= FloatExp(1.0L);
     return *this;
 }
 
 template<std::floating_point M, std::integral E>
-inline floatexp<M, E>
-floatexp<M, E>::operator--(int) {
-    floatexp tmp(*this);
+inline FloatExp<M, E>
+FloatExp<M, E>::operator--(int) {
+    FloatExp tmp(*this);
     --*this;
     return tmp;
 }
 
 // Unary minus
 template<std::floating_point M, std::integral E>
-inline floatexp<M, E>
-floatexp<M, E>::operator-() const {
-    floatexp r(*this);
+inline FloatExp<M, E>
+FloatExp<M, E>::operator-() const {
+    FloatExp r(*this);
     r.negate();
     return r;
 }
@@ -330,37 +330,37 @@ namespace wacfrac {
 
 // 2-arg
 template<std::floating_point M, std::integral E>
-inline void eval_add(floatexp<M, E>& b, const floatexp<M, E>& cb) {
+inline void eval_add(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
     b += cb;
 }
 template<std::floating_point M, std::integral E>
-inline void eval_subtract(floatexp<M, E>& b, const floatexp<M, E>& cb) {
+inline void eval_subtract(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
     b -= cb;
 }
 template<std::floating_point M, std::integral E>
-inline void eval_multiply(floatexp<M, E>& b, const floatexp<M, E>& cb) {
+inline void eval_multiply(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
     b *= cb;
 }
 template<std::floating_point M, std::integral E>
-inline void eval_divide(floatexp<M, E>& b, const floatexp<M, E>& cb) {
+inline void eval_divide(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
     b /= cb;
 }
 
 // 3-arg: result = a op b
 template<std::floating_point M, std::integral E>
-inline void eval_add(floatexp<M, E>& result, const floatexp<M, E>& a, const floatexp<M, E>& b) {
+inline void eval_add(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) {
     result = a; eval_add(result, b);
 }
 template<std::floating_point M, std::integral E>
-inline void eval_subtract(floatexp<M, E>& result, const floatexp<M, E>& a, const floatexp<M, E>& b) {
+inline void eval_subtract(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) {
     result = a; eval_subtract(result, b);
 }
 template<std::floating_point M, std::integral E>
-inline void eval_multiply(floatexp<M, E>& result, const floatexp<M, E>& a, const floatexp<M, E>& b) {
+inline void eval_multiply(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) {
     result = a; eval_multiply(result, b);
 }
 template<std::floating_point M, std::integral E>
-inline void eval_divide(floatexp<M, E>& result, const floatexp<M, E>& a, const floatexp<M, E>& b) {
+inline void eval_divide(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) {
     result = a; eval_divide(result, b);
 }
 
@@ -369,7 +369,7 @@ inline void eval_divide(floatexp<M, E>& result, const floatexp<M, E>& a, const f
 namespace detail {
 
 template<std::floating_point M, std::integral E, typename T>
-void convert_to_impl(T* pa, const floatexp<M, E>& cb) {
+void convert_to_impl(T* pa, const FloatExp<M, E>& cb) {
     T r = static_cast<T>(cb.mantissa);
     E e = cb.exponent;
     while (e > 0) {
@@ -388,12 +388,12 @@ void convert_to_impl(T* pa, const floatexp<M, E>& cb) {
 } // namespace detail
 
 template<std::floating_point M, std::integral E, std::floating_point T>
-inline void eval_convert_to(T* pa, const floatexp<M, E>& cb) {
+inline void eval_convert_to(T* pa, const FloatExp<M, E>& cb) {
     detail::convert_to_impl(pa, cb);
 }
 
 template<std::floating_point M, std::integral E, std::integral T>
-inline void eval_convert_to(T* pa, const floatexp<M, E>& cb) {
+inline void eval_convert_to(T* pa, const FloatExp<M, E>& cb) {
     long double tmp;
     detail::convert_to_impl(&tmp, cb);
     *pa = static_cast<T>(tmp);
@@ -401,7 +401,7 @@ inline void eval_convert_to(T* pa, const floatexp<M, E>& cb) {
 
 // Frexp
 template<std::floating_point M, std::integral E>
-inline void eval_frexp(floatexp<M, E>& b, const floatexp<M, E>& cb, E* pexp) {
+inline void eval_frexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, E* pexp) {
     if (cb.mantissa == 0) {
         b.mantissa = 0;
         b.exponent = 0;
@@ -415,7 +415,7 @@ inline void eval_frexp(floatexp<M, E>& b, const floatexp<M, E>& cb, E* pexp) {
 }
 
 template<std::floating_point M, std::integral E>
-inline void eval_frexp(floatexp<M, E>& b, const floatexp<M, E>& cb, int* pi) {
+inline void eval_frexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, int* pi) {
     if (cb.mantissa == 0) {
         b.mantissa = 0;
         b.exponent = 0;
@@ -433,20 +433,20 @@ inline void eval_frexp(floatexp<M, E>& b, const floatexp<M, E>& cb, int* pi) {
 
 // Ldexp
 template<std::floating_point M, std::integral E>
-inline void eval_ldexp(floatexp<M, E>& b, const floatexp<M, E>& cb, E exp) {
+inline void eval_ldexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, E exp) {
     b = cb;
     b.exponent += exp;
 }
 
 template<std::floating_point M, std::integral E>
-inline void eval_ldexp(floatexp<M, E>& b, const floatexp<M, E>& cb, int i) {
+inline void eval_ldexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, int i) {
     b = cb;
     b.exponent += i;
 }
 
 // Floor
 template<std::floating_point M, std::integral E>
-inline void eval_floor(floatexp<M, E>& b, const floatexp<M, E>& cb) {
+inline void eval_floor(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
     if (cb.mantissa == 0) { b.mantissa = 0; b.exponent = 0; return; }
     long double v;
     eval_convert_to(&v, cb);
@@ -456,7 +456,7 @@ inline void eval_floor(floatexp<M, E>& b, const floatexp<M, E>& cb) {
 
 // Ceil
 template<std::floating_point M, std::integral E>
-inline void eval_ceil(floatexp<M, E>& b, const floatexp<M, E>& cb) {
+inline void eval_ceil(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
     if (cb.mantissa == 0) { b.mantissa = 0; b.exponent = 0; return; }
     long double v;
     eval_convert_to(&v, cb);
@@ -466,7 +466,7 @@ inline void eval_ceil(floatexp<M, E>& b, const floatexp<M, E>& cb) {
 
 // Sqrt
 template<std::floating_point M, std::integral E>
-inline void eval_sqrt(floatexp<M, E>& b, const floatexp<M, E>& cb) {
+inline void eval_sqrt(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
     if (cb.mantissa < 0) throw std::domain_error("sqrt of negative number");
     if (cb.mantissa == 0) { b.mantissa = 0; b.exponent = 0; return; }
 
@@ -483,7 +483,7 @@ inline void eval_sqrt(floatexp<M, E>& b, const floatexp<M, E>& cb) {
 
 // Log10
 template<std::floating_point M, std::integral E>
-inline void eval_log10(floatexp<M, E>& b, const floatexp<M, E>& cb) {
+inline void eval_log10(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
     if (cb.mantissa == M(0)) {
         throw std::overflow_error("log10 of zero");
     }
@@ -499,29 +499,29 @@ inline void eval_log10(floatexp<M, E>& b, const floatexp<M, E>& cb) {
 // Classification / sign / abs
 
 template<std::floating_point M, std::integral E>
-inline bool eval_is_zero(const floatexp<M, E>& x) {
+inline bool eval_is_zero(const FloatExp<M, E>& x) {
     return x.mantissa == M(0);
 }
 
 template<std::floating_point M, std::integral E>
-inline int eval_get_sign(const floatexp<M, E>& x) {
+inline int eval_get_sign(const FloatExp<M, E>& x) {
     return (x.mantissa > M(0)) - (x.mantissa < M(0));
 }
 
 template<std::floating_point M, std::integral E>
-inline void eval_fabs(floatexp<M, E>& result, const floatexp<M, E>& x) {
+inline void eval_fabs(FloatExp<M, E>& result, const FloatExp<M, E>& x) {
     result = x;
     if (result.mantissa < M(0))
         result.mantissa = -result.mantissa;
 }
 
 template<std::floating_point M, std::integral E>
-inline int eval_signbit(const floatexp<M, E>& x) {
+inline int eval_signbit(const FloatExp<M, E>& x) {
     return std::signbit(x.mantissa);
 }
 
 template<std::floating_point M, std::integral E>
-inline int eval_fpclassify(const floatexp<M, E>& x) {
+inline int eval_fpclassify(const FloatExp<M, E>& x) {
     if (x.mantissa == M(0))
         return FP_ZERO;
     if (std::isnan(x.mantissa))
@@ -540,9 +540,9 @@ inline int eval_fpclassify(const floatexp<M, E>& x) {
 
 #define X(OP) \
     template<std::floating_point M, std::integral E> \
-    inline floatexp<M, E> \
-    operator OP (const floatexp<M, E>& a, const floatexp<M, E>& b) { \
-        floatexp<M, E> r(a); \
+    inline FloatExp<M, E> \
+    operator OP (const FloatExp<M, E>& a, const FloatExp<M, E>& b) { \
+        FloatExp<M, E> r(a); \
         r OP##= b; \
         return r; \
     }
@@ -562,7 +562,7 @@ APPLY_X_TO_OPS
 
 #define X(OP) \
     template<std::floating_point M, std::integral E> \
-    inline bool operator OP (const floatexp<M, E>& a, const floatexp<M, E>& b) { \
+    inline bool operator OP (const FloatExp<M, E>& a, const FloatExp<M, E>& b) { \
         return a.compare(b) OP 0; \
     }
 APPLY_X_TO_OPS
@@ -572,13 +572,13 @@ APPLY_X_TO_OPS
 // Stream operators
 
 template<std::floating_point M, std::integral E>
-inline std::ostream& operator<<(std::ostream& os, const floatexp<M, E>& v) {
+inline std::ostream& operator<<(std::ostream& os, const FloatExp<M, E>& v) {
     os << v.str(os.precision(), os.flags());
     return os;
 }
 
 template<std::floating_point M, std::integral E>
-inline std::istream& operator>>(std::istream& is, floatexp<M, E>& v) {
+inline std::istream& operator>>(std::istream& is, FloatExp<M, E>& v) {
     std::string s;
     is >> s;
     v = s.c_str();
@@ -594,7 +594,7 @@ template <class Backend>
 struct number_category;
 
 template<std::floating_point M, std::integral E>
-struct number_category<wacfrac::floatexp<M, E>>
+struct number_category<wacfrac::FloatExp<M, E>>
     : std::integral_constant<int, 1> {};
 
 } // namespace boost::multiprecision
@@ -602,9 +602,9 @@ struct number_category<wacfrac::floatexp<M, E>>
 namespace std {
 
 template <std::floating_point M, std::integral E, boost::multiprecision::expression_template_option ET>
-class numeric_limits<boost::multiprecision::number<wacfrac::floatexp<M, E>, ET>>
+class numeric_limits<boost::multiprecision::number<wacfrac::FloatExp<M, E>, ET>>
 {
-    using number_type = boost::multiprecision::number<wacfrac::floatexp<M, E>, ET>;
+    using number_type = boost::multiprecision::number<wacfrac::FloatExp<M, E>, ET>;
 
 public:
     static constexpr bool is_specialized = true;
@@ -650,8 +650,8 @@ namespace wacfrac {
 
 // Aliases
 
-using singleexp = floatexp<float, int64_t>;
-using doubleexp = floatexp<double, int64_t>;
-// using quadexp   = floatexp<long double, int64_t>; Unused
+using SingleExp = FloatExp<float, int64_t>;
+using DoubleExp = FloatExp<double, int64_t>;
+// using quadexp   = FloatExp<long double, int64_t>; Unused
 
 } // namespace wacfrac
