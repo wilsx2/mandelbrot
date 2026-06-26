@@ -16,6 +16,7 @@ void init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
+    do_log() = true;
 
     auto sink = boost::make_shared<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>>();
 

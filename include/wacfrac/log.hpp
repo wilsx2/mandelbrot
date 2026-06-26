@@ -3,10 +3,12 @@
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 
+#include <atomic>
 #include <string>
 #include <sstream>
 
 namespace wacfrac::logging {
+
 
 enum class Severity {
     Trace   = 0,
@@ -17,6 +19,10 @@ enum class Severity {
     Fatal   = 5
 };
 
+inline std::atomic<bool>& do_log() {
+    static std::atomic<bool> ENABLED {false};
+    return ENABLED;
+}
 void init();
 
 namespace detail {
@@ -41,6 +47,9 @@ void format_impl(std::ostringstream& oss, std::string_view fmt, T&& arg, Args&&.
 
 template<typename... Args>
 inline void print(Severity level, std::string_view fmt, Args&&... args) {
+    if (!do_log())
+        return;
+
     static boost::log::sources::severity_logger<Severity> logger {};
     static const char* strings[] = {
         "trace", "debug", "info", "warning", "error", "fatal"

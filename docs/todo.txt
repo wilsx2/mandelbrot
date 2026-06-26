@@ -11,6 +11,11 @@
     [X] Palette Application
     [X] LCH
     [X] Continuous
+[X] Refactoring
+    [X] Abandon unfortunate render_config system
+    [X] Colorize w/ special color for non-escaping
+    [X] CamelCase classes and UPPER_SNAKE_CASE constants
+    [X] print to log
 [X] Fast Math
     [X] Google Benchmark
     [X] Perturbation Theory
@@ -20,21 +25,20 @@
         [X] Class
         [X] Templatize perturbation type
     [ ] ? Use reference period to accelerate calculation (currently just adds computation time and does nothing)
-    [ ] ? Fix BLA epsilon search. It's cooked. Way too high.
-[X] Refactoring
-    [X] Abandon unfortunate render_config system
-    [X] Colorize w/ special color for non-escaping
-    [ ] CamelCase classes and UPPER_SNAKE_CASE constants
-    [X] print to log
+    [ ] ? Fix BLA epsilon search. It's cooked. Way too high. No range.
 [ ] Update benchmarks
     [X] All types
-    [ ] Full renders
-        [X] Period finding
-        [X] Nucleus finding
-        [X] Reference orbit
-        [ ] Coefficient calculation
-        [ ] Escape Time
-        [X] Colorization
+    [X] Period finding
+    [X] Nucleus finding
+    [X] Reference orbit
+    [ ] Coefficient calculation
+        [X] SA
+        [ ] BLA
+            [ ] Epsilon search
+            [ ] Actual calculation
+    [ ] Escape Time
+    [X] Colorization
+    [ ] E2E
 [ ] Optimize CPU-bound tasks
     [ ] Period finding
     [ ] Nucleus finding
