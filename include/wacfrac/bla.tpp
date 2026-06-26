@@ -33,22 +33,17 @@ template <Complex T>
 bivariate_linear_approximator<T>::bivariate_linear_approximator(double epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level)
     : bivariate_linear_approximator(ref, first_level)
 {
-    LOG_DEBUG << "Computing BLA with epsilon=" << epsilon
-              << " first_level=" << first_level
-              << " ref.size=" << ref.size();
+    logging::print(logging::severity::debug, "Computing BLA with epsilon={} first_level={} ref.size={}", epsilon, first_level, ref.size());
     using Real = complex_value_type_t<T>;
     compute_blas(Real{epsilon}, max_dc);
-    LOG_DEBUG << "BLA computed: " << _blas.size() << " coefficients across "
-              << _columns.size() << " columns, levels " << _first_level
-              << "-" << _last_level;
+    logging::print(logging::severity::debug, "BLA computed: {} coefficients across {} columns, levels {}-{}", _blas.size(), _columns.size(), _first_level, _last_level);
 }
 
 template <Complex T>
 bivariate_linear_approximator<T>::bivariate_linear_approximator(double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level)
     : bivariate_linear_approximator(ref, first_level)
 {
-    LOG_INFO << "Searching for optimal BLA epsilon: tolerance=" << tolerance
-             << " probes=" << probes.size();
+    logging::print(logging::severity::info, "Searching for optimal BLA epsilon: tolerance={} probes={}", tolerance, probes.size());
 
     std::vector<std::size_t> true_escape_times;
     true_escape_times.reserve(probes.size());
@@ -84,8 +79,7 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(double tolerance
         upper = lower + 9.0;
     }
 
-    LOG_TRACE << "BLA epsilon search: log10_base=" << log10_base
-              << " range=[" << lower << ", " << upper << "]";
+    logging::print(logging::severity::trace, "BLA epsilon search: log10_base={} range=[{}, {}]", log10_base, lower, upper);
 
     auto prev_avg_skipped{-1.0};
     constexpr auto upper_limit{32uz};
@@ -109,21 +103,18 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(double tolerance
         }
 
         if (!all_correct) {
-            LOG_TRACE << "BLA search iter " << iter << ": epsilon=10^" << middle
-                      << " too high";
+            logging::print(logging::severity::trace, "BLA search iter {}: epsilon=10^{} too high", iter, middle);
             upper = middle;
             continue;
         }
 
         auto avg_skipped = total_skipped / static_cast<double>(probes.size());
         if (avg_skipped > prev_avg_skipped) {
-            LOG_TRACE << "BLA search iter " << iter << ": epsilon=10^" << middle
-                      << " avg_skipped=" << avg_skipped << " (improving)";
+            logging::print(logging::severity::trace, "BLA search iter {}: epsilon=10^{} avg_skipped={} (improving)", iter, middle, avg_skipped);
             prev_avg_skipped = avg_skipped;
             lower = middle;
         } else {
-            LOG_TRACE << "BLA search iter " << iter << ": epsilon=10^" << middle
-                      << " avg_skipped=" << avg_skipped << " (converged)";
+            logging::print(logging::severity::trace, "BLA search iter {}: epsilon=10^{} avg_skipped={} (converged)", iter, middle, avg_skipped);
             // Recompute BLAs with the previous (better) epsilon
             auto best_offset = lower - log10_base;
             auto best_epsilon = epsilon_base * Real{std::pow(10.0, best_offset)};
@@ -131,7 +122,7 @@ bivariate_linear_approximator<T>::bivariate_linear_approximator(double tolerance
             break;
         }
     }
-    LOG_INFO << "BLA epsilon search complete";
+    logging::print(logging::severity::info, "BLA epsilon search complete");
 }
 
 template <Complex T>

@@ -20,22 +20,18 @@ template <Complex T>
 series_approximator<T>::series_approximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, std::size_t n)
     : series_approximator(reference_orbit, coefficient_count)
 {
-    LOG_DEBUG << "Computing SA coefficients: count=" << coefficient_count
-              << " n=" << n << " ref.size=" << reference_orbit.size();
+    logging::print(logging::severity::debug, "Computing SA coefficients: count={} n={} ref.size={}", coefficient_count, n, reference_orbit.size());
     compute_coeffs(n);
-    LOG_DEBUG << "SA computed: " << _n << " steps, "
-              << _curr_coeffs.size() << " coefficients";
+    logging::print(logging::severity::debug, "SA computed: {} steps, {} coefficients", _n, _curr_coeffs.size());
 }
 
 template <Complex T>
 series_approximator<T>::series_approximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, const std::vector<T>& probes, double validity_threshold)
     : series_approximator(reference_orbit, coefficient_count)
 {
-    LOG_DEBUG << "Computing SA coefficients (validity-driven): count=" << coefficient_count
-              << " threshold=" << validity_threshold << " probes=" << probes.size();
+    logging::print(logging::severity::debug, "Computing SA coefficients (validity-driven): count={} threshold={} probes={}", coefficient_count, validity_threshold, probes.size());
     compute_coeffs_while_valid(probes, validity_threshold);
-    LOG_DEBUG << "SA computed: " << _n << " steps, "
-              << _curr_coeffs.size() << " coefficients";
+    logging::print(logging::severity::debug, "SA computed: {} steps, {} coefficients", _n, _curr_coeffs.size());
 }
 
 template <Complex T>

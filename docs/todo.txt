@@ -19,7 +19,8 @@
     [X] FloatExp backend (eww)
         [X] Class
         [X] Templatize perturbation type
-    [ ] Use reference period to accelerate calculation (currently just adds computation time and does nothing)
+    [ ] ? Use reference period to accelerate calculation (currently just adds computation time and does nothing)
+    [ ] ? Fix BLA epsilon search. It's cooked. Way too high.
 [X] Refactoring
     [X] Abandon unfortunate render_config system
     [X] Colorize w/ special color for non-escaping

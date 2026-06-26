@@ -14,8 +14,7 @@ void viewport::precision(std::size_t value) {
 }
 
 auto viewport::zoomed(multi_float factor) const -> viewport {
-    LOG_DEBUG << "Zooming viewport by factor " << factor
-              << " (new dimensions: " << (dimensions / factor) << ")";
+    logging::print(logging::severity::debug, "Zooming viewport by factor {} (new dimensions: {})", factor, (dimensions / factor));
     return {center, dimensions / factor};
 }
 

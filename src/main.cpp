@@ -4,7 +4,6 @@
 #include "wacfrac/types.hpp"
 #include "wacfrac/wacfrac.hpp"
 #include "argumentum/argparse.h"
-#include <format>
 #include <cmath>
 #include <string>
 #include <cstdlib>
@@ -15,7 +14,7 @@
 
 int main(int argc, char *argv[]) {
     wacfrac::logging::init();
-    LOG_INFO << "Mandelbrot Set Plotter starting";
+    wacfrac::logging::print(wacfrac::logging::severity::info, "Mandelbrot Set Plotter starting");
 
     // Parse arguments
     auto parser = argumentum::argument_parser{};
@@ -67,12 +66,7 @@ int main(int argc, char *argv[]) {
         std::exit(EXIT_FAILURE);
     }
 
-    LOG_INFO << "Configuration: output=" << filepath
-             << " dimensions=" << dimensions[0] << "x" << dimensions[1]
-             << " focus=(" << focus[0] << ", " << focus[1] << ")"
-             << " zoom=" << scale
-             << " max_iterations=" << max_iterations
-             << " precision=" << precision;
+    wacfrac::logging::print(wacfrac::logging::severity::info, "Configuration: output={} dimensions={}x{} focus=({}, {}) zoom={} max_iterations={} precision={}", filepath, dimensions[0], dimensions[1], focus[0], focus[1], scale, max_iterations, precision);
 
     wacfrac::multi_float zoom_scale (scale, 1000);
 
@@ -99,12 +93,9 @@ int main(int argc, char *argv[]) {
 
     wacfrac::resolution res {dimensions[0], dimensions[1]};
 
-    LOG_INFO << "Viewport: center=(" << view.center << ") dimensions=(" << view.dimensions << ")";
-    LOG_INFO << "Resolution: " << res.width << "x" << res.height
-             << " (" << res.area() << " pixels)";
-    LOG_INFO << "Using " << max_iterations << " max iterations with "
-             << precision << " decimal digits precision (compute="
-             << compute_precision << ", ref=" << ref_precision << ")";
+    wacfrac::logging::print(wacfrac::logging::severity::info, "Viewport: center=({}) dimensions=({})", view.center, view.dimensions);
+    wacfrac::logging::print(wacfrac::logging::severity::info, "Resolution: {}x{} ({} pixels)", res.width, res.height, res.area());
+    wacfrac::logging::print(wacfrac::logging::severity::info, "Using {} max iterations with {} decimal digits precision (compute={}, ref={})", max_iterations, precision, compute_precision, ref_precision);
 
     wacfrac::multi_complex c_ref = view.center;
 
@@ -114,13 +105,13 @@ int main(int argc, char *argv[]) {
     wacfrac::multi_float::default_precision(compute_precision);
     wacfrac::multi_complex::default_precision(compute_precision);
 
-    LOG_INFO << "Reference at view center with orbit length " << ref.size();
+    wacfrac::logging::print(wacfrac::logging::severity::info, "Reference at view center with orbit length {}", ref.size());
 
     auto t_render = std::chrono::steady_clock::now();
 
     std::vector<wacfrac::pixel> pixels(res.area());
 
-    LOG_INFO << "Rendering " << res.area() << " pixels (perturbed)...";
+    wacfrac::logging::print(wacfrac::logging::severity::info, "Rendering {} pixels (perturbed)...", res.area());
     auto total_skipped = std::atomic<std::uint64_t>{0};
 
     auto last_level = static_cast<std::size_t>(std::log2(ref.size()));
@@ -148,11 +139,11 @@ int main(int argc, char *argv[]) {
         c_ref
     );
     auto avg_skipped = static_cast<double>(total_skipped) / res.area();
-    LOG_INFO << "Perturbed render complete (avg skipped: " << avg_skipped << ")";
+    wacfrac::logging::print(wacfrac::logging::severity::info, "Perturbed render complete (avg skipped: {})", avg_skipped);
 
     auto render_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t_render);
-    LOG_INFO << "Render took " << render_ms.count() << "ms";
+    wacfrac::logging::print(wacfrac::logging::severity::info, "Render took {}ms", render_ms.count());
 
     wacfrac::write_ppm(filepath, res, pixels);
 }

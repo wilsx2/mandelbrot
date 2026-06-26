@@ -19,13 +19,12 @@ static auto lemniscate_curve(multi_complex c, std::size_t period) -> std::pair<m
 // https://www.mrob.com/pub/muency/newtonraphsonmethod.html
 auto find_nucleus(multi_complex c, std::size_t period,  std::size_t max_iterations) -> multi_complex {
     auto square_tolerance = 1.0 / std::pow(10.0, 2.0*c.precision());
-    LOG_DEBUG << "Finding nucleus at (" << c << ") period=" << period
-              << " max_iterations=" << max_iterations;
+    logging::print(logging::severity::debug, "Finding nucleus at ({}) period={} max_iterations={}", c, period, max_iterations);
     for (auto i {0uz}; i < max_iterations; ++i) {
         auto [z, dz] = lemniscate_curve(c, period);
 
         if (square_magnitude(dz) < multi_float{1e-30}) {
-            LOG_TRACE << "Nucleus iteration " << i << ": dz too small, perturbing";
+            logging::print(logging::severity::trace, "Nucleus iteration {}: dz too small, perturbing", i);
             c += multi_complex{1e-3, 1e-3};
             continue;
         }
@@ -35,7 +34,7 @@ auto find_nucleus(multi_complex c, std::size_t period,  std::size_t max_iteratio
             correction *= multi_float{4.0} / sqrt(square_magnitude(correction));
         }
         if (square_magnitude(correction) <= square_tolerance) {
-            LOG_DEBUG << "Nucleus converged in " << i+1 << " iterations at (" << c << ")";
+            logging::print(logging::severity::debug, "Nucleus converged in {} iterations at ({})", i+1, c);
             break;
         }
         c -= correction;
@@ -67,14 +66,14 @@ auto find_period_ball(multi_complex c0, multi_float dx, multi_float dy, std::siz
 
         if (r + r0 * adz > az) {
             periods.push_back(k);
-            LOG_TRACE << "Found period candidate " << k << " at iteration " << k;
+            logging::print(logging::severity::trace, "Found period candidate {} at iteration {}", k, k);
             if (!do_cont) break;
         }
 
         if (az > max_r || r > max_r) break;
     }
 
-    LOG_DEBUG << "Period ball search found " << periods.size() << " candidates";
+    logging::print(logging::severity::debug, "Period ball search found {} candidates", periods.size());
     return periods;
 }
 
