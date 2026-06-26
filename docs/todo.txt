@@ -31,13 +31,10 @@
     [X] Period finding
     [X] Nucleus finding
     [X] Reference orbit
-    [ ] Coefficient calculation
-        [X] SA
-        [ ] BLA
-            [ ] Epsilon search
-            [ ] Actual calculation
-    [ ] Escape Time
     [X] Colorization
+    [X] Coefficient calculation
+        [X] SA
+        [X] BLA
     [ ] E2E
 [ ] Optimize CPU-bound tasks
     [ ] Period finding
