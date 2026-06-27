@@ -1,2 +1,0 @@
-/usr/bin/ar qc liblibwacfrac.a CMakeFiles/libwacfrac.dir/src/wacfrac/analysis.cpp.o CMakeFiles/libwacfrac.dir/src/wacfrac/sa.cpp.o CMakeFiles/libwacfrac.dir/src/wacfrac/color.cpp.o CMakeFiles/libwacfrac.dir/src/wacfrac/viewport.cpp.o CMakeFiles/libwacfrac.dir/src/wacfrac/orbit.cpp.o CMakeFiles/libwacfrac.dir/src/wacfrac/rendering.cpp.o CMakeFiles/libwacfrac.dir/src/wacfrac/io.cpp.o CMakeFiles/libwacfrac.dir/src/wacfrac/bla.cpp.o CMakeFiles/libwacfrac.dir/src/wacfrac/log.cpp.o
-/usr/bin/ranlib liblibwacfrac.a
