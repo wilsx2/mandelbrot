@@ -82,29 +82,20 @@ int main(int argc, char *argv[]) {
     if (precision == 0)
         precision = view.required_precision();
 
-    auto compute_precision = std::min<std::size_t>(precision, 256);
-    auto ref_precision = std::max(compute_precision, std::min<std::size_t>(precision, 1000));
-
-    wacfrac::MultiFloat::default_precision(compute_precision);
-    wacfrac::MultiComplex::default_precision(compute_precision);
-
-    view.precision(ref_precision);
-    zoom_scale.precision(compute_precision);
+    wacfrac::MultiFloat::default_precision(precision);
+    wacfrac::MultiComplex::default_precision(precision);
+    view.precision(precision);
+    zoom_scale.precision(precision);
 
     wacfrac::Resolution res {dimensions[0], dimensions[1]};
 
     wacfrac::logging::print(wacfrac::logging::Severity::Info, "Viewport: center=({}) dimensions=({})", view.center, view.dimensions);
     wacfrac::logging::print(wacfrac::logging::Severity::Info, "Resolution: {}x{} ({} pixels)", res.width, res.height, res.area());
-    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Using {} max iterations with {} decimal digits precision (compute={}, ref={})", max_iterations, precision, compute_precision, ref_precision);
+    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Using {} max iterations with {} decimal digits precision", max_iterations, precision);
 
     wacfrac::MultiComplex c_ref = view.center;
 
-    wacfrac::MultiFloat::default_precision(ref_precision);
-    wacfrac::MultiComplex::default_precision(ref_precision);
     auto ref = wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations, true);
-    wacfrac::MultiFloat::default_precision(compute_precision);
-    wacfrac::MultiComplex::default_precision(compute_precision);
-
     wacfrac::logging::print(wacfrac::logging::Severity::Info, "Reference at view center with orbit length {}", ref.size());
 
     auto t_render = std::chrono::steady_clock::now();
