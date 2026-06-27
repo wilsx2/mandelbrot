@@ -1,0 +1,68 @@
+[
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -fPIC -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/libwacfrac.dir/src/wacfrac/analysis.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/analysis.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/analysis.cpp",
+  "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/analysis.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -fPIC -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/libwacfrac.dir/src/wacfrac/sa.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/sa.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/sa.cpp",
+  "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/sa.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -fPIC -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/libwacfrac.dir/src/wacfrac/color.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/color.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/color.cpp",
+  "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/color.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -fPIC -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/libwacfrac.dir/src/wacfrac/viewport.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/viewport.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/viewport.cpp",
+  "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/viewport.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -fPIC -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/libwacfrac.dir/src/wacfrac/orbit.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/orbit.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/orbit.cpp",
+  "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/orbit.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -fPIC -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/libwacfrac.dir/src/wacfrac/rendering.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/rendering.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/rendering.cpp",
+  "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/rendering.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -fPIC -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/libwacfrac.dir/src/wacfrac/io.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/io.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/io.cpp",
+  "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/io.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -fPIC -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/libwacfrac.dir/src/wacfrac/bla.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/bla.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/bla.cpp",
+  "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/bla.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -fPIC -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/libwacfrac.dir/src/wacfrac/log.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/log.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/log.cpp",
+  "output": "CMakeFiles/libwacfrac.dir/src/wacfrac/log.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/benchmark.dir/src/benchmark.cpp.o -c /home/wilsx2/Code/mandelbrot/src/benchmark.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/benchmark.cpp",
+  "output": "CMakeFiles/benchmark.dir/src/benchmark.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot/build_debug",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DTBB_USE_DEBUG -I/home/wilsx2/Code/mandelbrot/include -g -std=c++26 -Wall -Wextra -Werror -Wno-error=array-bounds -o CMakeFiles/wacfrac.dir/src/main.cpp.o -c /home/wilsx2/Code/mandelbrot/src/main.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/main.cpp",
+  "output": "CMakeFiles/wacfrac.dir/src/main.cpp.o"
+}
+]

@@ -1,9 +1,7 @@
 27
 - Address reference orbit bottleneck. Solutions:
   - Using Periods (potentially high impact, depending on how large periods are at deep zooms and how long it takes to find them)
-  - Multithread Calculation (potentially impossible, likely considerable impact)
-  - Reduce iterations; find better formula / finding method (low impact)
-- Seriously consider the solution to infinite scaling (weaknesses in floatexp type)
+- Seriously consider the solution to infinite scaling (weaknesses in floatexp type?)
 - Check for micro optimizations
 - Simplify API
   - Mitigate OOP
