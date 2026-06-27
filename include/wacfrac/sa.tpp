@@ -7,18 +7,19 @@
 namespace wacfrac {
 
 template <Complex T>
-SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count)
+SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, double escape_radius)
     : _reference_orbit(reference_orbit)
     , _curr_coeffs(coefficient_count, T{0.0, 0.0})
     , _next_coeffs(coefficient_count)
     , _n(1)
+    , _escape_radius(escape_radius)
 {
     if (coefficient_count > 0)
         _curr_coeffs[0] = T{1.0, 0.0};
 }
 template <Complex T>
-SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, std::size_t n)
-    : SeriesApproximator(reference_orbit, coefficient_count)
+SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, std::size_t n, double escape_radius)
+    : SeriesApproximator(reference_orbit, coefficient_count, escape_radius)
 {
     logging::print(logging::Severity::Debug, "Computing SA coefficients: count={} n={} ref.size={}", coefficient_count, n, reference_orbit.size());
     compute_coeffs(n);
@@ -26,8 +27,8 @@ SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit,
 }
 
 template <Complex T>
-SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, const std::vector<T>& probes, double validity_threshold)
-    : SeriesApproximator(reference_orbit, coefficient_count)
+SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit, std::size_t coefficient_count, const std::vector<T>& probes, double validity_threshold, double escape_radius)
+    : SeriesApproximator(reference_orbit, coefficient_count, escape_radius)
 {
     logging::print(logging::Severity::Debug, "Computing SA coefficients (validity-driven): count={} threshold={} probes={}", coefficient_count, validity_threshold, probes.size());
     compute_coeffs_while_valid(probes, validity_threshold);
@@ -37,7 +38,7 @@ SeriesApproximator<T>::SeriesApproximator(const std::vector<T>& reference_orbit,
 template <Complex T>
 auto SeriesApproximator<T>::approximate_escape(T dc) const -> std::pair<T, std::size_t> {
     auto dz = this->approximate_delta_n(dc);
-    return escape_perturbed<T>(_reference_orbit, dc, _reference_orbit.size(), dz, _n);
+    return escape_perturbed<T>(_reference_orbit, dc, _reference_orbit.size(), _escape_radius, dz, _n);
 }
 
 template <Complex T>

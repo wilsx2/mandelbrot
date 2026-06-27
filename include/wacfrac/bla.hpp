@@ -10,12 +10,14 @@ namespace wacfrac {
 template <Complex T = std::complex<long double>>
 class BivariateLinearApproximator {
     public:
-    BivariateLinearApproximator(double epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0);
-    BivariateLinearApproximator(double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0);
+    BivariateLinearApproximator(ComplexValueTypeT<T> epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0, double escape_radius = 2.0);
+    BivariateLinearApproximator(double lower_exp, double upper_exp, double tolerance,
+                                const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0, double escape_radius = 2.0);
     auto escape_approximate(T dc) const -> std::tuple<T, std::size_t, std::size_t>;
 
     private:
-    BivariateLinearApproximator(const std::vector<T>& ref, std::size_t first_level);
+    BivariateLinearApproximator() = default;
+    BivariateLinearApproximator(const std::vector<T>& ref, std::size_t first_level, double escape_radius = 2.0);
 
     struct Bla {
         T a, b;
@@ -42,11 +44,12 @@ class BivariateLinearApproximator {
     auto bla_at(std::size_t m, std::size_t level) const -> const Bla*;
     auto bla_at(std::size_t m, std::size_t level) -> Bla*;
 
-    const std::vector<T>& _ref;
+    std::optional<std::reference_wrapper<const std::vector<T>>> _ref;
     std::size_t _first_level;
     std::size_t _last_level;
     std::vector<Bla> _blas;
     std::vector<ColumnInfo> _columns;
+    double _escape_radius;
 };
 
 } // namespace wacfrac

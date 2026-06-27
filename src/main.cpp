@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 
     wacfrac::MultiComplex c_ref = view.center;
 
-    auto ref = wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations, true);
+    auto ref = wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations);
     wacfrac::logging::print(wacfrac::logging::Severity::Info, "Reference at view center with orbit length {}", ref.size());
 
     auto t_render = std::chrono::steady_clock::now();
@@ -111,7 +111,8 @@ int main(int argc, char *argv[]) {
     auto max_dc = wacfrac::to_complex<wacfrac::DoubleExpComplex>(view.compute_max_dc(c_ref));
     auto probes = view.generate_probes<wacfrac::DoubleExpComplex>(3, 3);
     wacfrac::BivariateLinearApproximator<wacfrac::DoubleExpComplex> bla {
-        1e-8, probes, max_dc, ref, first_level
+        -255.0, -64.0, 1e-8,
+        probes, max_dc, ref, first_level
     };
     wacfrac::perturbed_render<wacfrac::DoubleExpComplex>(
         pixels, res, view,

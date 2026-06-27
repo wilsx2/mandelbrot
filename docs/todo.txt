@@ -48,7 +48,6 @@
     [X] Logging
     [X] Zoom renderer
     [X] Remove python bindings
-    [ ] Milestone logging for screen render
     [ ] Parameterize all the things (CLI, or go back to bindings)
         [ ] Escape Radius
         [ ] Log Level
@@ -56,6 +55,7 @@
         [ ] Colors
         [ ] Numbers
         [ ] Types
+    [ ] Add python bindings
     [ ] Composition Scripts w/ ffmpeg
         [ ] Encoding
         [ ] Videos (segmented)

@@ -12,9 +12,6 @@ find_package(Argumentum CONFIG REQUIRED)
 find_package(benchmark REQUIRED)
 find_package(TBB REQUIRED)
 
-# find_package(PkgConfig REQUIRED)
-# pkg_check_modules(ffmpeg REQUIRED IMPORTED_TARGET ffmpeg)
-
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 26)

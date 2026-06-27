@@ -34,7 +34,7 @@ auto compute_next_perturbation(const std::vector<T>& ref, std::size_t ref_n, T d
 }
 
 template <Complex T>
-auto escape_perturbed(const std::vector<T>& ref, T dc, std::size_t max_n, T dz, std::size_t n) -> std::pair<T, std::size_t> {
+auto escape_perturbed(const std::vector<T>& ref, T dc, std::size_t max_n, double escape_radius, T dz, std::size_t n) -> std::pair<T, std::size_t> {
     auto ref_n {n};
     if (ref_n >= ref.size()) {
         return {{}, 0};
@@ -44,19 +44,19 @@ auto escape_perturbed(const std::vector<T>& ref, T dc, std::size_t max_n, T dz, 
     return escape_generic(z0, n, max_n, [&](T z) {
         std::tie(ref_n, dz, z) = compute_next_perturbation(ref, ref_n, dc, dz);
         return z;
-    });
+    }, escape_radius);
 }
 
 template <Complex T>
-auto compute_reference(MultiComplex c, std::size_t max_n, bool do_escape) -> std::vector<T> {
-    logging::print(logging::Severity::Debug, "Computing reference orbit at ({}) max_n={} do_escape={}", c, max_n, do_escape);
+auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius) -> std::vector<T> {
+    logging::print(logging::Severity::Debug, "Computing reference orbit at ({}) max_n={} escape_radius={}", c, max_n, escape_radius);
 
     std::vector<T> reference;
     reference.reserve(max_n);
     reference.emplace_back(to_complex<T>(MultiComplex{0.0, 0.0}));
 
     MultiComplex z{0.0, 0.0};
-    for (auto n{0uz}; n < max_n - 1 && (!do_escape || !escaped(z)); ++n) {
+    for (auto n{0uz}; n < max_n - 1 && !escaped(z, escape_radius); ++n) {
         z = z * z + c;
         reference.emplace_back(to_complex<T>(z));
     }

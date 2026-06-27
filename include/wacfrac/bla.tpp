@@ -1,5 +1,6 @@
 #pragma once
 
+#include "wacfrac/types.hpp"
 #include <wacfrac/bla.hpp>
 #include <wacfrac/log.hpp>
 #include <wacfrac/orbit.hpp>
@@ -11,11 +12,12 @@
 namespace wacfrac {
 
 template <Complex T>
-BivariateLinearApproximator<T>::BivariateLinearApproximator(const std::vector<T>& ref, std::size_t first_level)
+BivariateLinearApproximator<T>::BivariateLinearApproximator(const std::vector<T>& ref, std::size_t first_level, double escape_radius)
     : _ref(ref)
     , _first_level(first_level)
-    , _last_level(std::log2(_ref.size()))
+    , _last_level(std::log2(ref.size()))
     , _columns(ref.size() - 2)
+    , _escape_radius(escape_radius)
 {
     auto i {0uz};
     for (auto m : std::views::iota(1uz, ref.size() - 1)) {
@@ -30,63 +32,36 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(const std::vector<T>
 }
 
 template <Complex T>
-BivariateLinearApproximator<T>::BivariateLinearApproximator(double epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level)
-    : BivariateLinearApproximator(ref, first_level)
+BivariateLinearApproximator<T>::BivariateLinearApproximator(ComplexValueTypeT<T> epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level, double escape_radius)
+    : BivariateLinearApproximator(ref, first_level, escape_radius)
 {
     logging::print(logging::Severity::Debug, "Computing BLA with epsilon={} first_level={} ref.size={}", epsilon, first_level, ref.size());
-    using Real = ComplexValueTypeT<T>;
-    compute_blas(Real{epsilon}, max_dc);
+    compute_blas(epsilon, max_dc);
     logging::print(logging::Severity::Debug, "BLA computed: {} coefficients across {} columns, levels {}-{}", _blas.size(), _columns.size(), _first_level, _last_level);
 }
 
 template <Complex T>
-BivariateLinearApproximator<T>::BivariateLinearApproximator(double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level)
-    : BivariateLinearApproximator(ref, first_level)
+BivariateLinearApproximator<T>::BivariateLinearApproximator(
+    double lower_exp, double upper_exp, double tolerance,
+    const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level, double escape_radius)
+    : BivariateLinearApproximator(ref, first_level, escape_radius)
 {
-    logging::print(logging::Severity::Info, "Searching for optimal BLA epsilon: tolerance={} probes={}", tolerance, probes.size());
+    logging::print(logging::Severity::Info, "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", tolerance, probes.size(), lower_exp, upper_exp);
 
     std::vector<std::size_t> true_escape_times;
     true_escape_times.reserve(probes.size());
     std::ranges::transform(probes, std::back_inserter(true_escape_times),
-        [&ref](T p) -> std::size_t { return escape_perturbed<T>(ref, p, ref.size()).second; });
+        [this, &ref](T p) -> std::size_t { return escape_perturbed<T>(ref, p, ref.size(), _escape_radius).second; });
 
-    (void)first_level;
-    using Real = ComplexValueTypeT<T>;
-
-    // Find max |ref[n]| for epsilon bound computation
-    Real max_ref_abs{0};
-    for (auto& r : ref) {
-        auto ra = abs(r);
-        if (ra > max_ref_abs) max_ref_abs = ra;
-    }
-
-    auto max_dc_abs = abs(max_dc);
-
-    auto epsilon_base = max_ref_abs > Real{0} ? max_dc_abs / max_ref_abs : max_dc_abs;
-    if (epsilon_base == Real{0}) {
-        epsilon_base = Real{std::numeric_limits<double>::min()};
-    }
-
-    double log10_base;
-    if constexpr (std::is_floating_point_v<Real>) {
-        log10_base = static_cast<double>(std::log10(epsilon_base));
-    } else {
-        log10_base = static_cast<double>(boost::multiprecision::log10(epsilon_base));
-    }
-    auto lower = log10_base - 3.0;
-    auto upper = log10_base + std::log10(static_cast<double>(ref.size())) + 6.0;
-    if (upper <= lower) {
-        upper = lower + 9.0;
-    }
-
-    logging::print(logging::Severity::Trace, "BLA epsilon search: log10_base={} range=[{}, {}]", log10_base, lower, upper);
-
-    auto prev_avg_skipped{-1.0};
-    constexpr auto upper_limit{32uz};
-    for (auto iter{0uz}; iter < upper_limit; ++iter) {
-        auto middle{(upper + lower) / 2.0};
-        auto offset = middle - log10_base;
-        auto epsilon = epsilon_base * Real{std::pow(10.0, offset)};
+    auto prev_avg_skipped {-1.0};
+    BivariateLinearApproximator<T> prev_bla;
+    constexpr auto UPPER_LIMIT {32uz};
+    for (auto iter : std::views::iota(0uz, UPPER_LIMIT)) {
+        auto middle {(upper_exp + lower_exp) / 2.0};
+        
+        using boost::multiprecision::pow;
+        using std::pow;
+        auto epsilon {pow(ComplexValueTypeT<T>{10.0}, middle)};
         compute_blas(epsilon, max_dc);
 
         auto all_correct{true};
@@ -104,7 +79,7 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(double tolerance, co
 
         if (!all_correct) {
             logging::print(logging::Severity::Trace, "BLA search iter {}: epsilon=10^{} too high", iter, middle);
-            upper = middle;
+            upper_exp = middle;
             continue;
         }
 
@@ -112,13 +87,11 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(double tolerance, co
         if (avg_skipped > prev_avg_skipped) {
             logging::print(logging::Severity::Trace, "BLA search iter {}: epsilon=10^{} avg_skipped={} (improving)", iter, middle, avg_skipped);
             prev_avg_skipped = avg_skipped;
-            lower = middle;
+            prev_bla = *this;
+            lower_exp = middle; 
         } else {
             logging::print(logging::Severity::Trace, "BLA search iter {}: epsilon=10^{} avg_skipped={} (converged)", iter, middle, avg_skipped);
-            // Recompute BLAs with the previous (better) epsilon
-            auto best_offset = lower - log10_base;
-            auto best_epsilon = epsilon_base * Real{std::pow(10.0, best_offset)};
-            compute_blas(best_epsilon, max_dc);
+            *this = std::move(prev_bla);
             break;
         }
     }
@@ -132,16 +105,16 @@ auto BivariateLinearApproximator<T>::escape_approximate(T dc) const -> std::tupl
     auto skipped {0uz};
     T dz {0.0, 0.0};
     T z {0.0, 0.0};
-    while (n < _ref.size() && !escaped(z)) {
+    while (n < _ref->get().size() && !escaped(z, _escape_radius)) {
         auto approximation = compute_zn(dc, dz, ref_n);
         if (approximation) {
             auto m {ref_n};
             std::tie(dz, ref_n) = *approximation;
             skipped += ref_n - m;
             n += ref_n - m;
-            std::tie(ref_n, dz, z) = rebase_reference<T>(_ref, ref_n, dz);
+            std::tie(ref_n, dz, z) = rebase_reference<T>(*_ref, ref_n, dz);
         } else {
-            std::tie(ref_n, dz, z) = compute_next_perturbation<T>(_ref, ref_n, dc, dz);
+            std::tie(ref_n, dz, z) = compute_next_perturbation<T>(*_ref, ref_n, dc, dz);
             ++n;
         }
     }
@@ -164,7 +137,7 @@ auto BivariateLinearApproximator<T>::compute_zn(T dc, T dzm, std::size_t m) cons
         }
     }
 
-    if (n >= _ref.size())
+    if (n >= _ref->get().size())
         return std::nullopt;
 
     return {{bla->approximate_dzn(dzm, dc), n}};
@@ -175,19 +148,19 @@ auto BivariateLinearApproximator<T>::compute_bla(ComplexValueTypeT<T> epsilon, T
     using Real = ComplexValueTypeT<T>;
     using std::abs;
     auto l {n - m};
-    auto a = T{2.0, 0.0} * _ref.at(m) * static_cast<Real>(l);
+    auto a = T{2.0, 0.0} * _ref->get().at(m) * static_cast<Real>(l);
     auto b = T{static_cast<Real>(l), 0.0};
     auto denom = abs(a);
     auto r = denom > Real{}
-        ? (epsilon * abs(_ref[n]) - abs(b) * abs(max_dc)) / denom
+        ? (epsilon * abs(_ref->get().at(n)) - abs(b) * abs(max_dc)) / denom
         : -abs(max_dc);
     return {a, b, r};
 }
 
 template <Complex T>
 auto BivariateLinearApproximator<T>::compute_blas(ComplexValueTypeT<T> epsilon, T max_dc) -> void {
-    std::vector<Bla> current_level (_ref.size() - 2);
-    for (auto m : std::views::iota(1uz, _ref.size() - 1)) {
+    std::vector<Bla> current_level (_ref->get().size() - 2);
+    for (auto m : std::views::iota(1uz, _ref->get().size() - 1)) {
         auto bla = compute_bla(epsilon, max_dc, m, m + 1);
         current_level.at(m - 1) = bla;
         if (0 == _first_level) {

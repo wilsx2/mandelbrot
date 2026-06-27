@@ -2,6 +2,7 @@
 #include <wacfrac/log.hpp>
 #include <wacfrac/orbit.hpp>
 #include <wacfrac/analysis.hpp>
+#include <limits>
 
 namespace wacfrac {
 
@@ -49,13 +50,14 @@ auto Viewport::find_periodic_reference(std::size_t max_n, std::size_t find_perio
 
     // Find first non-degenerate reference
     auto c_ref {find_nucleus(center, view_period, find_nucleus_iter)};
-    auto reference {compute_reference<T>(c_ref, max_n, false)};
+    auto inf {std::numeric_limits<double>::infinity()};
+    auto reference {compute_reference<T>(c_ref, max_n, inf)};
 
     for (auto p : periods) {
         if (p == view_period) continue;
         logging::print(logging::Severity::Debug, "Trying period {} for non-degenerate reference", p);
         c_ref = find_nucleus(center, p, find_nucleus_iter);
-        reference = compute_reference<T>(c_ref, max_n, false);
+        reference = compute_reference<T>(c_ref, max_n, inf);
         if (!is_reference_degenerate(reference)) {
             logging::print(logging::Severity::Debug, "Found non-degenerate reference at period {}", p);
             view_period = p;
@@ -68,7 +70,7 @@ auto Viewport::find_periodic_reference(std::size_t max_n, std::size_t find_perio
     if (reference.empty() || degenerate) {
         logging::print(logging::Severity::Warning, "No suitable periodic reference found, falling back to view center");
         c_ref = center;
-        reference = compute_reference<T>(c_ref, max_n, false);
+        reference = compute_reference<T>(c_ref, max_n, inf);
     }
 
     return std::make_pair(c_ref, reference);

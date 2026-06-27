@@ -39,7 +39,7 @@ auto make_viewport(int zoom_exp) {
 
 auto compute_reference_dec(const wacfrac::Viewport& view, wacfrac::MultiComplex c_ref, std::size_t max_iterations) {
     c_ref.precision(view.required_precision());
-    return wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations, true);
+    return wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations);
 }
 
 auto default_color_fn(std::size_t max_iterations) {
@@ -197,12 +197,12 @@ template<typename T>
 static void compute_bla_coefficients(benchmark::State& state) {
     auto view   {make_viewport(state.range(0))};
     auto c_ref  {view.center};
-    auto ref    {wacfrac::compute_reference<T>(c_ref, view.required_iterations(), true)};
+    auto ref    {wacfrac::compute_reference<T>(c_ref, view.required_iterations())};
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
     auto probes {view.generate_probes<T>(state.range(1), state.range(1))};
     for (auto _ : state) {
         wacfrac::BivariateLinearApproximator<T> bla {
-            std::pow(10.0, -state.range(3)), probes, max_dc, ref, 0
+            -256.0, 0.0, std::pow(10.0, -state.range(3)), probes, max_dc, ref, 0
         };
         benchmark::DoNotOptimize(bla);
     }
@@ -317,7 +317,7 @@ static void render_phase_bla(benchmark::State& state) {
     auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
     auto probes {view.generate_probes<T>(3, 3)};
-    wacfrac::BivariateLinearApproximator<T> bla{1e-8, probes, max_dc, ref, first_level};
+    wacfrac::BivariateLinearApproximator<T> bla{-256.0, 0.0, 1e-8, probes, max_dc, ref, first_level};
 
     std::vector<wacfrac::Pixel> pixels(res.area());
     for (auto _ : state) {
@@ -454,7 +454,7 @@ static void e2e_bla(benchmark::State& state) {
         auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
         auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
         auto probes {view.generate_probes<T>(3, 3)};
-        wacfrac::BivariateLinearApproximator<T> bla{1e-8, probes, max_dc, ref, first_level};
+        wacfrac::BivariateLinearApproximator<T> bla {-256.0, 0.0, 1e-8, probes, max_dc, ref, first_level};
         wacfrac::perturbed_render<T>(pixels, res, view,
             [&bla](T dc) { return bla.escape_approximate(dc); },
             default_color_fn(max_iterations),

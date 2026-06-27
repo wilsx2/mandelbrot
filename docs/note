@@ -1,13 +1,29 @@
-- Check benchmarks and commit
-- Fix epsilon search bounds
+27
 - Parameterize Escape Radius
 - Seriously consider the solution to infinite scaling (multiple references, weaknesses in floatexp type)
 - Periodicity
 - Check for micro optimizations
-- Improve CLI (see TODO)
 - Simplify API
   - Mitigate OOP
   - Unified render function
   - Remove "constants" outside of testing, palette generation, & i/o
+- Improve CLI (see TODO)
 - Python Bindings (high level)
 - Example scripts
+- Pip pip hooray!
+
+28
+- First draft docs
+- First draft tex
+
+29 (mostly busy)
+- Pontificate
+- Refine
+
+30
+- Final draft docs
+- Final draft tex
+
+July
+- GPU
+- Distribute
