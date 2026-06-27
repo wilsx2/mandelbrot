@@ -1,5 +1,8 @@
 #pragma once
 
+#include "wacfrac/types.hpp"
+#include <barrier>
+#include <thread>
 #include <wacfrac/orbit.hpp>
 #include <wacfrac/log.hpp>
 #include <complex>
@@ -59,6 +62,47 @@ auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius) 
     for (auto n{0uz}; n < max_n - 1 && !escaped(z, escape_radius); ++n) {
         z = z * z + c;
         reference.emplace_back(to_complex<T>(z));
+    }
+
+    logging::print(logging::Severity::Debug, "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
+    return reference;
+}
+
+template <Complex T>
+auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radius) -> std::vector<T> {
+    logging::print(logging::Severity::Debug, "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
+
+    std::vector<T> reference;
+    reference.reserve(max_n);
+    reference.emplace_back(T{0.0, 0.0});
+
+    {
+        MultiComplex z {0.0, 0.0};
+        MultiComplex next_z {0.0, 0.0};
+        T next_ref;
+        bool running {true};
+
+        std::barrier sync (2, [&](){
+            std::swap(z, next_z);
+            reference.push_back(next_ref);
+            if (reference.size() == max_n)
+                running = false;
+        });
+
+        std::jthread real_compute {[&](){ 
+            while (running) {
+                next_z.real(z.real()*z.real() - z.imag()*z.imag() + c.real());
+                next_ref.real(to_real<ComplexValueTypeT<T>>(next_z.real())); 
+                sync.arrive_and_wait();
+            }
+        }};
+        std::jthread imag_compute {[&](){
+            while (running) {
+                next_z.imag(2*z.real()*z.imag() + c.imag());
+                next_ref.imag(to_real<ComplexValueTypeT<T>>(next_z.imag())); 
+                sync.arrive_and_wait();
+            }
+        }};
     }
 
     logging::print(logging::Severity::Debug, "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);

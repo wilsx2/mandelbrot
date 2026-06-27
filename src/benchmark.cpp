@@ -118,6 +118,20 @@ BENCHMARK_TEMPLATE(compute_reference_bench, std::complex<double>)->RangeMultipli
 BENCHMARK_TEMPLATE(compute_reference_bench, std::complex<long double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(compute_reference_bench, wacfrac::DoubleExpComplex)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 
+template<wacfrac::Complex T>
+static void compute_reference_mt_bench(benchmark::State& state) {
+    auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
+    auto c {wacfrac::poi::BIG_BANG};
+    c.precision(wacfrac::required_precision(scale));
+    for (auto _ : state) {
+        auto ref {wacfrac::compute_reference_mt<T>(c, wacfrac::required_iterations(scale))};
+        benchmark::DoNotOptimize(ref);
+    }
+}
+BENCHMARK_TEMPLATE(compute_reference_mt_bench, std::complex<double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference_mt_bench, std::complex<long double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference_mt_bench, wacfrac::DoubleExpComplex)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+
 static void find_periods(benchmark::State& state) {
     auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
     auto c {wacfrac::poi::BIG_BANG};

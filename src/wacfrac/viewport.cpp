@@ -61,10 +61,10 @@ template auto Viewport::find_periodic_reference<std::complex<long double>>(std::
 template auto Viewport::find_periodic_reference<DoubleExpComplex>(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<DoubleExpComplex>>;
 
 auto required_precision(MultiFloat zoom) -> std::size_t {
-    if (zoom <= 1.0) {
-        return static_cast<std::size_t>(-boost::multiprecision::log10(zoom) + 10);
-    }
-    return static_cast<std::size_t>(static_cast<double>(boost::multiprecision::log10(1.0 / zoom)) + 10.0);
+    using namespace std;
+    using namespace boost::multiprecision;
+    double e {abs(log10(zoom))};
+    return static_cast<std::size_t>(max(10.0, e));
 }
 auto required_iterations(MultiFloat zoom, double modifier, double factor, double exponent) -> std::size_t {
     if (zoom > 1.0)

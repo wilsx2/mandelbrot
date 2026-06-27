@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 
     wacfrac::MultiComplex c_ref = view.center;
 
-    auto ref = wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations);
+    auto ref = wacfrac::compute_reference_mt<wacfrac::DoubleExpComplex>(c_ref, max_iterations);
     wacfrac::logging::print(wacfrac::logging::Severity::Info, "Reference at view center with orbit length {}", ref.size());
 
     auto t_render = std::chrono::steady_clock::now();
