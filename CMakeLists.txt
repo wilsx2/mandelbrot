@@ -52,8 +52,8 @@ target_link_libraries(libwacfrac PUBLIC
 )
 
 # Benchmarks
-add_executable(bench src/bench.cpp)
-target_link_libraries(bench PRIVATE
+add_executable(benchmark src/benchmark.cpp)
+target_link_libraries(benchmark PRIVATE
     libwacfrac
     benchmark::benchmark_main
 )

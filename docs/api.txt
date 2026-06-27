@@ -1,0 +1,35 @@
+wacfrac: module
+  is_logging: function(flag: bool)
+  is_logging: function() -> bool
+  heuristic_iterations: function(scale: arbitrary) -> unsigned int;
+  ArbitraryFloat: class
+    Arbitrary(float)
+    Arbitrary(str)
+    precision: function() -> unsigned int
+    precision: function(unsigned int)
+    __str__
+  ArbitraryComplex: class
+    real: AFloat
+    imag: AFloat
+    __str__
+  ZoomVideo: class
+    ZoomVideo(initial_scale: ArbitraryFloat, final_scale: ArbitraryFloat, zoom_per_second: float, frames_per_second: float)
+    compute_video_frame_count: function() -> unsigned int
+    compute_frame_scale: function(frame: unsigned int) -> ArbitraryFloat
+  render: function(...)
+    target: np.ndarray[np.uint8]
+
+    // view
+    focus: ArbitraryComplex = -0.5, 0
+    scale: ArbitraryFloat = 2.5
+    tile_num: int, int = 1, 1
+    tile_idx: int, int = 0, 0
+
+    // escape time
+    iterations: unsigned int = auto
+    escape_radius: float
+    algorithm: Algorithm
+
+    // coloring 
+    palette: np.ndarray[np.uint8]
+    smooth: bool

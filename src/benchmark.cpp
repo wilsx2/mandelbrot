@@ -1,17 +1,84 @@
+#include "wacfrac/bla.hpp"
 #include "wacfrac/constants.hpp"
+#include "wacfrac/io.hpp"
 #include "wacfrac/orbit.hpp"
+#include "wacfrac/sa.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/viewport.hpp"
+#include <wacfrac/rendering.hpp>
 #include <wacfrac/wacfrac.hpp>
 #include <benchmark/benchmark.h>
+#include <filesystem>
+#include <format>
+#include <fstream>
+#include <ranges>
+#include <print>
 using namespace boost::multiprecision;
+
+namespace {
+
+template <typename T>
+constexpr auto type_short_name() -> std::string_view {
+    if constexpr (std::is_same_v<T, std::complex<float>>) return "single";
+    if constexpr (std::is_same_v<T, std::complex<double>>) return "double";
+    if constexpr (std::is_same_v<T, std::complex<long double>>) return "quad";
+    if constexpr (std::is_same_v<T, wacfrac::DoubleExpComplex>) return "dexp";
+    return "unknown";
+}
+
+auto make_viewport(int zoom_exp) {
+    auto zoom_factor {pow(wacfrac::MultiFloat(10.0), zoom_exp)};
+    auto prec {wacfrac::required_precision(zoom_factor)};
+    wacfrac::MultiFloat::default_precision(prec);
+    wacfrac::MultiComplex::default_precision(prec);
+    zoom_factor.precision(prec);
+    auto view {wacfrac::Viewport(wacfrac::poi::BIG_BANG, wacfrac::MultiComplex{1.0, 1.0}).zoomed(zoom_factor)};
+    view.precision(prec);
+    return view;
+}
+
+auto compute_reference_dec(const wacfrac::Viewport& view, wacfrac::MultiComplex c_ref, std::size_t max_iterations) {
+    c_ref.precision(view.required_precision());
+    return wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations, true);
+}
+
+auto default_color_fn(std::size_t max_iterations) {
+    return [max_iterations](std::size_t n) {
+        return wacfrac::colorize_unescaped(
+            wacfrac::Pixel{0,0,0},
+            std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ULTRA),
+            max_iterations, n
+        );
+    };
+}
+
+void write_output(const std::string& name, std::span<const wacfrac::Pixel> pixels, const wacfrac::Resolution& res) {
+    auto dir {std::filesystem::path("output")};
+    std::filesystem::create_directories(dir);
+    wacfrac::write_ppm((dir / (name + ".ppm")).string(), res, pixels);
+}
+
+auto count_mismatches(std::span<const wacfrac::Pixel> test, std::span<const wacfrac::Pixel> ref) -> std::size_t {
+    std::size_t mismatches = 0;
+    for (auto i : std::views::iota(0uz, test.size())) {
+        auto [r1, g1, b1] = test[i];
+        auto [r2, g2, b2] = ref[i];
+        if (r1 != r2 || g1 != g2 || b1 != b2)
+          mismatches++;
+    }
+    return mismatches;
+}
+
+} // anonymous namespace
+
+// Operations
 
 template<wacfrac::Complex T>
 static void compute_next_z(benchmark::State& state) {
     T z {0.0, 0.0};
     T c {0.0, 0.0};
     for (auto _ : state) {
-        auto z_n = wacfrac::compute_next_z(z, c);
+        auto z_n {wacfrac::compute_next_z(z, c)};
         benchmark::DoNotOptimize(z_n);
     }
 }
@@ -28,7 +95,7 @@ static void compute_next_dz(benchmark::State& state) {
     T dz {0.0, 0.0};
     T dc {0.0, 0.0};
     for (auto _ : state) {
-        auto dz_n = T{2.0, 0.0} * dz * z + dz * dz + dc;
+        auto dz_n {T{2.0, 0.0} * dz * z + dz * dz + dc};
         benchmark::DoNotOptimize(dz_n);
     }
 }
@@ -38,7 +105,7 @@ BENCHMARK_TEMPLATE(compute_next_dz, std::complex<long double>);
 BENCHMARK_TEMPLATE(compute_next_dz, wacfrac::DoubleExpComplex);
 
 template<wacfrac::Complex T>
-static void compute_reference(benchmark::State& state) {
+static void compute_reference_bench(benchmark::State& state) {
     auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
     auto c {wacfrac::poi::BIG_BANG};
     c.precision(wacfrac::required_precision(scale));
@@ -47,33 +114,9 @@ static void compute_reference(benchmark::State& state) {
         benchmark::DoNotOptimize(ref);
     }
 }
-BENCHMARK_TEMPLATE(compute_reference, std::complex<double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(compute_reference, std::complex<long double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(compute_reference, wacfrac::DoubleExpComplex)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
-
-static void colorize_looped_bench(benchmark::State& state) {
-    for (auto _ : state) {
-        auto pix {wacfrac::colorize_looped(
-            {{0,0,0},{255,255,255}},
-            0
-        )};
-        benchmark::DoNotOptimize(pix);
-    }
-}
-BENCHMARK(colorize_looped_bench);
-
-static void colorize_continuous_bench(benchmark::State& state) {
-    auto lookup = [](std::size_t n) -> wacfrac::Pixel {
-        return wacfrac::colorize_looped({{0,0,0},{255,255,255}}, n);
-    };
-    for (auto _ : state) {
-        auto pix = wacfrac::colorize_continuous(
-            lookup, {0.0f, 0.0f}, 0
-        );
-        benchmark::DoNotOptimize(pix);
-    }
-}
-BENCHMARK(colorize_continuous_bench);
+BENCHMARK_TEMPLATE(compute_reference_bench, std::complex<double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference_bench, std::complex<long double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference_bench, wacfrac::DoubleExpComplex)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 
 static void find_periods(benchmark::State& state) {
     auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
@@ -89,10 +132,8 @@ BENCHMARK(find_periods)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMi
 constexpr unsigned long long get_fibonacci(size_t n) {
     if (n == 0) return 0;
     if (n == 1) return 1;
-    
     unsigned long long a = 0;
     unsigned long long b = 1;
-    
     for (size_t i = 2; i <= n; ++i) {
         unsigned long long next = a + b;
         a = b;
@@ -102,9 +143,7 @@ constexpr unsigned long long get_fibonacci(size_t n) {
 }
 
 static void find_nucleus(benchmark::State& state) {
-    auto zoom_factor {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),state.range(0))};
-    auto view = wacfrac::Viewport(wacfrac::poi::BIG_BANG, wacfrac::MultiComplex{1.0} / zoom_factor);
-    wacfrac::MultiComplex::default_precision(view.required_precision());
+    auto view {make_viewport(state.range(0))};
     for (auto _ : state) {
         auto nucleus {wacfrac::find_nucleus(view.center, state.range(1), 256)};
         benchmark::DoNotOptimize(nucleus);
@@ -122,12 +161,9 @@ BENCHMARK(find_nucleus)->ArgsProduct({
 
 template <wacfrac::Complex T>
 static void compute_sa_coefficients(benchmark::State& state) {
-    auto zoom_factor {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),state.range(0))};
-    auto view = wacfrac::Viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(zoom_factor);
-    wacfrac::MultiComplex::default_precision(view.required_precision());
-
-    auto reference = wacfrac::compute_reference<T>(view.center, view.required_iterations());
-    auto probes = view.generate_probes<T>(state.range(2), state.range(2));
+    auto view {make_viewport(state.range(0))};
+    auto reference {wacfrac::compute_reference<T>(view.center, view.required_iterations())};
+    auto probes {view.generate_probes<T>(state.range(2), state.range(2))};
     for (auto _ : state) {
         wacfrac::SeriesApproximator<T> sa {
             reference,
@@ -159,14 +195,11 @@ BENCHMARK_TEMPLATE(compute_sa_coefficients, wacfrac::DoubleExpComplex)->ArgsProd
 
 template<typename T>
 static void compute_bla_coefficients(benchmark::State& state) {
-    auto zoom_factor {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),state.range(0))};
-    auto view = wacfrac::Viewport(wacfrac::poi::BIG_BANG, 1.0).zoomed(zoom_factor);
-    wacfrac::MultiComplex::default_precision(view.required_precision());
-
-    wacfrac::MultiComplex c_ref = view.center;
-    auto ref = wacfrac::compute_reference<T>(c_ref, view.required_iterations(), true);
-    auto max_dc = wacfrac::to_complex<T>(view.compute_max_dc(c_ref));
-    auto probes = view.generate_probes<T>(state.range(1), state.range(1));
+    auto view   {make_viewport(state.range(0))};
+    auto c_ref  {view.center};
+    auto ref    {wacfrac::compute_reference<T>(c_ref, view.required_iterations(), true)};
+    auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
+    auto probes {view.generate_probes<T>(state.range(1), state.range(1))};
     for (auto _ : state) {
         wacfrac::BivariateLinearApproximator<T> bla {
             std::pow(10.0, -state.range(3)), probes, max_dc, ref, 0
@@ -190,9 +223,259 @@ BENCHMARK_TEMPLATE(compute_bla_coefficients, wacfrac::DoubleExpComplex)->ArgsPro
     {1, 2, 4, 8}, // Tolerance Negative Exponent
 })->Unit(benchmark::kMillisecond);
 
-// static void e2e_direct(benchmark::State& state);
-// static void e2e_perturbed(benchmark::State& state);
-// static void e2e_sa(benchmark::State& state);
-// static void e2e_bla(benchmark::State& state);
+// Per pixel render
+
+template <wacfrac::Complex T>
+static void render_phase_direct(benchmark::State& state) {
+    auto zoom_exp {state.range(0)};
+    auto dim {static_cast<std::size_t>(state.range(1))};
+    wacfrac::Resolution res {dim, dim};
+    auto view {make_viewport(zoom_exp)};
+    auto max_iterations {view.required_iterations()};
+
+    std::vector<wacfrac::Pixel> pixels(res.area());
+    for (auto _ : state) {
+        wacfrac::absolute_render<T>(pixels, res, view,
+            [max_iterations](T c) { return wacfrac::escape<T>(c, max_iterations); },
+            default_color_fn(max_iterations)
+        );
+    }
+    state.SetComplexityN(res.area());
+    state.PauseTiming();
+    write_output(std::format("phase_direct_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
+    state.ResumeTiming();
+}
+BENCHMARK_TEMPLATE(render_phase_direct, std::complex<double>)->ArgsProduct({{0, 10, 25}, {32, 64, 128}})->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(render_phase_direct, std::complex<long double>)->ArgsProduct({{0, 10, 25}, {32, 64, 128}})->Unit(benchmark::kMillisecond);
+
+template <wacfrac::Complex T>
+static void render_phase_perturbed(benchmark::State& state) {
+    auto zoom_exp {state.range(0)};
+    auto dim {static_cast<std::size_t>(state.range(1))};
+    wacfrac::Resolution res{dim, dim};
+    auto view {make_viewport(zoom_exp)};
+    auto max_iterations {view.required_iterations()};
+    auto c_ref {view.center};
+
+    auto ref {compute_reference_dec(view, c_ref, max_iterations)};
+
+    std::vector<wacfrac::Pixel> pixels(res.area());
+    for (auto _ : state) {
+        wacfrac::perturbed_render<T>(pixels, res, view,
+            [&ref, max_iterations](T dc) { return wacfrac::escape_perturbed<T>(ref, dc, max_iterations); },
+            default_color_fn(max_iterations),
+            c_ref
+        );
+    }
+    state.SetComplexityN(res.area());
+    state.PauseTiming();
+    write_output(std::format("phase_perturbed_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
+    state.ResumeTiming();
+}
+BENCHMARK_TEMPLATE(render_phase_perturbed, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 25, 125}, {64, 128}})->Unit(benchmark::kMillisecond);
+
+template <wacfrac::Complex T>
+static void render_phase_sa(benchmark::State& state) {
+    auto zoom_exp {state.range(0)};
+    auto dim {static_cast<std::size_t>(state.range(1))};
+    auto coeff_count {static_cast<std::size_t>(state.range(2))};
+    wacfrac::Resolution res{dim, dim};
+    auto view {make_viewport(zoom_exp)};
+    auto max_iterations {view.required_iterations()};
+    auto c_ref {view.center};
+
+    auto ref {compute_reference_dec(view, c_ref, max_iterations)};
+    auto probes {view.generate_probes<T>(3, 3)};
+    wacfrac::SeriesApproximator<T> sa{ref, coeff_count, probes, 1e-6};
+
+    std::vector<wacfrac::Pixel> pixels(res.area());
+    for (auto _ : state) {
+        wacfrac::perturbed_render<T>(pixels, res, view,
+            [&sa](T dc) { return sa.approximate_escape(dc); },
+            default_color_fn(max_iterations),
+            c_ref
+        );
+    }
+    state.SetComplexityN(res.area());
+    state.PauseTiming();
+    write_output(std::format("phase_sa_{}_{}x{}_z{}_c{}", type_short_name<T>(), dim, dim, zoom_exp, coeff_count), pixels, res);
+    state.ResumeTiming();
+}
+BENCHMARK_TEMPLATE(render_phase_sa, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 25, 125}, {64}, {8, 16}})->Unit(benchmark::kMillisecond);
+
+template <wacfrac::Complex T>
+static void render_phase_bla(benchmark::State& state) {
+    auto zoom_exp {state.range(0)};
+    auto dim {static_cast<std::size_t>(state.range(1))};
+    wacfrac::Resolution res{dim, dim};
+    auto view {make_viewport(zoom_exp)};
+    auto max_iterations {view.required_iterations()};
+    auto c_ref {view.center};
+
+    auto ref {compute_reference_dec(view, c_ref, max_iterations)};
+    auto last_level {static_cast<std::size_t>(std::log2(ref.size()))};
+    auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
+    auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
+    auto probes {view.generate_probes<T>(3, 3)};
+    wacfrac::BivariateLinearApproximator<T> bla{1e-8, probes, max_dc, ref, first_level};
+
+    std::vector<wacfrac::Pixel> pixels(res.area());
+    for (auto _ : state) {
+        wacfrac::perturbed_render<T>(pixels, res, view,
+            [&bla](T dc) { return bla.escape_approximate(dc); },
+            default_color_fn(max_iterations),
+            c_ref
+        );
+    }
+    state.SetComplexityN(res.area());
+    state.PauseTiming();
+    write_output(std::format("phase_bla_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
+    state.ResumeTiming();
+}
+BENCHMARK_TEMPLATE(render_phase_bla, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 25, 125}, {64, 128}})->Unit(benchmark::kMillisecond);
+
+// E2E Pipeline
+
+template <wacfrac::Complex T>
+static void e2e_direct(benchmark::State& state) {
+    auto zoom_exp {state.range(0)};
+    auto dim {static_cast<std::size_t>(state.range(1))};
+    wacfrac::Resolution res{dim, dim};
+
+    std::vector<wacfrac::Pixel> pixels(res.area());
+    for (auto _ : state) {
+        auto view {make_viewport(zoom_exp)};
+        auto max_iterations {view.required_iterations()};
+        wacfrac::absolute_render<T>(pixels, res, view,
+            [max_iterations](T c) { return wacfrac::escape<T>(c, max_iterations); },
+            default_color_fn(max_iterations)
+        );
+    }
+    state.PauseTiming();
+    auto view {make_viewport(zoom_exp)};
+    auto max_iterations {view.required_iterations()};
+    std::vector<wacfrac::Pixel> ref_pixels(res.area());
+    wacfrac::absolute_render<T>(ref_pixels, res, view,
+        [max_iterations](T c) { return wacfrac::escape<T>(c, max_iterations); },
+        default_color_fn(max_iterations)
+    );
+    state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
+    write_output(std::format("e2e_direct_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
+    state.ResumeTiming();
+}
+BENCHMARK_TEMPLATE(e2e_direct, std::complex<double>)->ArgsProduct({{0}, {32, 64}})->Unit(benchmark::kMillisecond);
+
+template <wacfrac::Complex T>
+static void e2e_perturbed(benchmark::State& state) {
+    auto zoom_exp {state.range(0)};
+    auto dim {static_cast<std::size_t>(state.range(1))};
+    wacfrac::Resolution res{dim, dim};
+
+    std::vector<wacfrac::Pixel> pixels(res.area());
+    for (auto _ : state) {
+        auto view {make_viewport(zoom_exp)};
+        auto max_iterations {view.required_iterations()};
+        auto c_ref {view.center};
+        auto ref {compute_reference_dec(view, c_ref, max_iterations)};
+        wacfrac::perturbed_render<T>(pixels, res, view,
+            [&ref, max_iterations](T dc) { return wacfrac::escape_perturbed<T>(ref, dc, max_iterations); },
+            default_color_fn(max_iterations),
+            c_ref
+        );
+    }
+    state.PauseTiming();
+    auto view {make_viewport(zoom_exp)};
+    auto max_iterations {view.required_iterations()};
+    auto c_ref {view.center};
+    auto ref {compute_reference_dec(view, c_ref, max_iterations)};
+    std::vector<wacfrac::Pixel> ref_pixels(res.area());
+    wacfrac::perturbed_render<T>(ref_pixels, res, view,
+        [&ref, max_iterations](T dc) { return wacfrac::escape_perturbed<T>(ref, dc, max_iterations); },
+        default_color_fn(max_iterations),
+        c_ref
+    );
+    state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
+    write_output(std::format("e2e_perturbed_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
+    state.ResumeTiming();
+}
+BENCHMARK_TEMPLATE(e2e_perturbed, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 25, 125}, {64}})->Unit(benchmark::kMillisecond);
+
+template <wacfrac::Complex T>
+static void e2e_sa(benchmark::State& state) {
+    auto zoom_exp {state.range(0)};
+    auto dim {static_cast<std::size_t>(state.range(1))};
+    auto coeff_count {static_cast<std::size_t>(state.range(2))};
+    wacfrac::Resolution res{dim, dim};
+
+    std::vector<wacfrac::Pixel> pixels(res.area());
+    for (auto _ : state) {
+        auto view {make_viewport(zoom_exp)};
+        auto max_iterations {view.required_iterations()};
+        auto c_ref {view.center};
+        auto ref {compute_reference_dec(view, c_ref, max_iterations)};
+        auto probes {view.generate_probes<T>(3, 3)};
+        wacfrac::SeriesApproximator<T> sa{ref, coeff_count, probes, 1e-6};
+        wacfrac::perturbed_render<T>(pixels, res, view,
+            [&sa](T dc) { return sa.approximate_escape(dc); },
+            default_color_fn(max_iterations),
+            c_ref
+        );
+    }
+    state.PauseTiming();
+    auto view {make_viewport(zoom_exp)};
+    auto max_iterations {view.required_iterations()};
+    auto c_ref {view.center};
+    auto ref {compute_reference_dec(view, c_ref, max_iterations)};
+    std::vector<wacfrac::Pixel> ref_pixels(res.area());
+    wacfrac::perturbed_render<T>(ref_pixels, res, view,
+        [&ref, max_iterations](T dc) { return wacfrac::escape_perturbed<T>(ref, dc, max_iterations); },
+        default_color_fn(max_iterations),
+        c_ref
+    );
+    state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
+    write_output(std::format("e2e_sa_{}_{}x{}_z{}_c{}", type_short_name<T>(), dim, dim, zoom_exp, coeff_count), pixels, res);
+    state.ResumeTiming();
+}
+BENCHMARK_TEMPLATE(e2e_sa, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 25, 125}, {64}, {8, 16}})->Unit(benchmark::kMillisecond);
+
+template <wacfrac::Complex T>
+static void e2e_bla(benchmark::State& state) {
+    auto zoom_exp {state.range(0)};
+    auto dim {static_cast<std::size_t>(state.range(1))};
+    wacfrac::Resolution res{dim, dim};
+
+    std::vector<wacfrac::Pixel> pixels(res.area());
+    for (auto _ : state) {
+        auto view {make_viewport(zoom_exp)};
+        auto max_iterations {view.required_iterations()};
+        auto c_ref {view.center};
+        auto ref {compute_reference_dec(view, c_ref, max_iterations)};
+        auto last_level {static_cast<std::size_t>(std::log2(ref.size()))};
+        auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
+        auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
+        auto probes {view.generate_probes<T>(3, 3)};
+        wacfrac::BivariateLinearApproximator<T> bla{1e-8, probes, max_dc, ref, first_level};
+        wacfrac::perturbed_render<T>(pixels, res, view,
+            [&bla](T dc) { return bla.escape_approximate(dc); },
+            default_color_fn(max_iterations),
+            c_ref
+        );
+    }
+    state.PauseTiming();
+    auto view {make_viewport(zoom_exp)};
+    auto max_iterations {view.required_iterations()};
+    auto c_ref {view.center};
+    auto ref {compute_reference_dec(view, c_ref, max_iterations)};
+    std::vector<wacfrac::Pixel> ref_pixels(res.area());
+    wacfrac::perturbed_render<T>(ref_pixels, res, view,
+        [&ref, max_iterations](T dc) { return wacfrac::escape_perturbed<T>(ref, dc, max_iterations); },
+        default_color_fn(max_iterations),
+        c_ref
+    );
+    state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
+    write_output(std::format("e2e_bla_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
+    state.ResumeTiming();
+}
+BENCHMARK_TEMPLATE(e2e_bla, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 25, 125}, {64}})->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();

@@ -26,7 +26,8 @@
         [X] Templatize perturbation type
     [ ] ? Use reference period to accelerate calculation (currently just adds computation time and does nothing)
     [ ] ? Fix BLA epsilon search. It's cooked. Way too high. No range.
-[ ] Update benchmarks
+    [ ] Only one precision type (ref vs compute)
+[X] Update benchmarks
     [X] All types
     [X] Period finding
     [X] Nucleus finding
@@ -35,7 +36,7 @@
     [X] Coefficient calculation
         [X] SA
         [X] BLA
-    [ ] E2E
+    [X] E2E
 [ ] Optimize CPU-bound tasks
     [ ] Period finding
     [ ] Nucleus finding
@@ -48,14 +49,13 @@
     [X] Zoom renderer
     [X] Remove python bindings
     [ ] Milestone logging for screen render
-    [ ] Parameterize all the things (CLI)
+    [ ] Parameterize all the things (CLI, or go back to bindings)
         [ ] Escape Radius
         [ ] Log Level
         [ ] Modes
         [ ] Colors
         [ ] Numbers
         [ ] Types
-        [ ] Video
     [ ] Composition Scripts w/ ffmpeg
         [ ] Encoding
         [ ] Videos (segmented)
