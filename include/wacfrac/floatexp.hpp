@@ -94,6 +94,67 @@ struct FloatExp {
 
 namespace detail {
 
+// IEEE 754 bit-manipulation fast paths (avoids std::frexp/ldexp function call overhead).
+// Result must be a non-zero, non-subnormal, non-sNaN value.
+template<std::floating_point M>
+M frexp_fast(M x, int* e) {
+    if constexpr (std::is_same_v<M, double>) {
+        uint64_t bits = std::bit_cast<uint64_t>(x);
+        int biased_e = static_cast<int>((bits >> 52) & 0x7FF);
+        if (biased_e == 0) {
+            // zero or subnormal – spurious; fall back
+            return (bits & 0x7FFFFFFFFFFFFFFFULL) == 0 ? M(0) : std::frexp(x, e);
+        }
+        *e = biased_e - 1022;
+        bits = (bits & 0x800FFFFFFFFFFFFFULL) | (static_cast<uint64_t>(1022) << 52);
+        return std::bit_cast<double>(bits);
+    } else if constexpr (std::is_same_v<M, float>) {
+        uint32_t bits = std::bit_cast<uint32_t>(x);
+        int biased_e = static_cast<int>((bits >> 23) & 0xFF);
+        if (biased_e == 0) {
+            return (bits & 0x7FFFFFFF) == 0 ? M(0) : std::frexp(x, e);
+        }
+        *e = biased_e - 126;
+        bits = (bits & 0x807FFFFF) | (126u << 23);
+        return std::bit_cast<float>(bits);
+    } else {
+        return std::frexp(x, e);
+    }
+}
+
+// Fast x * 2^k via exponent manipulation (normal range only).
+template<std::floating_point M>
+M ldexp_fast(M x, int k) {
+    if (x == M(0)) return M(0);
+    if constexpr (std::is_same_v<M, double>) {
+        uint64_t bits = std::bit_cast<uint64_t>(x);
+        int64_t be = static_cast<int64_t>((bits >> 52) & 0x7FF);
+        int64_t nbe = be + k;
+        if (nbe >= 0x7FF) {
+            bits = (bits & 0x8000000000000000ULL) | 0x7FF0000000000000ULL;
+        } else if (nbe < 1) {
+            return std::ldexp(x, k);
+        } else {
+            bits = (bits & 0x800FFFFFFFFFFFFFULL) | (static_cast<uint64_t>(nbe) << 52);
+        }
+        return std::bit_cast<double>(bits);
+    } else if constexpr (std::is_same_v<M, float>) {
+        uint32_t bits = std::bit_cast<uint32_t>(x);
+        int64_t be = static_cast<int64_t>((bits >> 23) & 0xFF);
+        int64_t nbe = be + k;
+        if (nbe >= 0xFF) {
+            bits = (bits & 0x80000000) | 0x7F800000;
+        } else if (nbe < 1) {
+            return std::ldexp(x, k);
+        } else {
+            bits = (bits & 0x807FFFFF) | (static_cast<uint32_t>(nbe) << 23);
+        }
+        return std::bit_cast<float>(bits);
+    } else {
+        return std::ldexp(x, k);
+    }
+}
+
 template<std::floating_point M, std::integral E>
 void normalize(FloatExp<M, E>& x) {
     if (x.mantissa == 0) {
@@ -102,8 +163,8 @@ void normalize(FloatExp<M, E>& x) {
     }
     M m = std::abs(x.mantissa);
     if (m >= M(0.5) && m < M(1.0)) return;
-    int e;
-    x.mantissa = std::frexp(x.mantissa, &e);
+    int e = 0;
+    x.mantissa = frexp_fast(x.mantissa, &e);
     x.exponent += e;
 }
 
@@ -129,8 +190,8 @@ void normalize(FloatExp<M, E>& x) {
     inline FloatExp<M, E>&                               \
     FloatExp<M, E>::operator=(T a) {                     \
         if (a == 0) { mantissa = 0; exponent = 0; return *this; } \
-        int e;                                                    \
-        mantissa = std::frexp(static_cast<M>(a), &e);             \
+        int e = 0;                                                \
+        mantissa = detail::frexp_fast(static_cast<M>(a), &e);     \
         exponent = e;                                             \
         return *this;                                             \
     }
@@ -176,7 +237,7 @@ inline int FloatExp<M, E>::compare(const FloatExp& o) const noexcept {
     inline int FloatExp<M, E>::compare(T a) const { \
         FloatExp t; \
         t.mantissa = 0; t.exponent = 0; \
-        if (a != 0) { int e; t.mantissa = std::frexp(static_cast<M>(a), &e); t.exponent = e; } \
+        if (a != 0) { int e = 0; t.mantissa = detail::frexp_fast(static_cast<M>(a), &e); t.exponent = e; } \
         return compare(t);                                                       \
     }
 APPLY_X_TO_TYPES
@@ -239,10 +300,10 @@ FloatExp<M, E>::operator+=(const FloatExp& o) {
         mantissa += o.mantissa;
     } else if (exp_diff > 0) {
         int sh = static_cast<int>(std::min(exp_diff, static_cast<E>(std::numeric_limits<int>::max())));
-        mantissa += std::ldexp(o.mantissa, -sh);
+        mantissa += detail::ldexp_fast(o.mantissa, -sh);
     } else {
         int sh = static_cast<int>(std::max(exp_diff, static_cast<E>(std::numeric_limits<int>::min())));
-        mantissa = std::ldexp(mantissa, sh) + o.mantissa;
+        mantissa = detail::ldexp_fast(mantissa, sh) + o.mantissa;
         exponent = o.exponent;
     }
 
@@ -410,8 +471,8 @@ inline void eval_frexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, E* pexp) {
         *pexp = 0;
         return;
     }
-    int extra;
-    b.mantissa = std::frexp(cb.mantissa, &extra);
+    int extra = 0;
+    b.mantissa = detail::frexp_fast(cb.mantissa, &extra);
     b.exponent = 0;
     *pexp = cb.exponent + extra;
 }
@@ -424,8 +485,8 @@ inline void eval_frexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, int* pi) {
         *pi = 0;
         return;
     }
-    int extra;
-    b.mantissa = std::frexp(cb.mantissa, &extra);
+    int extra = 0;
+    b.mantissa = detail::frexp_fast(cb.mantissa, &extra);
     b.exponent = 0;
     long long sum = static_cast<long long>(cb.exponent) + extra;
     if (sum < std::numeric_limits<int>::min() || sum > std::numeric_limits<int>::max())
