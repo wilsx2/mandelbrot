@@ -24,9 +24,9 @@
     [X] FloatExp backend (eww)
         [X] Class
         [X] Templatize perturbation type
-    [ ] ? Use reference period to accelerate calculation (currently just adds computation time and does nothing)
-    [ ] ? Fix BLA epsilon search. It's cooked. Way too high. No range.
-    [ ] Only one precision type (ref vs compute)
+    [/] ? Use reference period to accelerate calculation (currently just adds computation time and does nothing)
+    [X] ? Fix BLA epsilon search. It's cooked. Way too high. No range.
+    [X] Only one precision type (ref vs compute)
 [X] Update benchmarks
     [X] All types
     [X] Period finding
@@ -37,10 +37,10 @@
         [X] SA
         [X] BLA
     [X] E2E
-[ ] Optimize CPU-bound tasks
-    [ ] Period finding
-    [ ] Nucleus finding
-    [ ] Reference orbit
+[/] Optimize CPU-bound tasks
+    [/] Period finding
+    [/] Nucleus finding
+    [X] Reference orbit
     [ ] Coefficient calculation
 [ ] Interactivity
     [X] Interchangable Escape Time Algorithms
@@ -49,14 +49,13 @@
     [X] Zoom renderer
     [X] Remove python bindings
     [ ] Parameterize all the things (CLI, or go back to bindings)
-        [ ] Escape Radius
+        [X] Escape Radius
         [ ] Log Level
-        [ ] Modes
+        [X] Modes
         [ ] Colors
-        [ ] Numbers
-        [ ] Types
-    [ ] Add python bindings
-    [ ] Composition Scripts w/ ffmpeg
+        [X] Numbers
+        [X] Types
+    [ ] Composition w/ ffmpeg
         [ ] Encoding
         [ ] Videos (segmented)
         [ ] Tiled images

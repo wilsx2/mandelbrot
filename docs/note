@@ -1,13 +1,10 @@
 28
-- Simplify API
-  - Mitigate OOP
-  - Unified render function
-  - Remove "constants" outside of testing, palette generation, & i/o
-- Improve CLI (see TODO)
-- Async Video Generation (cache steps)
-- Python Bindings (high level)
-- Example scripts
-- Pip pip hooray!
+- Resolve worrying doublexp precision issue, earthshattering slowness, and rampant glitching
+- Cache References
+- Cache BLAs coefficients
+- Tiling
+- My First Video.mp4
+- Examples
 
 29 (mostly busy)
 - Pontificate

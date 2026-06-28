@@ -64,6 +64,11 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(
         auto epsilon {pow(ComplexValueTypeT<T>{10.0}, middle)};
         compute_blas(epsilon, max_dc);
 
+        if (upper_exp - lower_exp < 1e-3) {
+            logging::print(logging::Severity::Trace, "BLA search iter {}: epsilon=10^{} (converged)", iter, middle);
+            break;
+        }    
+
         auto all_correct{true};
         auto total_skipped{0uz};
         for (auto&& [i, probe] : probes | std::views::enumerate) {
@@ -84,13 +89,13 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(
         }
 
         auto avg_skipped = total_skipped / static_cast<double>(probes.size());
-        if (avg_skipped > prev_avg_skipped) {
+        if (avg_skipped >= prev_avg_skipped) {
             logging::print(logging::Severity::Trace, "BLA search iter {}: epsilon=10^{} avg_skipped={} (improving)", iter, middle, avg_skipped);
             prev_avg_skipped = avg_skipped;
             prev_bla = *this;
             lower_exp = middle; 
         } else {
-            logging::print(logging::Severity::Trace, "BLA search iter {}: epsilon=10^{} avg_skipped={} (converged)", iter, middle, avg_skipped);
+            logging::print(logging::Severity::Trace, "BLA search iter {}: epsilon=10^{} avg_skipped={} (found max)", iter, middle, avg_skipped);
             *this = std::move(prev_bla);
             break;
         }
