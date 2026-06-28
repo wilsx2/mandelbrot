@@ -223,9 +223,17 @@ int main(int argc, char* argv[])
 
     wacfrac::MultiFloat zoom_scale {opts.scale, 1000};
 
-    wacfrac::Viewport view {wacfrac::MultiComplex{opts.focus[0], opts.focus[1], 10000}, {1.0, 1.0}}; // NOTE: Arbitrary number
-    view = view.zoomed(zoom_scale);
+    wacfrac::Resolution resolution {opts.dimensions[0], opts.dimensions[1]};
 
+    wacfrac::Viewport view;
+    view.center = wacfrac::MultiComplex{opts.focus[0], opts.focus[1], 10000};// NOTE: Arbitrily chosen digit count
+    auto aspect_ratio {resolution.width / static_cast<double>(resolution.height)};
+    if (aspect_ratio >= 1.0) {
+        view.dimensions = {aspect_ratio, 1.0};
+    } else {
+        view.dimensions = {1.0, 1.0/aspect_ratio};
+    }
+        view = view.zoomed(zoom_scale);
     auto max_iterations {opts.max_iterations};
     auto precision {opts.precision};
     if (max_iterations == 0)
@@ -237,8 +245,6 @@ int main(int argc, char* argv[])
     wacfrac::MultiComplex::default_precision(precision);
     view.precision(precision);
     zoom_scale.precision(precision);
-
-    wacfrac::Resolution resolution {opts.dimensions[0], opts.dimensions[1]};
 
     wacfrac::logging::print(wacfrac::logging::Severity::Info,
         "Viewport: center=({}) dimensions=({})", view.center, view.dimensions);

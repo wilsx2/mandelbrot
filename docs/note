@@ -1,12 +1,6 @@
 28
-- Focus (take from file)
 - No stretch
-- Reference mode (compute and save)
-- Reference (take from file)
 - Video mode
-- Cache References
-- Cache BLAs coefficients
-- Tiling
 - Examples
 
 29 (mostly busy)
@@ -18,5 +12,10 @@
 - Tex
 
 July
+- Tiling
 - GPU
-- Distribute
+- Distribute / Parallel
+- Cache References
+- Cache BLAs coefficients
+- ? Analyze for zoom points
+- Cloud
