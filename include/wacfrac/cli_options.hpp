@@ -10,13 +10,13 @@ namespace wacfrac {
 struct SharedOptions {
     std::string filepath {"mandelbrot.ppm"};
     std::vector<std::size_t> dimensions {500, 500};
-    std::vector<double> focus {-0.5, 0.0};
+    std::vector<std::string> focus {"-0.5", "0.0"};
     std::string scale {"0.4"};
     std::size_t max_iterations {0};
     std::size_t precision {0};
     double escape_radius {2.0};
     std::string numeric_type {"double"};
-    std::string palette {};
+    std::vector<std::string> palette {};
     bool continuous_coloring {false};
 
     void add_to(argumentum::ParameterConfig& args) {
@@ -27,7 +27,7 @@ struct SharedOptions {
             .nargs(2).absent({500, 500})
             .help("Width and height of output image");
         args.add_parameter(focus, "--focus", "-f")
-            .nargs(2).absent({-0.5, 0.0})
+            .nargs(2).absent({"-0.5", "0.0"})
             .help("Coordinates to zoom in on");
         args.add_parameter(scale, "--zoom-scale", "-z")
             .nargs(1).absent("0.4")
@@ -45,8 +45,8 @@ struct SharedOptions {
             .nargs(1).absent("double")
             .help("Number type: double, long-double, dexp");
         args.add_parameter(palette, "--palette")
-            .nargs(1).absent("")
-            .help("Path to palette file");
+            .minargs(0)
+            .help("Hex formatted colors mapped to escape time");
         args.add_parameter(continuous_coloring, "--continuous-coloring")
             .nargs(0).absent(false)
             .help("Enable smooth/continuous coloring");

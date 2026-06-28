@@ -1,5 +1,6 @@
 #include "wacfrac/cli_options.hpp"
 #include "wacfrac/constants.hpp"
+#include "wacfrac/types.hpp"
 #include "wacfrac/wacfrac.hpp"
 #include <atomic>
 #include <chrono>
@@ -9,6 +10,7 @@
 #include <functional>
 #include <ratio>
 #include <string>
+#include <string_view>
 
 namespace {
 
@@ -204,10 +206,15 @@ int main(int argc, char* argv[])
         "Configuration: output={} dimensions={}x{} focus=({}, {}) zoom={} max_iterations={} precision={} numeric_type={}",
         opts.filepath, opts.dimensions[0], opts.dimensions[1],
         opts.focus[0], opts.focus[1], opts.scale,
-        opts.max_iterations, opts.precision, opts.numeric_type,
-        opts.palette);
+        opts.max_iterations, opts.precision, opts.numeric_type);
 
-    auto palette {wacfrac::load_color_palette(opts.palette)};
+    std::vector<wacfrac::Pixel> palette {};
+    std::ranges::copy(
+        opts.palette | std::views::transform([](std::string_view string) {
+            return wacfrac::parse_color(string);
+        }),
+        std::back_inserter(palette)
+    );
     if (palette.empty()) {
         wacfrac::logging::print(wacfrac::logging::Severity::Info,
             "Falling back to default palette");
@@ -216,7 +223,7 @@ int main(int argc, char* argv[])
 
     wacfrac::MultiFloat zoom_scale {opts.scale, 1000};
 
-    wacfrac::Viewport view {wacfrac::poi::BIG_BANG, {1.0, 1.0}};
+    wacfrac::Viewport view {wacfrac::MultiComplex{opts.focus[0], opts.focus[1], 10000}, {1.0, 1.0}}; // NOTE: Arbitrary number
     view = view.zoomed(zoom_scale);
 
     auto max_iterations {opts.max_iterations};

@@ -18,8 +18,6 @@
 namespace wacfrac
 {
 
-auto load_color_palette(std::string_view filename) -> std::vector<Pixel>;
-
 void write_ppm(std::string_view filename, Resolution res, std::span<const Pixel> pixels);
 
 template <std::invocable<std::span<Pixel>, MultiFloat> F>

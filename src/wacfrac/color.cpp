@@ -1,6 +1,10 @@
 #include <concepts>
+#include <sstream>
+#include <string>
 #include <vector>
+#include <fstream>
 #include <wacfrac/color.hpp>
+#include <wacfrac/log.hpp>
 #include <wacfrac/orbit.hpp>
 
 #include <algorithm>
@@ -9,6 +13,29 @@
 
 namespace wacfrac
 {
+
+auto parse_color(std::string_view string) -> Pixel {
+    if (string.size() < 7 || string[0] != '#') {
+        logging::print(logging::Severity::Error, "Error parsing string as a color; size or prefix: {}", string);
+        return {255,0,255};
+    }
+
+    std::stringstream ss {string.data() + 1};
+
+    unsigned int hex_color;
+    if (!(ss >> std::hex >> hex_color)) {
+        logging::print(logging::Severity::Error, "Error parsing string as a color; to hex: {}", string);
+        return {255,0,255};
+    }
+
+    Pixel color {
+        static_cast<uint8_t>((hex_color >> 16) & 0xFF),
+        static_cast<uint8_t>((hex_color >> 8) & 0xFF),
+        static_cast<uint8_t>(hex_color & 0xFF)
+    };
+    logging::print(logging::Severity::Debug, "Parsed color '{}' as rgb({},{},{})", color.r, color.g, color.b);
+    return color;
+}
 
 auto colorize_normal(const std::vector<Pixel>& palette, std::size_t max_n, std::size_t n) -> Pixel {
     return palette.at(std::floor((n / static_cast<float>(max_n)) * static_cast<float>(palette.size() - 1)));

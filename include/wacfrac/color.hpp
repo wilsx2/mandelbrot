@@ -14,6 +14,8 @@ struct Pixel { uint8_t r, g, b; };
 using Color = std::tuple<float,float,float>;
 enum class ColorEncoding { Rgb , Hsv , Hcl };
 
+auto parse_color(std::string_view filename) -> Pixel;
+
 // colorization
 // https://www.tomchaplin.xyz/blog/2018-11-02-exploring-the-mandelbrot-set/
 // https://linas.org/art-gallery/escape/escape.html
