@@ -100,6 +100,8 @@ void normalize(FloatExp<M, E>& x) {
         x.exponent = 0;
         return;
     }
+    M m = std::abs(x.mantissa);
+    if (m >= M(0.5) && m < M(1.0)) return;
     int e;
     x.mantissa = std::frexp(x.mantissa, &e);
     x.exponent += e;
