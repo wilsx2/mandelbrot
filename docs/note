@@ -1,9 +1,13 @@
 28
 - Resolve worrying doublexp precision issue, earthshattering slowness, and rampant glitching
+- Palette (take from file)
+- Focus (take from file)
+- Reference mode (compute and save)
+- Reference (take from file)
+- Video mode
 - Cache References
 - Cache BLAs coefficients
 - Tiling
-- My First Video.mp4
 - Examples
 
 29 (mostly busy)

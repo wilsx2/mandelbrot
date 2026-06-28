@@ -31,7 +31,8 @@ auto rebase_reference(const std::vector<T>& ref, std::size_t ref_n, T dz) -> std
 
 template <Complex T>
 auto compute_next_perturbation(const std::vector<T>& ref, std::size_t ref_n, T dc, T dz) -> std::tuple<std::size_t, T, T> {
-    dz = T{2.0, 0.0} * dz * ref[ref_n] + dz * dz + dc;
+    static const T TWO{2.0, 0.0};
+    dz = TWO * dz * ref[ref_n] + dz * dz + dc;
     ++ref_n;
     return rebase_reference(ref, ref_n, dz);
 }

@@ -94,15 +94,13 @@ struct FloatExp {
 
 namespace detail {
 
-// IEEE 754 bit-manipulation fast paths (avoids std::frexp/ldexp function call overhead).
-// Result must be a non-zero, non-subnormal, non-sNaN value.
+// IEEE 754 bit-manipulation
 template<std::floating_point M>
 M frexp_fast(M x, int* e) {
     if constexpr (std::is_same_v<M, double>) {
         uint64_t bits = std::bit_cast<uint64_t>(x);
         int biased_e = static_cast<int>((bits >> 52) & 0x7FF);
         if (biased_e == 0) {
-            // zero or subnormal – spurious; fall back
             return (bits & 0x7FFFFFFFFFFFFFFFULL) == 0 ? M(0) : std::frexp(x, e);
         }
         *e = biased_e - 1022;
@@ -122,7 +120,7 @@ M frexp_fast(M x, int* e) {
     }
 }
 
-// Fast x * 2^k via exponent manipulation (normal range only).
+// Fast x * 2^k via exponent manipulation (normal range only)
 template<std::floating_point M>
 M ldexp_fast(M x, int k) {
     if (x == M(0)) return M(0);
@@ -315,9 +313,22 @@ template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>&
 FloatExp<M, E>::operator-=(const FloatExp& o) {
     if (o.mantissa == 0) return *this;
-    FloatExp neg = o;
-    neg.negate();
-    return *this += neg;
+    if (mantissa == 0) { mantissa = -o.mantissa; exponent = o.exponent; return *this; }
+
+    E exp_diff = exponent - o.exponent;
+    if (exp_diff == 0) {
+        mantissa -= o.mantissa;
+    } else if (exp_diff > 0) {
+        int sh = static_cast<int>(std::min(exp_diff, static_cast<E>(std::numeric_limits<int>::max())));
+        mantissa -= detail::ldexp_fast(o.mantissa, -sh);
+    } else {
+        int sh = static_cast<int>(std::max(exp_diff, static_cast<E>(std::numeric_limits<int>::min())));
+        mantissa = detail::ldexp_fast(mantissa, sh) - o.mantissa;
+        exponent = o.exponent;
+    }
+
+    detail::normalize(*this);
+    return *this;
 }
 
 template<std::floating_point M, std::integral E>
@@ -650,7 +661,6 @@ inline std::istream& operator>>(std::istream& is, FloatExp<M, E>& v) {
 
 } // namespace wacfrac
 
-// number_category — explicitly in ::boost::multiprecision
 namespace boost::multiprecision {
 
 template <class Backend>
