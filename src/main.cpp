@@ -1,4 +1,5 @@
 #include "wacfrac/cli_options.hpp"
+#include "wacfrac/constants.hpp"
 #include "wacfrac/wacfrac.hpp"
 #include <atomic>
 #include <chrono>
@@ -6,6 +7,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <functional>
+#include <ratio>
 #include <string>
 
 namespace {
@@ -26,22 +28,22 @@ decltype(auto) with_numeric_type(const std::string& type, F&& f) {
     std::exit(EXIT_FAILURE);
 }
 
-auto make_color_fn(bool continuous, std::size_t max_iterations)
+auto make_color_fn(const std::vector<wacfrac::Pixel>& palette, bool continuous, std::size_t max_iterations)
     -> std::function<wacfrac::Pixel(std::complex<float>, std::size_t)>
 {
     if (continuous) {
-        return [max_iterations](std::complex<float> z, std::size_t n) -> wacfrac::Pixel {
+        return [max_iterations, &palette](std::complex<float> z, std::size_t n) -> wacfrac::Pixel {
             if (n == max_iterations)
                 return wacfrac::Pixel{0, 0, 0};
             return wacfrac::colorize_continuous(
-                std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ULTRA),
+                std::bind_front(wacfrac::colorize_looped, palette),
                 z, n);
         };
     }
-    return [max_iterations](std::complex<float> /*z*/, std::size_t n) -> wacfrac::Pixel {
+    return [max_iterations, &palette](std::complex<float> /*z*/, std::size_t n) -> wacfrac::Pixel {
         return wacfrac::colorize_unescaped(
             wacfrac::Pixel{0, 0, 0},
-            std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ULTRA),
+            std::bind_front(wacfrac::colorize_looped, palette),
             max_iterations, n);
     };
 }
@@ -53,6 +55,7 @@ void render_direct(
     const wacfrac::SharedOptions& opts,
     const wacfrac::Viewport& view,
     const wacfrac::Resolution& resolution,
+    const std::vector<wacfrac::Pixel>& palette,
     std::size_t max_iterations,
     std::span<wacfrac::Pixel> pixels)
 {
@@ -60,7 +63,8 @@ void render_direct(
         [max_iterations, escape_radius = opts.escape_radius](T c) {
             return wacfrac::escape<T>(c, max_iterations, escape_radius);
         },
-        make_color_fn(opts.continuous_coloring, max_iterations));
+        make_color_fn(palette, opts.continuous_coloring, max_iterations)
+    );
 }
 
 template <typename T>
@@ -68,6 +72,7 @@ void render_perturbed(
     const wacfrac::SharedOptions& opts,
     const wacfrac::Viewport& view,
     const wacfrac::Resolution& resolution,
+    const std::vector<wacfrac::Pixel>& palette,
     std::size_t max_iterations,
     wacfrac::MultiComplex c_ref,
     std::span<wacfrac::Pixel> pixels)
@@ -80,7 +85,7 @@ void render_perturbed(
         [&ref, max_iterations, escape_radius = opts.escape_radius](T dc) {
             return wacfrac::escape_perturbed<T>(ref, dc, max_iterations, escape_radius);
         },
-        make_color_fn(opts.continuous_coloring, max_iterations),
+        make_color_fn(palette, opts.continuous_coloring, max_iterations),
         c_ref);
 }
 
@@ -89,6 +94,7 @@ void render_sa(
     const wacfrac::SAOptions& opts,
     const wacfrac::Viewport& view,
     const wacfrac::Resolution& resolution,
+    const std::vector<wacfrac::Pixel>& palette,
     std::size_t max_iterations,
     wacfrac::MultiComplex c_ref,
     std::span<wacfrac::Pixel> pixels)
@@ -106,7 +112,7 @@ void render_sa(
             auto [z, n] = sa.approximate_escape(dc);
             return std::make_tuple(z, n, std::size_t{0});
         },
-        make_color_fn(opts.shared->continuous_coloring, max_iterations),
+        make_color_fn(palette, opts.shared->continuous_coloring, max_iterations),
         c_ref);
 }
 
@@ -115,6 +121,7 @@ void render_bla(
     const wacfrac::BLAOptions& opts,
     const wacfrac::Viewport& view,
     const wacfrac::Resolution& resolution,
+    const std::vector<wacfrac::Pixel>& palette,
     std::size_t max_iterations,
     wacfrac::MultiComplex c_ref,
     std::span<wacfrac::Pixel> pixels)
@@ -146,7 +153,7 @@ void render_bla(
             total_skipped += std::get<2>(result);
             return result;
         },
-        make_color_fn(opts.shared->continuous_coloring, max_iterations),
+        make_color_fn(palette, opts.shared->continuous_coloring, max_iterations),
         c_ref);
 
     auto avg_skipped {static_cast<double>(total_skipped) / resolution.area()};
@@ -197,7 +204,15 @@ int main(int argc, char* argv[])
         "Configuration: output={} dimensions={}x{} focus=({}, {}) zoom={} max_iterations={} precision={} numeric_type={}",
         opts.filepath, opts.dimensions[0], opts.dimensions[1],
         opts.focus[0], opts.focus[1], opts.scale,
-        opts.max_iterations, opts.precision, opts.numeric_type);
+        opts.max_iterations, opts.precision, opts.numeric_type,
+        opts.palette);
+
+    auto palette {wacfrac::load_color_palette(opts.palette)};
+    if (palette.empty()) {
+        wacfrac::logging::print(wacfrac::logging::Severity::Info,
+            "Falling back to default palette");
+        palette = wacfrac::palette::ULTRA;
+    }
 
     wacfrac::MultiFloat zoom_scale {opts.scale, 1000};
 
@@ -234,25 +249,25 @@ int main(int argc, char* argv[])
         wacfrac::logging::print(wacfrac::logging::Severity::Info,
             "Rendering {} pixels (direct)...", resolution.area());
         with_numeric_type(opts.numeric_type, [&]<typename T>(NumericTypeTag<T>) {
-            render_direct<T>(opts, view, resolution, max_iterations, pixels);
+            render_direct<T>(opts, view, resolution, palette, max_iterations, pixels);
         });
     } else if (dynamic_cast<wacfrac::PerturbedOptions*>(cmd.get())) {
         wacfrac::logging::print(wacfrac::logging::Severity::Info,
             "Rendering {} pixels (perturbed)...", resolution.area());
         with_numeric_type(opts.numeric_type, [&]<typename T>(NumericTypeTag<T>) {
-            render_perturbed<T>(opts, view, resolution, max_iterations, c_ref, pixels);
+            render_perturbed<T>(opts, view, resolution, palette, max_iterations, c_ref, pixels);
         });
     } else if (auto* sa_opts = dynamic_cast<wacfrac::SAOptions*>(cmd.get())) {
         wacfrac::logging::print(wacfrac::logging::Severity::Info,
             "Rendering {} pixels (SA)...", resolution.area());
         with_numeric_type(opts.numeric_type, [&]<typename T>(NumericTypeTag<T>) {
-            render_sa<T>(*sa_opts, view, resolution, max_iterations, c_ref, pixels);
+            render_sa<T>(*sa_opts, view, resolution, palette, max_iterations, c_ref, pixels);
         });
     } else if (auto* bla_opts = dynamic_cast<wacfrac::BLAOptions*>(cmd.get())) {
         wacfrac::logging::print(wacfrac::logging::Severity::Info,
             "Rendering {} pixels (BLA)...", resolution.area());
         with_numeric_type(opts.numeric_type, [&]<typename T>(NumericTypeTag<T>) {
-            render_bla<T>(*bla_opts, view, resolution, max_iterations, c_ref, pixels);
+            render_bla<T>(*bla_opts, view, resolution, palette, max_iterations, c_ref, pixels);
         });
     }
 

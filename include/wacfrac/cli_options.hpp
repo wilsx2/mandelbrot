@@ -16,6 +16,7 @@ struct SharedOptions {
     std::size_t precision {0};
     double escape_radius {2.0};
     std::string numeric_type {"double"};
+    std::string palette {};
     bool continuous_coloring {false};
 
     void add_to(argumentum::ParameterConfig& args) {
@@ -43,6 +44,9 @@ struct SharedOptions {
         args.add_parameter(numeric_type, "--numeric-type")
             .nargs(1).absent("double")
             .help("Number type: double, long-double, dexp");
+        args.add_parameter(palette, "--palette")
+            .nargs(1).absent("")
+            .help("Path to palette file");
         args.add_parameter(continuous_coloring, "--continuous-coloring")
             .nargs(0).absent(false)
             .help("Enable smooth/continuous coloring");

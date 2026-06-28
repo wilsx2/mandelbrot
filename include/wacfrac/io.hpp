@@ -1,12 +1,15 @@
 #pragma once
 
 #include "wacfrac/color.hpp"
+#include "wacfrac/log.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/types.hpp"
 #include <algorithm>
 #include <concepts>
 #include <filesystem>
+#include <fstream>
 #include <ranges>
+#include <sstream>
 #include <wacfrac/rendering.hpp>
 #include <span>
 #include <string>
@@ -14,6 +17,8 @@
 
 namespace wacfrac
 {
+
+auto load_color_palette(std::string_view filename) -> std::vector<Pixel>;
 
 void write_ppm(std::string_view filename, Resolution res, std::span<const Pixel> pixels);
 
