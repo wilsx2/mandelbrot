@@ -8,8 +8,6 @@ namespace wacfrac {
 
 auto find_nucleus(MultiComplex c, std::size_t period, std::size_t max_iterations) -> MultiComplex;
 
-auto find_period_ball(MultiComplex c0, MultiFloat dx, MultiFloat dy, std::size_t max_iterations, bool do_cont) -> std::vector<std::size_t>;
-
 template<Complex T, typename F = double>
 auto is_reference_degenerate(const std::vector<T>& ref, F tolerance = 1e-3) -> bool {
     return std::ranges::all_of(ref, [tolerance](auto z) {
@@ -18,5 +16,17 @@ auto is_reference_degenerate(const std::vector<T>& ref, F tolerance = 1e-3) -> b
         return abs(z) < tolerance;
     });
 }
+
+// https://fractalforums.org/index.php?topic=3805.msg24312#msg24312
+struct PeriodFinder {
+public: 
+    PeriodFinder(MultiComplex c0, MultiFloat dx, MultiFloat dy, std::size_t max_period);
+    auto next() -> std::size_t;
+private:
+    static constexpr double max_r {1e5};
+    MultiFloat r0, r, az, adz;
+    MultiComplex c0, z, dz;
+    std::size_t k, n;
+};
 
 } // namespace wacfrac

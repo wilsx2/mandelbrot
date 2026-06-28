@@ -1,6 +1,8 @@
+#include "wacfrac/analysis.hpp"
 #include "wacfrac/bla.hpp"
 #include "wacfrac/color.hpp"
 #include "wacfrac/log.hpp"
+#include "wacfrac/orbit.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/wacfrac.hpp"
 #include "argumentum/argparse.h"
@@ -93,9 +95,8 @@ int main(int argc, char *argv[]) {
     wacfrac::logging::print(wacfrac::logging::Severity::Info, "Resolution: {}x{} ({} pixels)", res.width, res.height, res.area());
     wacfrac::logging::print(wacfrac::logging::Severity::Info, "Using {} max iterations with {} decimal digits precision", max_iterations, precision);
 
-    wacfrac::MultiComplex c_ref = view.center;
-
-    auto ref = wacfrac::compute_reference_mt<wacfrac::DoubleExpComplex>(c_ref, max_iterations);
+    auto c_ref {view.center};
+    auto ref {wacfrac::compute_reference_mt<wacfrac::DoubleExpComplex>(c_ref, max_iterations)};
     wacfrac::logging::print(wacfrac::logging::Severity::Info, "Reference at view center with orbit length {}", ref.size());
 
     auto t_render = std::chrono::steady_clock::now();
@@ -103,24 +104,25 @@ int main(int argc, char *argv[]) {
     std::vector<wacfrac::Pixel> pixels(res.area());
 
     wacfrac::logging::print(wacfrac::logging::Severity::Info, "Rendering {} pixels (perturbed)...", res.area());
-    auto total_skipped = std::atomic<std::uint64_t>{0};
+    // auto total_skipped = std::atomic<std::uint64_t>{0};
 
-    auto last_level = static_cast<std::size_t>(std::log2(ref.size()));
-    auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
+    // auto last_level = static_cast<std::size_t>(std::log2(ref.size()));
+    // auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
 
-    auto max_dc = wacfrac::to_complex<wacfrac::DoubleExpComplex>(view.compute_max_dc(c_ref));
-    auto probes = view.generate_probes<wacfrac::DoubleExpComplex>(3, 3);
-    wacfrac::BivariateLinearApproximator<wacfrac::DoubleExpComplex> bla {
-        -255.0, -64.0, 1e-8,
+    // auto max_dc = wacfrac::to_complex<wacfrac::DoubleExpComplex>(view.compute_max_dc(c_ref));
+    // auto probes = view.generate_probes<wacfrac::DoubleExpComplex>(3, 3);
+    /*wacfrac::BivariateLinearApproximator<wacfrac::DoubleExpComplex> bla {
+        -(1<<10), -(1<<0), 1e-8,
         probes, max_dc, ref, first_level
-    };
+    };*/
     wacfrac::perturbed_render<wacfrac::DoubleExpComplex>(
         pixels, res, view,
-        [&bla, &total_skipped](auto dc) {
+        /*[&bla, &total_skipped](auto dc) {
             auto result = bla.escape_approximate(dc);
             total_skipped += std::get<2>(result);
             return result;
-        },
+        },*/ 
+        [&](auto dc){ return wacfrac::escape_perturbed(ref, dc, max_iterations); },
         [max_iterations](std::size_t n) {
             return wacfrac::colorize_unescaped(
                 wacfrac::Pixel{0,0,0},
@@ -130,8 +132,8 @@ int main(int argc, char *argv[]) {
         },
         c_ref
     );
-    auto avg_skipped = static_cast<double>(total_skipped) / res.area();
-    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Perturbed render complete (avg skipped: {})", avg_skipped);
+    // auto avg_skipped = static_cast<double>(total_skipped) / res.area();
+    // wacfrac::logging::print(wacfrac::logging::Severity::Info, "Perturbed render complete (avg skipped: {})", avg_skipped);
 
     auto render_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t_render);

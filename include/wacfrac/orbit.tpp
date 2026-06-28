@@ -71,10 +71,12 @@ auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius) 
 template <Complex T>
 auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radius) -> std::vector<T> {
     logging::print(logging::Severity::Debug, "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
+    if (max_n == 0)
+        return {};
 
-    auto n {0uz};
     std::vector<T> reference (max_n);
-    reference[n] = T{0.0, 0.0};
+    reference[0] = T{0.0, 0.0};
+    auto n_1 {1uz};
     MultiComplex z {0.0, 0.0};
     MultiComplex next_z {0.0, 0.0};
     auto running {true};
@@ -83,7 +85,7 @@ auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radiu
     auto ci {c.imag()};
     {
         std::barrier sync (2, [&](){
-            if (++n + 1 >= max_n)
+            if (++n_1 >= max_n)
                 running = false;
             else
                 std::swap(z, next_z);
@@ -95,7 +97,7 @@ auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radiu
                 MultiFloat zi {z.imag()};
                 MultiFloat nzr {zr*zr - zi*zi + cr};
                 next_z.real(nzr);
-                reference[n+1].real(to_real<ComplexValueTypeT<T>>(nzr));
+                reference[n_1].real(to_real<ComplexValueTypeT<T>>(nzr));
                 sync.arrive_and_wait();
             }
         }};
@@ -103,7 +105,7 @@ auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radiu
             while (running) {
                 MultiFloat nzi {2*z.real()*z.imag() + ci};
                 next_z.imag(nzi);
-                reference[n+1].imag(to_real<ComplexValueTypeT<T>>(nzi)); 
+                reference[n_1].imag(to_real<ComplexValueTypeT<T>>(nzi)); 
                 sync.arrive_and_wait();
             }
         }};

@@ -1,3 +1,4 @@
+#include "wacfrac/analysis.hpp"
 #include "wacfrac/bla.hpp"
 #include "wacfrac/constants.hpp"
 #include "wacfrac/io.hpp"
@@ -132,16 +133,16 @@ BENCHMARK_TEMPLATE(compute_reference_mt_bench, std::complex<double>)->RangeMulti
 BENCHMARK_TEMPLATE(compute_reference_mt_bench, std::complex<long double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(compute_reference_mt_bench, wacfrac::DoubleExpComplex)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 
-static void find_periods(benchmark::State& state) {
+static void find_period(benchmark::State& state) {
     auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
     auto c {wacfrac::poi::BIG_BANG};
     c.precision(wacfrac::required_precision(scale));
     for (auto _ : state) {
-        auto periods {wacfrac::find_period_ball(c, scale / 2.0, scale / 2.0, wacfrac::required_iterations(scale), true)};
-        benchmark::DoNotOptimize(periods);
+        auto period {wacfrac::PeriodFinder(c, scale / 2.0, scale / 2.0, wacfrac::required_iterations(scale)).next()};
+        benchmark::DoNotOptimize(period);
     }
 }
-BENCHMARK(find_periods)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK(find_period)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 
 constexpr unsigned long long get_fibonacci(size_t n) {
     if (n == 0) return 0;

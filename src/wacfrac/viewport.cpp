@@ -56,9 +56,9 @@ template auto Viewport::generate_probes<std::complex<double>>(std::size_t cols, 
 template auto Viewport::generate_probes<std::complex<long double>>(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<long double>>;
 template auto Viewport::generate_probes<DoubleExpComplex>(std::size_t cols, std::size_t rows) const -> std::vector<DoubleExpComplex>;
 
-template auto Viewport::find_periodic_reference<std::complex<double>>(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<std::complex<double>>>;
-template auto Viewport::find_periodic_reference<std::complex<long double>>(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<std::complex<long double>>>;
-template auto Viewport::find_periodic_reference<DoubleExpComplex>(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<DoubleExpComplex>>;
+template auto Viewport::find_periodic_reference<std::complex<double>>(std::size_t max_n, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<std::complex<double>>>;
+template auto Viewport::find_periodic_reference<std::complex<long double>>(std::size_t max_n, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<std::complex<long double>>>;
+template auto Viewport::find_periodic_reference<DoubleExpComplex>(std::size_t max_n, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<DoubleExpComplex>>;
 
 auto required_precision(MultiFloat zoom) -> std::size_t {
     using namespace std;

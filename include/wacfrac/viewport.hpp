@@ -20,7 +20,7 @@ struct Viewport {
     template<Complex T>
     auto generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<T>;
     template<Complex T>
-    auto find_periodic_reference(std::size_t max_n, std::size_t find_period_iter, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<T>>;
+    auto find_periodic_reference(std::size_t max_n, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<T>>;
 };
 auto required_precision(MultiFloat zoom_factor) -> std::size_t;
 auto required_iterations(MultiFloat zoom_factor, double modifier = 250.0, double factor = 50.0, double exponent = 1.5) -> std::size_t;
