@@ -37,11 +37,17 @@ auto parse_color(std::string_view string) -> Pixel {
     return color;
 }
 
-auto colorize_normal(const std::vector<Pixel>& palette, std::size_t max_n, std::size_t n) -> Pixel {
-    return palette.at(std::floor((n / static_cast<float>(max_n)) * static_cast<float>(palette.size() - 1)));
+auto colorize_continuous(const std::vector<Pixel>& palette, std::size_t max_n, std::complex<float> z, std::size_t n) -> Pixel {
+    auto cont_n {n - std::log(std::log(std::abs(z))) / std::log(2.0)};
+    auto n1     {static_cast<std::size_t>(std::floor(cont_n))};
+    auto n2     {static_cast<std::size_t>(std::ceil(cont_n))};
+    auto color1 {colorize_discrete(palette, max_n, n1)};
+    auto color2 {colorize_discrete(palette, max_n, n2)};
+    return lerp_pixel(color1, color2, std::fmod(cont_n, 1.0));
 }
-auto colorize_looped(const std::vector<Pixel>& palette, std::size_t n) -> Pixel {
-    return palette.at(n % palette.size());
+
+auto colorize_discrete(const std::vector<Pixel>& palette, std::size_t max_n, std::size_t n) -> Pixel {
+    return palette.at((n - max_n - 1) % palette.size());
 }
 
 auto lerp_pixel(Pixel a, Pixel b, float percentile) -> Pixel {

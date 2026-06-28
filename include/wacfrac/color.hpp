@@ -19,24 +19,8 @@ auto parse_color(std::string_view filename) -> Pixel;
 // colorization
 // https://www.tomchaplin.xyz/blog/2018-11-02-exploring-the-mandelbrot-set/
 // https://linas.org/art-gallery/escape/escape.html
-template <std::invocable<std::size_t> F>
-auto colorize_continuous(F&& lookup, std::complex<float> z, std::size_t n) -> Pixel {
-    auto cont_n {n - std::log(std::log(std::abs(z))) / std::log(2.0)};
-    auto n1     {static_cast<std::size_t>(std::floor(cont_n))};
-    auto n2     {static_cast<std::size_t>(std::ceil(cont_n))};
-    auto color1 {lookup(n1)};
-    auto color2 {lookup(n2)};
-    return lerp_pixel(color1, color2, std::fmod(cont_n, 1.0));
-}
-
-template <std::invocable<std::size_t> F>
-auto colorize_unescaped(Pixel color, F&& fallback, std::size_t max_n, std::size_t n) -> Pixel {
-    if (n == max_n)
-        return color;
-    return fallback(n);
-}
-auto colorize_normal(const std::vector<Pixel>& palette, std::size_t max_n, std::size_t n) -> Pixel;
-auto colorize_looped(const std::vector<Pixel>& palette, std::size_t n) -> Pixel;
+auto colorize_discrete(const std::vector<Pixel>& palette, std::size_t max_n, std::size_t n) -> Pixel;
+auto colorize_continuous(const std::vector<Pixel>& palette, std::size_t max_n, std::complex<float> z, std::size_t n) -> Pixel;
 
 // manipulation
 auto lerp_pixel(Pixel a, Pixel b, float percentile) -> Pixel;

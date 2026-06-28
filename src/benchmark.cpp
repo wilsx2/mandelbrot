@@ -44,13 +44,7 @@ auto compute_reference_dec(const wacfrac::Viewport& view, wacfrac::MultiComplex 
 }
 
 auto default_color_fn(std::size_t max_iterations) {
-    return [max_iterations](std::size_t n) {
-        return wacfrac::colorize_unescaped(
-            wacfrac::Pixel{0,0,0},
-            std::bind_front(wacfrac::colorize_looped, wacfrac::palette::ULTRA),
-            max_iterations, n
-        );
-    };
+    return std::bind_front(wacfrac::colorize_discrete, wacfrac::palette::ULTRA, max_iterations);
 }
 
 void write_output(const std::string& name, std::span<const wacfrac::Pixel> pixels, const wacfrac::Resolution& res) {

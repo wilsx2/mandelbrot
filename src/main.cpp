@@ -34,19 +34,10 @@ auto make_color_fn(const std::vector<wacfrac::Pixel>& palette, bool continuous, 
     -> std::function<wacfrac::Pixel(std::complex<float>, std::size_t)>
 {
     if (continuous) {
-        return [max_iterations, &palette](std::complex<float> z, std::size_t n) -> wacfrac::Pixel {
-            if (n == max_iterations)
-                return wacfrac::Pixel{0, 0, 0};
-            return wacfrac::colorize_continuous(
-                std::bind_front(wacfrac::colorize_looped, palette),
-                z, n);
-        };
+        return std::bind_front(wacfrac::colorize_continuous, palette, max_iterations);
     }
     return [max_iterations, &palette](std::complex<float> /*z*/, std::size_t n) -> wacfrac::Pixel {
-        return wacfrac::colorize_unescaped(
-            wacfrac::Pixel{0, 0, 0},
-            std::bind_front(wacfrac::colorize_looped, palette),
-            max_iterations, n);
+        return wacfrac::colorize_discrete(palette, max_iterations, n);
     };
 }
 
@@ -233,7 +224,8 @@ int main(int argc, char* argv[])
     } else {
         view.dimensions = {1.0, 1.0/aspect_ratio};
     }
-        view = view.zoomed(zoom_scale);
+    view = view.zoomed(zoom_scale);
+
     auto max_iterations {opts.max_iterations};
     auto precision {opts.precision};
     if (max_iterations == 0)
