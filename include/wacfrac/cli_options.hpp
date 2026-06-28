@@ -8,6 +8,7 @@
 #include "wacfrac/viewport.hpp"
 #include <argumentum/argparse.h>
 #include <argumentum/inc/optionpack.h>
+#include <array>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -16,14 +17,22 @@
 
 namespace wacfrac {
 
-static void parse_multifloat(MultiFloat& target, const std::string& value){
-    target = MultiFloat(value); // NOTE: Default precision is unset to its possible we get a truncation here
+template <typename F>
+auto make_nargs2_parser(F&& on_complete) {
+    return [state = std::make_shared<std::array<std::string, 2>>(), on_complete]
+    (auto& target, const std::string& value) {
+        if ((*state)[0].empty()) {
+            (*state)[0] = value;
+        } else {
+            (*state)[1] = value;
+            on_complete(target, *state);
+            state->fill(std::string{});
+        }
+    };
 }
 
-static void parse_probes_pair(std::pair<std::size_t, std::size_t>& target, const std::string& value){
-    std::stringstream ss (value);
-    ss >> target.first;
-    ss >> target.second;
+static void parse_multifloat(MultiFloat& target, const std::string& value){
+    target = MultiFloat(value, 2000); // NOTE: Magic number
 }
 
 struct SharedOptions {
@@ -36,22 +45,16 @@ struct SharedOptions {
     void add_to(argumentum::ParameterConfig& args) {
         args.add_parameter(resolution, "--resolution", "-r")
             .nargs(2).absent({500, 500})
-            .action([&](auto& target, const std::string& value){
-                std::stringstream ss (value);
-                ss >> target.width;
-                ss >> target.height;
-            })
+            .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
+                target.width = std::stoul(parts[0]);
+                target.height = std::stoul(parts[1]);
+            }))
             .help("Width and height of output image");
         args.add_parameter(focus, "--focus", "-f")
             .nargs(2).absent({-0.5, 0.0})
-            .action([&](auto& target, const std::string& value){
-                auto segments = value | std::views::split(',');
-                auto it = segments.begin();
-                std::string real_str((*it).begin(), (*it).end());
-                ++it;
-                std::string imag_str((*it).begin(), (*it).end());
-                target = MultiComplex{MultiFloat{real_str, 2000}, MultiFloat{imag_str, 2000}};
-            })
+            .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
+                target = MultiComplex{MultiFloat{parts[0], 2000}, MultiFloat{parts[1], 2000}}; // NOTE: Magic number
+            }))
             .help("Coordinates to zoom in on");
         args.add_parameter(escape_radius, "--escape-radius")
             .nargs(1).absent(2.0)
@@ -135,8 +138,11 @@ struct BLAOptions : argumentum::CommandOptions, public ImageOptions {
         ImageOptions::add_to(args);
 
         args.add_parameter(probe_grid, "--probes")
-            .nargs(1).absent({3, 3})
-            .action(parse_probes_pair)
+            .nargs(2).absent({3, 3})
+            .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
+                target.first = std::stoul(parts[0]);
+                target.second = std::stoul(parts[1]);
+            }))
             .help("Probe grid dimensions (rows x cols)");
         args.add_parameter(tolerance, "--tolerance")
             .nargs(1).absent(1e-8)
@@ -160,8 +166,8 @@ struct VideoOptions : argumentum::CommandOptions, public SharedOptions {
     using CommandOptions::CommandOptions;
 
     std::string directory {"mandelbrot"};
-    MultiFloat initial_scale {"0.4"};
-    MultiFloat final_scale {"0.4"};
+    MultiFloat initial_scale {0.4};
+    MultiFloat final_scale {0.8};
     double frames_per_second {24.0};
     double zoom_per_second {2.0};
 

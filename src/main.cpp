@@ -174,6 +174,7 @@ int main(int argc, char* argv[])
     params.add_command<wacfrac::DirectOptions>("direct").help("Direct escape-time rendering");
     params.add_command<wacfrac::PerturbedOptions>("perturbed").help("Perturbation-theory rendering");
     params.add_command<wacfrac::BLAOptions>("bla").help("Bivariate linear approximation rendering");
+    params.add_command<wacfrac::VideoOptions>("video").help("Sequential rendering (various methods)");
 
     auto parse_result {parser.parse_args(argc, argv)};
     if (!parse_result)
