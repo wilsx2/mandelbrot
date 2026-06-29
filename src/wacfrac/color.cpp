@@ -49,7 +49,9 @@ auto colorize_continuous(const std::vector<Pixel>& palette, std::size_t max_n, s
 }
 
 auto colorize_discrete(const std::vector<Pixel>& palette, std::size_t max_n, std::size_t n) -> Pixel {
-    return palette.at((n - max_n - 1) % palette.size());
+    if (n == max_n)
+        return palette.back();
+    return palette.at(n % palette.size());
 }
 
 auto lerp_pixel(Pixel a, Pixel b, float percentile) -> Pixel {

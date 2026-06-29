@@ -1,3 +1,3 @@
 #!/usr/bin/env
 
-ffmpeg -framerate $1 -i frame_%04d.ppm -c:v libx264 -pix_fmt yuv420p $2.mp4
+ffmpeg -framerate $1 -i frame_%03d.ppm -c:v libx264 -pix_fmt yuv420p $2.mp4

@@ -1,7 +1,6 @@
 29 (mostly busy)
 - progressive encoding
 - show progress of video ex. X/Y frames
-- option for static iteration count
 - auto mode
 - auto numeric type
 - verbose flag
