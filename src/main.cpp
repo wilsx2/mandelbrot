@@ -34,17 +34,20 @@ decltype(auto) with_numeric_type(const std::string& type, F&& f) {
     std::exit(EXIT_FAILURE);
 }
 
-auto make_view(wacfrac::ImageOptions& opt) {
+auto make_viewport(const wacfrac::MultiComplex& center, const wacfrac::MultiFloat& scale, const wacfrac::Resolution& res) {
     wacfrac::Viewport view;
-
-    view.center = opt.focus;
-    auto aspect_ratio {opt.resolution.width / static_cast<double>(opt.resolution.height)};
+    view.center = center;
+    auto aspect_ratio {res.width / static_cast<double>(res.height)};
     if (aspect_ratio >= 1.0) {
         view.dimensions = {aspect_ratio, 1.0};
     } else {
         view.dimensions = {1.0, 1.0/aspect_ratio};
     }
-    view = view.zoomed(opt.scale);
+    return view.zoomed(scale);
+}
+
+auto make_view(wacfrac::ImageOptions& opt) {
+    auto view = make_viewport(opt.focus, opt.scale, opt.resolution);
 
     if (opt.precision == 0)
         opt.precision = view.required_precision();
@@ -64,6 +67,13 @@ auto make_view(wacfrac::ImageOptions& opt) {
     return view;
 }
 
+struct RenderConfig {
+    std::size_t max_iterations;
+    double escape_radius;
+    const std::vector<wacfrac::Pixel>* palette;
+    bool continuous_coloring;
+};
+
 auto make_color_fn(const std::vector<wacfrac::Pixel>& palette, bool continuous, std::size_t max_iterations)
     -> std::function<wacfrac::Pixel(std::complex<float>, std::size_t)>
 {
@@ -73,6 +83,50 @@ auto make_color_fn(const std::vector<wacfrac::Pixel>& palette, bool continuous, 
     return [max_iterations, &palette](std::complex<float> /*z*/, std::size_t n) -> wacfrac::Pixel {
         return wacfrac::colorize_discrete(palette, max_iterations, n);
     };
+}
+
+template <typename T>
+void direct_render_pass(std::span<wacfrac::Pixel> pixels,
+                        const wacfrac::Resolution& res, const wacfrac::Viewport& view,
+                        const RenderConfig& cfg) {
+    wacfrac::absolute_render<T>(pixels, res, view,
+        [max_iterations = cfg.max_iterations, escape_radius = cfg.escape_radius](T c) {
+            return wacfrac::escape<T>(c, max_iterations, escape_radius);
+        },
+        make_color_fn(*cfg.palette, cfg.continuous_coloring, cfg.max_iterations));
+}
+
+template <typename T>
+void perturbed_render_pass(std::span<wacfrac::Pixel> pixels,
+                           const wacfrac::Resolution& res, const wacfrac::Viewport& view,
+                           const RenderConfig& cfg,
+                           const std::vector<T>& ref, const wacfrac::MultiComplex& c_ref) {
+    wacfrac::perturbed_render<T>(pixels, res, view,
+        [&ref, max_iterations = cfg.max_iterations, escape_radius = cfg.escape_radius](T dc) {
+            return wacfrac::escape_perturbed<T>(ref, dc, max_iterations, escape_radius);
+        },
+        make_color_fn(*cfg.palette, cfg.continuous_coloring, cfg.max_iterations),
+        c_ref);
+}
+
+template <typename T>
+void bla_render_pass(std::span<wacfrac::Pixel> pixels,
+                     const wacfrac::Resolution& res, const wacfrac::Viewport& view,
+                     const RenderConfig& cfg,
+                     const wacfrac::BivariateLinearApproximator<T>& bla,
+                     const wacfrac::MultiComplex& c_ref) {
+    auto total_skipped = std::atomic<std::uint64_t>{0};
+    wacfrac::perturbed_render<T>(pixels, res, view,
+        [&bla, &total_skipped](T dc) {
+            auto result = bla.escape_approximate(dc);
+            total_skipped += std::get<2>(result);
+            return result;
+        },
+        make_color_fn(*cfg.palette, cfg.continuous_coloring, cfg.max_iterations),
+        c_ref);
+    auto avg_skipped = static_cast<double>(total_skipped) / res.area();
+    wacfrac::logging::print(wacfrac::logging::Severity::Info,
+        "BLA render complete (avg skipped: {})", avg_skipped);
 }
 
 } // anonymous namespace
@@ -97,60 +151,122 @@ static void render_image(wacfrac::ImageOptions& opts, F&& render_fn) {
 }
 
 static void render_direct(wacfrac::DirectOptions& opts) {
-    render_image(opts, [&]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
-        wacfrac::absolute_render<T>(pixels, opts.resolution, view,
-        [max_iterations = opts.max_iterations,
-            escape_radius = opts.escape_radius](T c) {
-                return wacfrac::escape<T>(c, max_iterations, escape_radius);
-            },
-            make_color_fn(opts.palette, opts.continuous_coloring, opts.max_iterations)
-        );
-    }); 
+    RenderConfig cfg{opts.max_iterations, opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
+        direct_render_pass<T>(pixels, opts.resolution, view, cfg);
+    });
 }
 static void render_perturbed(wacfrac::PerturbedOptions& opts) {
-    render_image(opts, [&opts]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
+    RenderConfig cfg{opts.max_iterations, opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         auto c_ref = view.center;
-        auto ref {wacfrac::compute_reference_mt<T>(c_ref, opts.max_iterations, opts.escape_radius)};
+        auto ref = wacfrac::compute_reference_mt<T>(c_ref, opts.max_iterations, opts.escape_radius);
         wacfrac::logging::print(wacfrac::logging::Severity::Info,
             "Reference at view center with orbit length {}", ref.size());
-        wacfrac::perturbed_render<T>(pixels, opts.resolution, view,
-            [&ref, max_iterations = opts.max_iterations, escape_radius = opts.escape_radius](T dc) {
-                return wacfrac::escape_perturbed<T>(ref, dc, max_iterations, escape_radius);
-            },
-            make_color_fn(opts.palette, opts.continuous_coloring, opts.max_iterations),
-            c_ref);
+        perturbed_render_pass<T>(pixels, opts.resolution, view, cfg, ref, c_ref);
     });
 }
 
 static void render_bla(wacfrac::BLAOptions& opts) {
-    render_image(opts, [&opts]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
+    RenderConfig cfg{opts.max_iterations, opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         using CT = wacfrac::ComplexValueTypeT<T>;
         auto c_ref = view.center;
-        auto ref {wacfrac::compute_reference_mt<T>(c_ref, opts.max_iterations, opts.escape_radius)};
+        auto ref = wacfrac::compute_reference_mt<T>(c_ref, opts.max_iterations, opts.escape_radius);
         wacfrac::logging::print(wacfrac::logging::Severity::Info,
             "Reference at view center with orbit length {}", ref.size());
-        auto last_level {static_cast<std::size_t>(std::log2(ref.size()))};
-        auto first_level {opts.first_level != 0
+        auto last_level = static_cast<std::size_t>(std::log2(ref.size()));
+        auto first_level = opts.first_level != 0
             ? opts.first_level
-            : std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
-        auto probes {view.template generate_probes<T>(opts.probe_grid.first, opts.probe_grid.second)};
-        auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
+            : std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
+        auto probes = view.template generate_probes<T>(opts.probe_grid.first, opts.probe_grid.second);
+        auto max_dc = wacfrac::to_complex<T>(view.compute_max_dc(c_ref));
         wacfrac::BivariateLinearApproximator<T> bla{
             opts.epsilon != 0.0
                 ? wacfrac::BivariateLinearApproximator<T>{static_cast<CT>(opts.epsilon), max_dc, ref, first_level, opts.escape_radius}
-                : wacfrac::BivariateLinearApproximator<T>{static_cast<double>(opts.lower_exp), static_cast<double>(opts.upper_exp), opts.tolerance, probes, max_dc, ref, first_level, opts.escape_radius}
+                : wacfrac::BivariateLinearApproximator<T>{opts.lower_exp, opts.upper_exp, opts.tolerance, probes, max_dc, ref, first_level, opts.escape_radius}
         };
-        auto total_skipped = std::atomic<std::uint64_t>{0};
-        wacfrac::perturbed_render<T>(pixels, opts.resolution, view,
-            [&bla, &total_skipped](T dc) {
-                auto result {bla.escape_approximate(dc)};
-                total_skipped += std::get<2>(result);
-                return result;
-            },
-            make_color_fn(opts.palette, opts.continuous_coloring, opts.max_iterations),
-            c_ref);
-        auto avg_skipped {static_cast<double>(total_skipped) / opts.resolution.area()};
-        wacfrac::logging::print(wacfrac::logging::Severity::Info, "BLA render complete (avg skipped: {})", avg_skipped);
+        bla_render_pass<T>(pixels, opts.resolution, view, cfg, bla, c_ref);
+    });
+}
+
+static void render_video(wacfrac::VideoOptions& opts) {
+    auto final_view = make_viewport(opts.focus, opts.final_scale, opts.resolution);
+    auto max_iterations = final_view.required_iterations();
+    auto precision = final_view.required_precision();
+
+    wacfrac::MultiFloat::default_precision(precision);
+    wacfrac::MultiComplex::default_precision(precision);
+
+    auto pick_type = [](auto p) -> std::string {
+        if (p > 30) return "dexp";
+        if (p > 15) return "long-double";
+        return "double";
+    };
+    auto ref_type = pick_type(precision);
+
+    wacfrac::logging::print(wacfrac::logging::Severity::Info,
+        "Video pre-compute: final_zoom={} max_iterations={} precision={} ref_type={}",
+        opts.final_scale, max_iterations, precision, ref_type);
+
+    with_numeric_type(ref_type, [&](auto ref_tag) {
+        using RefT = typename decltype(ref_tag)::type;
+        auto c_ref = opts.focus;
+        auto ref_orbit = wacfrac::compute_reference_mt<RefT>(c_ref, max_iterations, opts.escape_radius);
+
+        wacfrac::logging::print(wacfrac::logging::Severity::Info,
+            "Reference at view center with orbit length {}", ref_orbit.size());
+
+        auto last_level = static_cast<std::size_t>(std::log2(ref_orbit.size()));
+        auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
+
+        constexpr double DIRECT_THRESHOLD = 1e2;
+        constexpr double PERTURB_THRESHOLD = 1e10;
+
+        // I am sorry for this function call.
+        wacfrac::write_zoom_frames(
+            opts.directory, opts.resolution,
+            opts.initial_scale, opts.final_scale,
+            opts.zoom_per_second, opts.frames_per_second,
+            [&](std::span<wacfrac::Pixel> pixels, wacfrac::MultiFloat scale) {
+                auto view = make_viewport(opts.focus, scale, opts.resolution);
+                auto frame_precision = view.required_precision();
+                auto frame_max_iter = view.required_iterations();
+
+                wacfrac::MultiFloat::default_precision(frame_precision);
+                wacfrac::MultiComplex::default_precision(frame_precision);
+                view.precision(frame_precision);
+
+                RenderConfig cfg{frame_max_iter, opts.escape_radius, &opts.palette, opts.continuous_coloring};
+
+                auto scale_d = static_cast<double>(scale);
+
+                if (scale_d <= DIRECT_THRESHOLD) {
+                    wacfrac::logging::print(wacfrac::logging::Severity::Info,
+                        "Frame zoom={} algorithm=direct", scale_d);
+                    auto ft = pick_type(frame_precision);
+                    with_numeric_type(ft, [&](auto tag) {
+                        using T = typename decltype(tag)::type;
+                        direct_render_pass<T>(pixels, opts.resolution, view, cfg);
+                    });
+                } else if (scale_d <= PERTURB_THRESHOLD) {
+                    wacfrac::logging::print(wacfrac::logging::Severity::Info,
+                        "Frame zoom={} algorithm=perturbed", scale_d);
+                    perturbed_render_pass<RefT>(pixels, opts.resolution, view, cfg, ref_orbit, c_ref);
+                } else {
+                    wacfrac::logging::print(wacfrac::logging::Severity::Info,
+                        "Frame zoom={} algorithm=BLA", scale_d);
+                    auto probes = view.template generate_probes<RefT>(3, 3);
+                    auto max_dc = wacfrac::to_complex<RefT>(view.compute_max_dc(c_ref));
+                    wacfrac::BivariateLinearApproximator<RefT> bla{
+                        static_cast<double>(-(1 << 12)), static_cast<double>(-(1 << 0)),
+                        1e-8, probes, max_dc, ref_orbit, first_level,
+                        opts.escape_radius
+                    };
+                    bla_render_pass<RefT>(pixels, opts.resolution, view, cfg, bla, c_ref);
+                }
+            }
+        );
     });
 }
 
@@ -160,6 +276,7 @@ static void dispatch_render(argumentum::CommandOptions* cmd) {
     if (auto* p = dynamic_cast<DirectOptions*>(cmd))    return render_direct(*p);
     if (auto* p = dynamic_cast<PerturbedOptions*>(cmd)) return render_perturbed(*p);
     if (auto* p = dynamic_cast<BLAOptions*>(cmd))       return render_bla(*p);
+    if (auto* p = dynamic_cast<VideoOptions*>(cmd))     return render_video(*p);
 }
 
 int main(int argc, char* argv[])
@@ -185,7 +302,7 @@ int main(int argc, char* argv[])
         if (pcmd) { cmd = pcmd; break; }
     if (!cmd) {
         wacfrac::logging::print(wacfrac::logging::Severity::Error,
-            "No render mode specified. Use one of: direct, perturbed, bla");
+            "No render mode specified. Use one of: direct, perturbed, bla, video");
         return EXIT_FAILURE;
     }
 

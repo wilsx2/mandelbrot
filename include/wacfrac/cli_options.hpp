@@ -166,8 +166,8 @@ struct VideoOptions : argumentum::CommandOptions, public SharedOptions {
     using CommandOptions::CommandOptions;
 
     std::string directory {"mandelbrot"};
-    MultiFloat initial_scale {0.4};
-    MultiFloat final_scale {0.8};
+    MultiFloat initial_scale {2.0};
+    MultiFloat final_scale {1.25};
     double frames_per_second {24.0};
     double zoom_per_second {2.0};
 
