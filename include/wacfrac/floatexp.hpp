@@ -74,20 +74,20 @@ struct FloatExp {
 
     void swap(FloatExp& other) noexcept;
     std::string str(std::streamsize ss, std::ios_base::fmtflags ff) const;
-    void negate();
+    void negate() noexcept;
 
 
-    FloatExp& operator+=(const FloatExp& o);
-    FloatExp& operator-=(const FloatExp& o);
-    FloatExp& operator*=(const FloatExp& o);
+    FloatExp& operator+=(const FloatExp& o) noexcept;
+    FloatExp& operator-=(const FloatExp& o) noexcept;
+    FloatExp& operator*=(const FloatExp& o) noexcept;
     FloatExp& operator/=(const FloatExp& o);
 
-    FloatExp& operator++();
-    FloatExp operator++(int);
-    FloatExp& operator--();
-    FloatExp operator--(int);
+    FloatExp& operator++() noexcept;
+    FloatExp operator++(int) noexcept;
+    FloatExp& operator--() noexcept;
+    FloatExp operator--(int) noexcept;
 
-    FloatExp operator-() const;
+    FloatExp operator-() const noexcept;
 };
 
 // Implementation helpers
@@ -154,13 +154,11 @@ M ldexp_fast(M x, int k) {
 }
 
 template<std::floating_point M, std::integral E>
-void normalize(FloatExp<M, E>& x) {
-    if (x.mantissa == 0) {
+void normalize(FloatExp<M, E>& x) noexcept {
+    if (x.mantissa == M(0)) {
         x.exponent = 0;
         return;
     }
-    M m = std::abs(x.mantissa);
-    if (m >= M(0.5) && m < M(1.0)) return;
     int e = 0;
     x.mantissa = frexp_fast(x.mantissa, &e);
     x.exponent += e;
@@ -200,33 +198,30 @@ APPLY_X_TO_TYPES
 
 template<std::floating_point M, std::integral E>
 inline int FloatExp<M, E>::compare(const FloatExp& o) const noexcept {
-    // Zero cases
     if (mantissa == 0 && o.mantissa == 0) return 0;
     if (mantissa == 0) return o.mantissa > 0 ? -1 : 1;
     if (o.mantissa == 0) return mantissa > 0 ? 1 : -1;
 
-    // Sign cases
     if (mantissa > 0 && o.mantissa < 0) return 1;
     if (mantissa < 0 && o.mantissa > 0) return -1;
 
     bool pos = mantissa > 0;
     E exp_diff = exponent - o.exponent;
 
-    // Check if exponent difference too large to overcome
     constexpr int prec = std::numeric_limits<M>::digits;
     if (exp_diff > prec + 1) return pos ? 1 : -1;
     if (exp_diff < -prec - 1) return pos ? -1 : 1;
 
-    // Compare aligned mantissas
-    long double a = static_cast<long double>(mantissa);
-    long double b = static_cast<long double>(o.mantissa);
-
-    if (exp_diff > 0)
-        b = std::ldexp(b, -static_cast<int>(exp_diff));
-    else if (exp_diff < 0)
-        a = std::ldexp(a, static_cast<int>(exp_diff));
-
-    int cmp = (a > b) - (a < b);
+    int cmp;
+    if (exp_diff == 0) {
+        cmp = (mantissa > o.mantissa) - (mantissa < o.mantissa);
+    } else if (exp_diff > 0) {
+        M shifted = detail::ldexp_fast(o.mantissa, -static_cast<int>(exp_diff));
+        cmp = (mantissa > shifted) - (mantissa < shifted);
+    } else {
+        M shifted = detail::ldexp_fast(mantissa, static_cast<int>(exp_diff));
+        cmp = (shifted > o.mantissa) - (shifted < o.mantissa);
+    }
     return pos ? cmp : -cmp;
 }
 
@@ -280,7 +275,7 @@ inline std::string FloatExp<M, E>::str(std::streamsize ss, std::ios_base::fmtfla
 }
 
 template<std::floating_point M, std::integral E>
-inline void FloatExp<M, E>::negate() {
+inline void FloatExp<M, E>::negate() noexcept {
     mantissa = -mantissa;
 }
 
@@ -288,7 +283,7 @@ inline void FloatExp<M, E>::negate() {
 
 template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>&
-FloatExp<M, E>::operator+=(const FloatExp& o) {
+FloatExp<M, E>::operator+=(const FloatExp& o) noexcept {
     if (o.mantissa == 0) return *this;
     if (mantissa == 0) { mantissa = o.mantissa; exponent = o.exponent; return *this; }
 
@@ -311,7 +306,7 @@ FloatExp<M, E>::operator+=(const FloatExp& o) {
 
 template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>&
-FloatExp<M, E>::operator-=(const FloatExp& o) {
+FloatExp<M, E>::operator-=(const FloatExp& o) noexcept {
     if (o.mantissa == 0) return *this;
     if (mantissa == 0) { mantissa = -o.mantissa; exponent = o.exponent; return *this; }
 
@@ -333,7 +328,7 @@ FloatExp<M, E>::operator-=(const FloatExp& o) {
 
 template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>&
-FloatExp<M, E>::operator*=(const FloatExp& o) {
+FloatExp<M, E>::operator*=(const FloatExp& o) noexcept {
     if (mantissa == 0) return *this;
     if (o.mantissa == 0) { mantissa = 0; exponent = 0; return *this; }
     mantissa *= o.mantissa;
@@ -356,14 +351,14 @@ FloatExp<M, E>::operator/=(const FloatExp& o) {
 //  Increment / Decrement
 template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>&
-FloatExp<M, E>::operator++() {
+FloatExp<M, E>::operator++() noexcept {
     *this += FloatExp(1.0L);
     return *this;
 }
 
 template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>
-FloatExp<M, E>::operator++(int) {
+FloatExp<M, E>::operator++(int) noexcept {
     FloatExp tmp(*this);
     ++*this;
     return tmp;
@@ -371,14 +366,14 @@ FloatExp<M, E>::operator++(int) {
 
 template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>&
-FloatExp<M, E>::operator--() {
+FloatExp<M, E>::operator--() noexcept {
     *this -= FloatExp(1.0L);
     return *this;
 }
 
 template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>
-FloatExp<M, E>::operator--(int) {
+FloatExp<M, E>::operator--(int) noexcept {
     FloatExp tmp(*this);
     --*this;
     return tmp;
@@ -387,7 +382,7 @@ FloatExp<M, E>::operator--(int) {
 // Unary minus
 template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>
-FloatExp<M, E>::operator-() const {
+FloatExp<M, E>::operator-() const noexcept {
     FloatExp r(*this);
     r.negate();
     return r;
@@ -404,78 +399,44 @@ namespace wacfrac {
 
 // 2-arg
 template<std::floating_point M, std::integral E>
-inline void eval_add(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
+inline void eval_add(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept {
     b += cb;
 }
 template<std::floating_point M, std::integral E>
-inline void eval_subtract(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
-    b -= cb;
-}
+inline void eval_subtract(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept { b -= cb; }
 template<std::floating_point M, std::integral E>
-inline void eval_multiply(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
-    b *= cb;
-}
+inline void eval_multiply(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept { b *= cb; }
 template<std::floating_point M, std::integral E>
-inline void eval_divide(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
-    b /= cb;
-}
+inline void eval_divide(FloatExp<M, E>& b, const FloatExp<M, E>& cb) { b /= cb; }
 
 // 3-arg: result = a op b
 template<std::floating_point M, std::integral E>
-inline void eval_add(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) {
+inline void eval_add(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) noexcept {
     result = a; eval_add(result, b);
 }
 template<std::floating_point M, std::integral E>
-inline void eval_subtract(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) {
-    result = a; eval_subtract(result, b);
-}
+inline void eval_subtract(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) noexcept { result = a; eval_subtract(result, b); }
 template<std::floating_point M, std::integral E>
-inline void eval_multiply(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) {
-    result = a; eval_multiply(result, b);
-}
+inline void eval_multiply(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) noexcept { result = a; eval_multiply(result, b); }
 template<std::floating_point M, std::integral E>
-inline void eval_divide(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) {
-    result = a; eval_divide(result, b);
-}
+inline void eval_divide(FloatExp<M, E>& result, const FloatExp<M, E>& a, const FloatExp<M, E>& b) { result = a; eval_divide(result, b); }
 
 // Conversion
 
-namespace detail {
-
-template<std::floating_point M, std::integral E, typename T>
-void convert_to_impl(T* pa, const FloatExp<M, E>& cb) {
-    T r = static_cast<T>(cb.mantissa);
-    E e = cb.exponent;
-    while (e > 0) {
-        int s = std::min(e, static_cast<E>(std::numeric_limits<int>::max()));
-        r = std::ldexp(r, s);
-        e -= s;
-    }
-    while (e < 0) {
-        int s = std::min(-e, static_cast<E>(std::numeric_limits<int>::max()));
-        r = std::ldexp(r, -s);
-        e += s;
-    }
-    *pa = r;
-}
-
-} // namespace detail
-
 template<std::floating_point M, std::integral E, std::floating_point T>
-inline void eval_convert_to(T* pa, const FloatExp<M, E>& cb) {
-    detail::convert_to_impl(pa, cb);
+inline void eval_convert_to(T* pa, const FloatExp<M, E>& cb) noexcept {
+    *pa = static_cast<T>(static_cast<long double>(cb.mantissa) * std::exp2(static_cast<long double>(cb.exponent)));
 }
 
 template<std::floating_point M, std::integral E, std::integral T>
-inline void eval_convert_to(T* pa, const FloatExp<M, E>& cb) {
-    long double tmp;
-    detail::convert_to_impl(&tmp, cb);
+inline void eval_convert_to(T* pa, const FloatExp<M, E>& cb) noexcept {
+    long double tmp = static_cast<long double>(cb.mantissa) * std::exp2(static_cast<long double>(cb.exponent));
     *pa = static_cast<T>(tmp);
 }
 
 // Frexp
 template<std::floating_point M, std::integral E>
-inline void eval_frexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, E* pexp) {
+inline void eval_frexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, E* pexp) noexcept {
     if (cb.mantissa == 0) {
         b.mantissa = 0;
         b.exponent = 0;
@@ -507,49 +468,37 @@ inline void eval_frexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, int* pi) {
 
 // Ldexp
 template<std::floating_point M, std::integral E>
-inline void eval_ldexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, E exp) {
+inline void eval_ldexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, E exp) noexcept {
     b = cb;
     b.exponent += exp;
 }
 
 template<std::floating_point M, std::integral E>
-inline void eval_ldexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, int i) {
+inline void eval_ldexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, int i) noexcept {
     b = cb;
     b.exponent += i;
 }
 
 // Floor
 template<std::floating_point M, std::integral E>
-inline void eval_floor(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
-    if (cb.mantissa == 0) { b.mantissa = 0; b.exponent = 0; return; }
-    long double v;
-    eval_convert_to(&v, cb);
-    long double f = std::floor(v);
-    b = f;
+inline void eval_floor(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept {
+    long double v = static_cast<long double>(cb.mantissa) * std::exp2(static_cast<long double>(cb.exponent));
+    b = std::floor(v);
 }
 
 // Ceil
 template<std::floating_point M, std::integral E>
-inline void eval_ceil(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
-    if (cb.mantissa == 0) { b.mantissa = 0; b.exponent = 0; return; }
-    long double v;
-    eval_convert_to(&v, cb);
-    long double c = std::ceil(v);
-    b = c;
+inline void eval_ceil(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept {
+    long double v = static_cast<long double>(cb.mantissa) * std::exp2(static_cast<long double>(cb.exponent));
+    b = std::ceil(v);
 }
 
 // Sqrt
 template<std::floating_point M, std::integral E>
-inline void eval_sqrt(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
-    if (cb.mantissa < 0) throw std::domain_error("sqrt of negative number");
-    if (cb.mantissa == 0) { b.mantissa = 0; b.exponent = 0; return; }
-
-    // sqrt(mantissa * 2^exponent) = sqrt(mantissa) * 2^(exponent/2)
+inline void eval_sqrt(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept {
     b = cb;
-    if (b.exponent % 2 != 0) {
-        b.mantissa *= static_cast<M>(2.0L);
-        b.exponent -= 1;
-    }
+    b.mantissa *= static_cast<M>(1.0L + (b.exponent & 1));
+    b.exponent -= b.exponent & 1;
     b.mantissa = std::sqrt(b.mantissa);
     b.exponent /= 2;
     detail::normalize(b);
@@ -557,7 +506,7 @@ inline void eval_sqrt(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
 
 // Log10
 template<std::floating_point M, std::integral E>
-inline void eval_log10(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
+inline void eval_log10(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept {
     if (cb.mantissa == M(0)) {
         throw std::overflow_error("log10 of zero");
     }
@@ -573,29 +522,25 @@ inline void eval_log10(FloatExp<M, E>& b, const FloatExp<M, E>& cb) {
 // Classification / sign / abs
 
 template<std::floating_point M, std::integral E>
-inline bool eval_is_zero(const FloatExp<M, E>& x) {
-    return x.mantissa == M(0);
-}
+inline bool eval_is_zero(const FloatExp<M, E>& x) noexcept { return x.mantissa == M(0); }
 
 template<std::floating_point M, std::integral E>
-inline int eval_get_sign(const FloatExp<M, E>& x) {
+inline int eval_get_sign(const FloatExp<M, E>& x) noexcept {
     return (x.mantissa > M(0)) - (x.mantissa < M(0));
 }
 
 template<std::floating_point M, std::integral E>
-inline void eval_fabs(FloatExp<M, E>& result, const FloatExp<M, E>& x) {
+inline void eval_fabs(FloatExp<M, E>& result, const FloatExp<M, E>& x) noexcept {
     result = x;
     if (result.mantissa < M(0))
         result.mantissa = -result.mantissa;
 }
 
 template<std::floating_point M, std::integral E>
-inline int eval_signbit(const FloatExp<M, E>& x) {
-    return std::signbit(x.mantissa);
-}
+inline int eval_signbit(const FloatExp<M, E>& x) noexcept { return std::signbit(x.mantissa); }
 
 template<std::floating_point M, std::integral E>
-inline int eval_fpclassify(const FloatExp<M, E>& x) {
+inline int eval_fpclassify(const FloatExp<M, E>& x) noexcept {
     if (x.mantissa == M(0))
         return FP_ZERO;
     if (std::isnan(x.mantissa))

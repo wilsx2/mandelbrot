@@ -188,8 +188,7 @@ struct VideoOptions : argumentum::CommandOptions, public SharedOptions {
     double zoom_per_second {2.0};
     std::size_t segment_size {64};
     std::tuple<double, double, double> iteration_parameters {250.0, 50.0, 1.5};
-    // std::size_t numeric_type_cutoffs {}; // float | double | long double | sexp | dexp | qexp
-    // std::size_t algorithm_cutoffs {}; // direct | perturbed | bla
+    // std::size_t cutoffs {}; // float direct | double direct | float perturbed | double perturbed | double bla | doubleexp bla
 
     void add_parameters(argumentum::ParameterConfig& args) override {
         SharedOptions::add_to(args);
