@@ -1,10 +1,8 @@
 29 / 30
-- progressive encoding
 - video mode params: frames/segments in a batch
-- video mode params: raw output
+- video mode params: raw output (no composition)
 - video mode params: max iteration heuristic parameters
 - video mode params: cut offs for numeric type and algorithm
-- skip prerendered (cached) frames
 - shared param: log level
 - show progress of video ex. X/Y frames, frame duration, time running
 - de-uglify video rendering code
@@ -22,5 +20,5 @@ July
 - Distribute / Parallel
 - Cache References
 - Cache BLAs coefficients
-- ? Analyze for zoom points
 - Cloud
+- ? Analyze for zoom points
