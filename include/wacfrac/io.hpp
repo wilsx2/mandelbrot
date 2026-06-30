@@ -21,9 +21,8 @@ namespace wacfrac
 
 void write_ppm(std::string_view filename, Resolution res, std::span<const Pixel> pixels);
 
-#define CHUNK_SIZE 16
 template <std::invocable<std::span<Pixel>, MultiFloat> F>
-void write_zoom_frames(std::filesystem::path directory, Resolution res, MultiFloat initial, MultiFloat target, MultiFloat zoom_per_second, float frames_per_second, F&& render_at_scale) {
+void write_zoom_frames(std::filesystem::path directory, std::size_t segment_size, Resolution res, MultiFloat initial, MultiFloat target, MultiFloat zoom_per_second, float frames_per_second, F&& render_at_scale) {
     std::filesystem::create_directories(directory);
     std::filesystem::current_path(directory);
 
@@ -43,8 +42,8 @@ void write_zoom_frames(std::filesystem::path directory, Resolution res, MultiFlo
     std::vector<Pixel> pixels (res.area());
     auto zoom_in = initial > target;
     for (auto frame : std::views::iota(0uz, frames)) {
-        auto segment = frame / CHUNK_SIZE;
-        std::string frame_filename {std::format("frame_{:0{}d}.ppm", frame % CHUNK_SIZE, suffix_width)};
+        auto segment = frame / segment_size;
+        std::string frame_filename {std::format("frame_{:0{}d}.ppm", frame % segment_size, suffix_width)};
         std::string segment_filename {std::format("segment_{:0{}d}.mp4", segment, suffix_width)};
 
         if (!std::filesystem::exists(segment_filename)) {
@@ -53,7 +52,7 @@ void write_zoom_frames(std::filesystem::path directory, Resolution res, MultiFlo
                 write_ppm(frame_filename, res, pixels);
             }
 
-            if (frame != 0 && (frame % CHUNK_SIZE == CHUNK_SIZE - 1 || frame == frames - 1)) {
+            if (frame != 0 && (frame % segment_size == segment_size - 1 || frame == frames - 1)) {
                 logging::print(logging::Severity::Debug, "Composing frames into segment {}", segment);
                 auto status = std::system(std::format(
                     "ffmpeg -y -framerate {} -i frame_%0{}d.ppm -c:v libx264 -pix_fmt yuv420p {}", // TODO: Pipe into my stdout

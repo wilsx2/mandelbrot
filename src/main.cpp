@@ -225,13 +225,17 @@ static void render_video(wacfrac::VideoOptions& opts) {
 
         // I am sorry for this function call.
         wacfrac::write_zoom_frames(
-            opts.directory, opts.resolution,
+            opts.directory, opts.segment_size, opts.resolution,
             opts.initial_scale, opts.final_scale,
             opts.zoom_per_second, opts.frames_per_second,
             [&](std::span<wacfrac::Pixel> pixels, wacfrac::MultiFloat scale) {
                 auto view = make_viewport(opts.focus, scale, opts.resolution);
                 auto frame_precision = view.required_precision();
-                auto frame_max_iter = view.required_iterations();
+                auto frame_max_iter = view.required_iterations(
+                    std::get<0>(opts.iteration_parameters),
+                    std::get<1>(opts.iteration_parameters),
+                    std::get<2>(opts.iteration_parameters)
+                );
 
                 wacfrac::MultiFloat::default_precision(frame_precision);
                 wacfrac::MultiComplex::default_precision(frame_precision);

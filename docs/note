@@ -1,7 +1,6 @@
 29 / 30
-- video mode params: frames/segments in a batch
-- video mode params: raw output (no composition)
-- video mode params: max iteration heuristic parameters
+- make FloatExp faster; way faster
+- compute references of multiple precisions so we can use the fastest one
 - video mode params: cut offs for numeric type and algorithm
 - shared param: log level
 - show progress of video ex. X/Y frames, frame duration, time running
