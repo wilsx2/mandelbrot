@@ -204,75 +204,83 @@ static void render_video(wacfrac::VideoOptions& opts) {
         if (p > 230) return "long-double";
         return "double";
     };
-    auto ref_type = pick_type(precision);
+
+    auto c_ref = opts.focus;
+    auto refs = wacfrac::compute_references_all(c_ref, max_iterations, opts.escape_radius);
+    auto ref_size = refs.double_ref.size();
+    auto last_level = static_cast<std::size_t>(std::log2(ref_size));
+    auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
 
     wacfrac::logging::print(wacfrac::logging::Severity::Info,
-        "Video pre-compute: final_zoom={} max_iterations={} precision={} ref_type={}",
-        opts.final_scale, max_iterations, precision, ref_type);
+        "Video pre-compute: final_zoom={} max_iterations={} precision={} ref_size={}",
+        opts.final_scale, max_iterations, precision, ref_size);
 
-    with_numeric_type(ref_type, [&](auto ref_tag) {
-        using RefT = typename decltype(ref_tag)::type;
-        auto c_ref = opts.focus;
-        auto ref_orbit = wacfrac::compute_reference_mt<RefT>(c_ref, max_iterations, opts.escape_radius);
+    constexpr double DIRECT_THRESHOLD = 1e13;
+    constexpr double PERTURB_THRESHOLD = 1e25;
 
-        wacfrac::logging::print(wacfrac::logging::Severity::Info,
-            "Reference at view center with orbit length {}", ref_orbit.size());
+    // I am sorry for this function call.
+    wacfrac::write_zoom_frames(
+        opts.directory, opts.segment_size, opts.resolution,
+        opts.initial_scale, opts.final_scale,
+        opts.zoom_per_second, opts.frames_per_second,
+        [&](std::span<wacfrac::Pixel> pixels, wacfrac::MultiFloat scale) {
+            auto view = make_viewport(opts.focus, scale, opts.resolution);
+            auto frame_precision = view.required_precision();
+            auto frame_max_iter = view.required_iterations(
+                std::get<0>(opts.iteration_parameters),
+                std::get<1>(opts.iteration_parameters),
+                std::get<2>(opts.iteration_parameters)
+            );
 
-        auto last_level = static_cast<std::size_t>(std::log2(ref_orbit.size()));
-        auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
+            wacfrac::MultiFloat::default_precision(frame_precision);
+            wacfrac::MultiComplex::default_precision(frame_precision);
+            view.precision(frame_precision);
 
-        constexpr double DIRECT_THRESHOLD = 1e13;
-        constexpr double PERTURB_THRESHOLD = 1e25;
+            RenderConfig cfg{frame_max_iter, opts.escape_radius, &opts.palette, opts.continuous_coloring};
 
-        // I am sorry for this function call.
-        wacfrac::write_zoom_frames(
-            opts.directory, opts.segment_size, opts.resolution,
-            opts.initial_scale, opts.final_scale,
-            opts.zoom_per_second, opts.frames_per_second,
-            [&](std::span<wacfrac::Pixel> pixels, wacfrac::MultiFloat scale) {
-                auto view = make_viewport(opts.focus, scale, opts.resolution);
-                auto frame_precision = view.required_precision();
-                auto frame_max_iter = view.required_iterations(
-                    std::get<0>(opts.iteration_parameters),
-                    std::get<1>(opts.iteration_parameters),
-                    std::get<2>(opts.iteration_parameters)
-                );
+            auto scale_d = static_cast<double>(scale);
+            auto ft = pick_type(frame_precision);
 
-                wacfrac::MultiFloat::default_precision(frame_precision);
-                wacfrac::MultiComplex::default_precision(frame_precision);
-                view.precision(frame_precision);
-
-                RenderConfig cfg{frame_max_iter, opts.escape_radius, &opts.palette, opts.continuous_coloring};
-
-                auto scale_d = static_cast<double>(scale);
-
-                if (scale_d <= DIRECT_THRESHOLD) {
-                    wacfrac::logging::print(wacfrac::logging::Severity::Info,
-                        "Frame zoom={} algorithm=direct", scale_d);
-                    auto ft = pick_type(frame_precision);
-                    with_numeric_type(ft, [&](auto tag) {
-                        using T = typename decltype(tag)::type;
-                        direct_render_pass<T>(pixels, opts.resolution, view, cfg);
-                    });
-                } else if (scale_d <= PERTURB_THRESHOLD) {
+            auto render_perturbed_or_bla = [&](auto tag, const auto& ref) {
+                using T = typename decltype(tag)::type;
+                if (scale_d <= PERTURB_THRESHOLD) {
                     wacfrac::logging::print(wacfrac::logging::Severity::Info,
                         "Frame zoom={} algorithm=perturbed", scale_d);
-                    perturbed_render_pass<RefT>(pixels, opts.resolution, view, cfg, ref_orbit, c_ref);
+                    perturbed_render_pass<T>(pixels, opts.resolution, view, cfg, ref, c_ref);
                 } else {
                     wacfrac::logging::print(wacfrac::logging::Severity::Info,
                         "Frame zoom={} algorithm=BLA", scale_d);
-                    auto probes = view.template generate_probes<RefT>(3, 3);
-                    auto max_dc = wacfrac::to_complex<RefT>(view.compute_max_dc(c_ref));
-                    wacfrac::BivariateLinearApproximator<RefT> bla{
+                    auto probes = view.template generate_probes<T>(3, 3);
+                    auto max_dc = wacfrac::to_complex<T>(view.compute_max_dc(c_ref));
+                    wacfrac::BivariateLinearApproximator<T> bla{
                         static_cast<double>(-(1 << 12)), static_cast<double>(-(1 << 0)),
-                        1e-8, probes, max_dc, ref_orbit, first_level,
+                        1e-8, probes, max_dc, ref, first_level,
                         opts.escape_radius
                     };
-                    bla_render_pass<RefT>(pixels, opts.resolution, view, cfg, bla, c_ref);
+                    bla_render_pass<T>(pixels, opts.resolution, view, cfg, bla, c_ref);
                 }
+            };
+
+            if (scale_d <= DIRECT_THRESHOLD) {
+                wacfrac::logging::print(wacfrac::logging::Severity::Info,
+                    "Frame zoom={} algorithm=direct", scale_d);
+                with_numeric_type(ft, [&](auto tag) {
+                    using T = typename decltype(tag)::type;
+                    direct_render_pass<T>(pixels, opts.resolution, view, cfg);
+                });
+            } else {
+                with_numeric_type(ft, [&](auto tag) {
+                    using T = typename decltype(tag)::type;
+                    if constexpr (std::is_same_v<T, std::complex<double>>)
+                        render_perturbed_or_bla(tag, refs.double_ref);
+                    else if constexpr (std::is_same_v<T, std::complex<long double>>)
+                        render_perturbed_or_bla(tag, refs.long_double_ref);
+                    else
+                        render_perturbed_or_bla(tag, refs.dexp_ref);
+                });
             }
-        );
-    });
+        }
+    );
 }
 
 static void dispatch_render(argumentum::CommandOptions* cmd) {

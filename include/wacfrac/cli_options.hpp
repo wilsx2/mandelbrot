@@ -216,9 +216,9 @@ struct VideoOptions : argumentum::CommandOptions, public SharedOptions {
         args.add_parameter(iteration_parameters, "--iteration-parameters", "-n")
             .nargs(3).absent({250.0, 50.0, 1.5})
             .action(make_nargs3_parser([](auto& target, const std::array<std::string, 3>& parts){
-                std::get<0>(target) = std::stoul(parts[0]);
-                std::get<1>(target) = std::stoul(parts[1]);
-                std::get<2>(target) = std::stoul(parts[2]);
+                std::get<0>(target) = std::stod(parts[0]);
+                std::get<1>(target) = std::stod(parts[1]);
+                std::get<2>(target) = std::stod(parts[2]);
             }))
             .help("(mod, fact, exp) -> max_n = mod + fact * exponential_scale^exp");
     }

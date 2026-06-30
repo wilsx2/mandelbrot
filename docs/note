@@ -2,6 +2,7 @@
 - compute references of multiple precisions so we can use the fastest one which is valid
 - shared param: log level
 - show progress of video ex. X/Y frames, frame duration, time running
+- logging::print(Severity::level) -> log::level()
 - de-uglify video rendering and cli code
 - fun bash scripts and examples
     - interactive prompt version of the cli (gum)

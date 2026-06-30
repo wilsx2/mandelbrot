@@ -61,4 +61,12 @@ auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius =
 template <Complex T = std::complex<long double>>
 auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radius = 2.0) -> std::vector<T>;
 
+struct ReferenceSet {
+    std::vector<std::complex<double>> double_ref;
+    std::vector<std::complex<long double>> long_double_ref;
+    std::vector<DoubleExpComplex> dexp_ref;
+};
+
+auto compute_references_all(MultiComplex c, std::size_t max_n, double escape_radius = 2.0) -> ReferenceSet;
+
 }   // namespace wacfrac
