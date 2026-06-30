@@ -1,5 +1,5 @@
 29 / 30
-- make FloatExp faster; way faster
+- fix auto iter
 - compute references of multiple precisions so we can use the fastest one which is valid
 - video mode params: cut offs for numeric type (direct) and algorithm
 - shared param: log level

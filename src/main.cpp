@@ -199,8 +199,8 @@ static void render_video(wacfrac::VideoOptions& opts) {
     wacfrac::MultiComplex::default_precision(precision);
 
     auto pick_type = [](auto p) -> std::string {
-        if (p > 30) return "dexp";
-        if (p > 15) return "long-double";
+        if (p > 1000) return "dexp"; // NOTE: Imprecise
+        if (p > 230) return "long-double";
         return "double";
     };
     auto ref_type = pick_type(precision);
@@ -220,8 +220,8 @@ static void render_video(wacfrac::VideoOptions& opts) {
         auto last_level = static_cast<std::size_t>(std::log2(ref_orbit.size()));
         auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
 
-        constexpr double DIRECT_THRESHOLD = 1e2;
-        constexpr double PERTURB_THRESHOLD = 1e10;
+        constexpr double DIRECT_THRESHOLD = 1e13;
+        constexpr double PERTURB_THRESHOLD = 1e50;
 
         // I am sorry for this function call.
         wacfrac::write_zoom_frames(

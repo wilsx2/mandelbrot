@@ -160,7 +160,7 @@ struct BLAOptions : argumentum::CommandOptions, public ImageOptions {
                 target.second = std::stoul(parts[1]);
             }))
             .help("Probe grid dimensions (rows cols)");
-        args.add_parameter(tolerance, "--tolerance", "-t")
+        args.add_parameter(tolerance, "--tolerance", "-T")
             .nargs(1).absent(1e-8)
             .help("Epsilon search tolerance");
         args.add_parameter(lower_exp, "--lower-exp", "-l")
@@ -169,10 +169,10 @@ struct BLAOptions : argumentum::CommandOptions, public ImageOptions {
         args.add_parameter(upper_exp, "--upper-exp", "-u")
             .nargs(1).absent(-(1 << 0))
             .help("Upper exponent for epsilon search");
-        args.add_parameter(epsilon, "--epsilon")
+        args.add_parameter(epsilon, "--epsilon", "-E")
             .nargs(1).absent(0.0)
             .help("Direct epsilon value (0 = use binary search)");
-        args.add_parameter(first_level, "--first-level")
+        args.add_parameter(first_level, "--first-level", "-L")
             .nargs(1).absent(0)
             .help("First BLA level (0 = auto)");
     }
