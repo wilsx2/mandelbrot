@@ -22,13 +22,13 @@ static auto lemniscate_curve(MultiComplex c, std::size_t period) -> std::pair<Mu
 // https://www.mrob.com/pub/muency/newtonraphsonmethod.html
 auto find_nucleus(MultiComplex c, std::size_t period,  std::size_t max_iterations) -> MultiComplex {
     auto square_tolerance = MultiFloat{1.0} / pow(MultiFloat{10.0}, 2 * c.precision());
-    logging::print(logging::Severity::Debug, "Finding nucleus at ({}) period={} max_iterations={}", c, period, max_iterations);
+    logging::debug( "Finding nucleus at ({}) period={} max_iterations={}", c, period, max_iterations);
     for (auto i {0uz}; i < max_iterations; ++i) {
         auto [z, dz] = lemniscate_curve(c, period);
 
         MultiComplex correction = z / dz;
         if (square_magnitude(correction) <= square_tolerance) {
-            logging::print(logging::Severity::Debug, "Nucleus converged in {} iterations at ({})", i+1, c);
+            logging::debug( "Nucleus converged in {} iterations at ({})", i+1, c);
             break;
         }
 
@@ -49,7 +49,7 @@ PeriodFinder::PeriodFinder(MultiComplex c0, MultiFloat dx, MultiFloat dy, std::s
 { }
 
 auto PeriodFinder::next() -> std::size_t {
-    logging::print(logging::Severity::Trace, "Searching for period in the range [{},{})", k, n);
+    logging::trace( "Searching for period in the range [{},{})", k, n);
     while (k++ < n) {
         r = r * r + 2 * (az + r0 * adz) * r + r0 * r0 * adz * adz;
         dz = 2 * z * dz + MultiComplex{1};
@@ -58,12 +58,12 @@ auto PeriodFinder::next() -> std::size_t {
         adz = abs(dz);
 
         if (r + r0 * adz > az) {
-            logging::print(logging::Severity::Trace, "Found period {}", k);
+            logging::trace( "Found period {}", k);
             return k;
         }
         if (az > max_r || r > max_r) break;
     }
-    logging::print(logging::Severity::Debug, "No periods found");
+    logging::debug( "No periods found");
     return 0uz;
 }
 

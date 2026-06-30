@@ -19,11 +19,11 @@ enum class Severity {
     Fatal   = 5
 };
 
-inline std::atomic<bool>& do_log() {
-    static std::atomic<bool> ENABLED {false};
-    return ENABLED;
+inline auto log_level() -> std::atomic<int>& {
+    static std::atomic<int> LEVEL {6};
+    return LEVEL;
 }
-void init();
+void init(int level);
 
 namespace detail {
 
@@ -47,7 +47,7 @@ void format_impl(std::ostringstream& oss, std::string_view fmt, T&& arg, Args&&.
 
 template<typename... Args>
 inline void print(Severity level, std::string_view fmt, Args&&... args) {
-    if (!do_log())
+    if (static_cast<int>(level) >= log_level())
         return;
 
     static boost::log::sources::severity_logger<Severity> logger {};
@@ -62,6 +62,36 @@ inline void print(Severity level, std::string_view fmt, Args&&... args) {
     oss << "[" << label << "] ";
     detail::format_impl(oss, fmt, std::forward<Args>(args)...);
     BOOST_LOG_SEV(logger, level) << oss.str();
+}
+
+template<typename... Args>
+inline void trace(std::string_view fmt, Args&&... args) {
+    print(Severity::Trace, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+inline void debug(std::string_view fmt, Args&&... args) {
+    print(Severity::Debug, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+inline void info(std::string_view fmt, Args&&... args) {
+    print(Severity::Info, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+inline void warning(std::string_view fmt, Args&&... args) {
+    print(Severity::Warning, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+inline void error(std::string_view fmt, Args&&... args) {
+    print(Severity::Error, fmt, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+inline void fatal(std::string_view fmt, Args&&... args) {
+    print(Severity::Fatal, fmt, std::forward<Args>(args)...);
 }
 
 } // namespace wacfrac::logging

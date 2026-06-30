@@ -29,7 +29,7 @@ decltype(auto) with_numeric_type(const std::string& type, F&& f) {
         return f(NumericTypeTag<std::complex<long double>>{});
     if (type == "dexp")
         return f(NumericTypeTag<wacfrac::DoubleExpComplex>{});
-    wacfrac::logging::print(wacfrac::logging::Severity::Error,
+    wacfrac::logging::error(
         "Unknown numeric type: {}", type);
     std::exit(EXIT_FAILURE);
 }
@@ -58,7 +58,7 @@ auto make_view(wacfrac::ImageOptions& opt) {
     wacfrac::MultiComplex::default_precision(precision);
     view.precision(precision);
 
-    wacfrac::logging::print(wacfrac::logging::Severity::Info,
+    wacfrac::logging::info(
         "Configuration: output={} resolution={}x{} focus=({}, {}) zoom={} max_iterations={} precision={} numeric_type={}",
         opt.filepath, opt.resolution.width, opt.resolution.height,
         opt.focus.real(), opt.focus.imag(), opt.scale,
@@ -125,7 +125,7 @@ void bla_render_pass(std::span<wacfrac::Pixel> pixels,
         make_color_fn(*cfg.palette, cfg.continuous_coloring, cfg.max_iterations),
         c_ref);
     auto avg_skipped = static_cast<double>(total_skipped) / res.area();
-    wacfrac::logging::print(wacfrac::logging::Severity::Info,
+    wacfrac::logging::info(
         "BLA render complete (avg skipped: {})", avg_skipped);
 }
 
@@ -146,7 +146,7 @@ static void render_image(wacfrac::ImageOptions& opts, F&& render_fn) {
         std::chrono::steady_clock::now() - t_render
     )};
 
-    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Render took {}ms", render_ms.count());
+    wacfrac::logging::info( "Render took {}ms", render_ms.count());
     wacfrac::write_ppm(opts.filepath, opts.resolution, pixels);
 }
 
@@ -161,7 +161,7 @@ static void render_perturbed(wacfrac::PerturbedOptions& opts) {
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         auto c_ref = view.center;
         auto ref = wacfrac::compute_reference_mt<T>(c_ref, get_max_iterations(opts), opts.escape_radius);
-        wacfrac::logging::print(wacfrac::logging::Severity::Info,
+        wacfrac::logging::info(
             "Reference at view center with orbit length {}", ref.size());
         perturbed_render_pass<T>(pixels, opts.resolution, view, cfg, ref, c_ref);
     });
@@ -174,8 +174,13 @@ static void render_bla(wacfrac::BLAOptions& opts) {
         using CT = wacfrac::ComplexValueTypeT<T>;
         auto c_ref = view.center;
         auto ref = wacfrac::compute_reference_mt<T>(c_ref, max_iterations, opts.escape_radius);
-        wacfrac::logging::print(wacfrac::logging::Severity::Info,
+        wacfrac::logging::info(
             "Reference at view center with orbit length {}", ref.size());
+        if (ref.size() < 2) {
+            wacfrac::logging::warning("Reference point outside Mandelbrot set, falling back to direct rendering");
+            direct_render_pass<T>(pixels, opts.resolution, view, cfg);
+            return;
+        }
         auto last_level = static_cast<std::size_t>(std::log2(ref.size()));
         auto first_level = opts.first_level != 0
             ? opts.first_level
@@ -211,7 +216,7 @@ static void render_video(wacfrac::VideoOptions& opts) {
     auto last_level = static_cast<std::size_t>(std::log2(ref_size));
     auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
 
-    wacfrac::logging::print(wacfrac::logging::Severity::Info,
+    wacfrac::logging::info(
         "Video pre-compute: final_zoom={} max_iterations={} precision={} ref_size={}",
         opts.final_scale, max_iterations, precision, ref_size);
 
@@ -244,11 +249,11 @@ static void render_video(wacfrac::VideoOptions& opts) {
             auto render_perturbed_or_bla = [&](auto tag, const auto& ref) {
                 using T = typename decltype(tag)::type;
                 if (scale_d <= PERTURB_THRESHOLD) {
-                    wacfrac::logging::print(wacfrac::logging::Severity::Info,
+                    wacfrac::logging::info(
                         "Frame zoom={} algorithm=perturbed", scale_d);
                     perturbed_render_pass<T>(pixels, opts.resolution, view, cfg, ref, c_ref);
                 } else {
-                    wacfrac::logging::print(wacfrac::logging::Severity::Info,
+                    wacfrac::logging::info(
                         "Frame zoom={} algorithm=BLA", scale_d);
                     auto probes = view.template generate_probes<T>(3, 3);
                     auto max_dc = wacfrac::to_complex<T>(view.compute_max_dc(c_ref));
@@ -262,7 +267,7 @@ static void render_video(wacfrac::VideoOptions& opts) {
             };
 
             if (scale_d <= DIRECT_THRESHOLD) {
-                wacfrac::logging::print(wacfrac::logging::Severity::Info,
+                wacfrac::logging::info(
                     "Frame zoom={} algorithm=direct", scale_d);
                 with_numeric_type(ft, [&](auto tag) {
                     using T = typename decltype(tag)::type;
@@ -294,9 +299,6 @@ static void dispatch_render(argumentum::CommandOptions* cmd) {
 
 int main(int argc, char* argv[])
 {
-    wacfrac::logging::init();
-    wacfrac::logging::print(wacfrac::logging::Severity::Info, "Mandelbrot Set Plotter");
-
     auto parser = argumentum::argument_parser{};
     auto params = parser.params();
     parser.config().program(argv[0]).description("Mandelbrot Set Plotter");
@@ -314,10 +316,14 @@ int main(int argc, char* argv[])
     for (auto& pcmd : parse_result.commands)
         if (pcmd) { cmd = pcmd; break; }
     if (!cmd) {
-        wacfrac::logging::print(wacfrac::logging::Severity::Error,
+wacfrac::logging::error(
             "No render mode specified. Use one of: direct, perturbed, bla, video");
         return EXIT_FAILURE;
     }
 
+    if (auto* p = dynamic_cast<wacfrac::SharedOptions*>(cmd.get())) {
+        wacfrac::logging::init(p->log_level);
+    }
+    wacfrac::logging::info( "Mandelbrot Set Plotter");
     dispatch_render(cmd.get());
 }

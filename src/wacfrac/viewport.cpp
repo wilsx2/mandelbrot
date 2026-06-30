@@ -14,7 +14,7 @@ void Viewport::precision(std::size_t value) {
 }
 
 auto Viewport::zoomed(MultiFloat factor) const -> Viewport {
-    logging::print(logging::Severity::Debug, "Zooming Viewport by factor {} (new dimensions: {})", factor, (dimensions / factor));
+    logging::debug( "Zooming Viewport by factor {} (new dimensions: {})", factor, (dimensions / factor));
     return {center, dimensions / factor};
 }
 

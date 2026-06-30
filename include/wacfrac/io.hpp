@@ -27,7 +27,7 @@ void write_zoom_frames(std::filesystem::path directory, std::size_t segment_size
     std::filesystem::current_path(directory);
 
     if (std::filesystem::exists("final.mp4")) {
-        logging::print(logging::Severity::Info, "'{}' already contains a complete render", directory);
+        logging::info( "'{}' already contains a complete render", directory);
         return;
     }
 
@@ -53,20 +53,20 @@ void write_zoom_frames(std::filesystem::path directory, std::size_t segment_size
             }
 
             if (frame != 0 && (frame % segment_size == segment_size - 1 || frame == frames - 1)) {
-                logging::print(logging::Severity::Debug, "Composing frames into segment {}", segment);
+                logging::debug( "Composing frames into segment {}", segment);
                 auto status = std::system(std::format(
                     "ffmpeg -y -framerate {} -i frame_%0{}d.ppm -c:v libx264 -pix_fmt yuv420p {}", // TODO: Pipe into my stdout
                     frames_per_second, suffix_width, segment_filename
                 ).c_str());
                 if (status == EXIT_SUCCESS) {
                     std::system("rm frame_*");
-                    logging::print(logging::Severity::Info, "Segment #{} rendered", segment);
+                    logging::info( "Segment #{} rendered", segment);
                 } else {
-                    logging::print(logging::Severity::Error, "Segment #{} failed to compose", segment);
+                    logging::error( "Segment #{} failed to compose", segment);
                 }
             }
         } else {
-            logging::print(logging::Severity::Debug, "Frame #{} has already been rendered; skipping", frame);
+            logging::debug( "Frame #{} has already been rendered; skipping", frame);
         }
 
         if (zoom_in) {
@@ -81,9 +81,9 @@ void write_zoom_frames(std::filesystem::path directory, std::size_t segment_size
     ).c_str());
     if (status == EXIT_SUCCESS) {
         (void) std::system("rm segment_*");
-        logging::print(logging::Severity::Info, "Video render complete");
+        logging::info( "Video render complete");
     } else {
-        logging::print(logging::Severity::Error, "Final video failed to compose");
+        logging::error( "Final video failed to compose");
     }
 }
 

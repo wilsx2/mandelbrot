@@ -14,7 +14,7 @@ namespace wacfrac
 
 template <std::invocable<std::size_t, std::size_t> F, typename G>
 void screen_render(std::span<Pixel> pixels, const Resolution& res, F&& escape_fn, G&& color_fn) {
-    logging::print(logging::Severity::Debug, "Screen render: {}x{} ({} pixels, parallel)", res.width, res.height, res.area());
+    logging::debug( "Screen render: {}x{} ({} pixels, parallel)", res.width, res.height, res.area());
     auto coords {res.coordinates()};
     std::for_each(std::execution::par, coords.begin(), coords.end(),[&](auto&& coord){
         auto [y, x] = coord;

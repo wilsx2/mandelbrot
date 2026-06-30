@@ -53,7 +53,7 @@ auto escape_perturbed(const std::vector<T>& ref, T dc, std::size_t max_n, double
 
 template <Complex T>
 auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius) -> std::vector<T> {
-    logging::print(logging::Severity::Debug, "Computing reference orbit at ({}) max_n={} escape_radius={}", c, max_n, escape_radius);
+    logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={}", c, max_n, escape_radius);
 
     std::vector<T> reference;
     reference.reserve(max_n);
@@ -65,7 +65,7 @@ auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius) 
         reference.emplace_back(to_complex<T>(z));
     }
 
-    logging::print(logging::Severity::Debug, "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
+    logging::debug( "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
     return reference;
 }
 
@@ -112,7 +112,7 @@ auto compute_reference_iteration(MultiComplex c, std::size_t max_n, double escap
 
 template <Complex T>
 auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radius) -> std::vector<T> {
-    logging::print(logging::Severity::Debug, "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
+    logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
     if (max_n == 0)
         return {};
 
@@ -125,7 +125,7 @@ auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radiu
     });
 
     reference.resize(count);
-    logging::print(logging::Severity::Debug, "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
+    logging::debug( "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
     return reference;
 }
 
@@ -151,7 +151,7 @@ auto compute_references_all(MultiComplex c, std::size_t max_n, double escape_rad
     refs.long_double_ref.resize(count);
     refs.dexp_ref.resize(count);
 
-    logging::print(logging::Severity::Debug, "All references computed: {} points", count);
+    logging::debug( "All references computed: {} points", count);
     return refs;
 }
 

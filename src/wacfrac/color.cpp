@@ -16,7 +16,7 @@ namespace wacfrac
 
 auto parse_color(std::string_view string) -> Pixel {
     if (string.size() < 7 || string[0] != '#') {
-        logging::print(logging::Severity::Error, "Error parsing string as a color; size or prefix: {}", string);
+        logging::error( "Error parsing string as a color; size or prefix: {}", string);
         return {255,0,255};
     }
 
@@ -24,7 +24,7 @@ auto parse_color(std::string_view string) -> Pixel {
 
     unsigned int hex_color;
     if (!(ss >> std::hex >> hex_color)) {
-        logging::print(logging::Severity::Error, "Error parsing string as a color; to hex: {}", string);
+        logging::error( "Error parsing string as a color; to hex: {}", string);
         return {255,0,255};
     }
 
@@ -33,7 +33,7 @@ auto parse_color(std::string_view string) -> Pixel {
         static_cast<uint8_t>((hex_color >> 8) & 0xFF),
         static_cast<uint8_t>(hex_color & 0xFF)
     };
-    logging::print(logging::Severity::Debug, "Parsed color '{}' as rgb({},{},{})", color.r, color.g, color.b);
+    logging::debug( "Parsed color '{}' as rgb({},{},{})", color.r, color.g, color.b);
     return color;
 }
 

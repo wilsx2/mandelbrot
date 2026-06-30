@@ -12,11 +12,11 @@
 
 namespace wacfrac::logging {
 
-void init() {
+void init(int level) {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
-    do_log() = true;
+    log_level() = level;
 
     auto sink = boost::make_shared<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>>();
 

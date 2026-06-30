@@ -86,7 +86,7 @@ struct SharedOptions {
                     std::back_inserter(target)
                 );
                 if (target.empty()) {
-                    logging::print(logging::Severity::Info,
+                    logging::info(
                         "Falling back to default palette");
                     target = wacfrac::palette::ULTRA;
                 }

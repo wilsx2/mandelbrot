@@ -44,7 +44,7 @@ auto Viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std:
 template<Complex T>
 auto Viewport::find_periodic_reference(std::size_t max_n, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<T>> {
     using boost::multiprecision::isnan;
-    logging::print(logging::Severity::Info, "Searching for periodic reference (max_n={}, nucleus_iter={})", max_n, find_nucleus_iter);
+    logging::info( "Searching for periodic reference (max_n={}, nucleus_iter={})", max_n, find_nucleus_iter);
 
     auto half_dx = dimensions.real() / 2.0;
     auto half_dy = dimensions.imag() / 2.0;
@@ -54,22 +54,22 @@ auto Viewport::find_periodic_reference(std::size_t max_n, std::size_t find_nucle
     std::size_t period;
     PeriodFinder iter {center, half_dx, half_dy, max_n};
     while ((period = iter.next()) != 0) {
-        logging::print(logging::Severity::Debug, "Trying period {} for non-degenerate reference", period);
+        logging::debug( "Trying period {} for non-degenerate reference", period);
         auto c_ref {find_nucleus(center, period, find_nucleus_iter)};
         if (isnan(c_ref.real()) || isnan(c_ref.imag())) {
-            logging::print(logging::Severity::Debug, "Failed to find nucleus");
+            logging::debug( "Failed to find nucleus");
             continue;
         }
-        logging::print(logging::Severity::Debug, "Nucleus found, starting on reference");
+        logging::debug( "Nucleus found, starting on reference");
         auto reference {compute_reference_mt<T>(c_ref, period, inf)};
         if (!is_reference_degenerate(reference)) {
-            logging::print(logging::Severity::Debug, "Found non-degenerate reference at period {}", period);
+            logging::debug( "Found non-degenerate reference at period {}", period);
             return std::make_pair(c_ref, reference);
         }
     }
 
     // Fallback to center if none found
-    logging::print(logging::Severity::Warning, "No suitable periodic reference found, falling back to view center");
+    logging::warning( "No suitable periodic reference found, falling back to view center");
     return std::make_pair(
         center,
         compute_reference_mt<T>(center, max_n, inf)
