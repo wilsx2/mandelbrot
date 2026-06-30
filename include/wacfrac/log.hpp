@@ -47,7 +47,7 @@ void format_impl(std::ostringstream& oss, std::string_view fmt, T&& arg, Args&&.
 
 template<typename... Args>
 inline void print(Severity level, std::string_view fmt, Args&&... args) {
-    if (static_cast<int>(level) >= log_level())
+    if (static_cast<int>(level) < log_level())
         return;
 
     static boost::log::sources::severity_logger<Severity> logger {};
