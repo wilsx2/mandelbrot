@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <functional>
+#include <limits>
 #include <ratio>
 #include <string>
 #include <string_view>
@@ -160,7 +161,7 @@ static void render_perturbed(wacfrac::PerturbedOptions& opts) {
     RenderConfig cfg{get_max_iterations(opts), opts.escape_radius, &opts.palette, opts.continuous_coloring};
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         auto c_ref = view.center;
-        auto ref = wacfrac::compute_reference_mt<T>(c_ref, get_max_iterations(opts), opts.escape_radius);
+        auto ref = wacfrac::compute_reference_mt<T>(c_ref, get_max_iterations(opts), std::numeric_limits<double>::infinity());
         wacfrac::logging::info(
             "Reference at view center with orbit length {}", ref.size());
         perturbed_render_pass<T>(pixels, opts.resolution, view, cfg, ref, c_ref);
@@ -173,14 +174,9 @@ static void render_bla(wacfrac::BLAOptions& opts) {
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         using CT = wacfrac::ComplexValueTypeT<T>;
         auto c_ref = view.center;
-        auto ref = wacfrac::compute_reference_mt<T>(c_ref, max_iterations, opts.escape_radius);
+        auto ref = wacfrac::compute_reference_mt<T>(c_ref, max_iterations, std::numeric_limits<double>::infinity());
         wacfrac::logging::info(
             "Reference at view center with orbit length {}", ref.size());
-        if (ref.size() < 2) {
-            wacfrac::logging::warning("Reference point outside Mandelbrot set, falling back to direct rendering");
-            direct_render_pass<T>(pixels, opts.resolution, view, cfg);
-            return;
-        }
         auto last_level = static_cast<std::size_t>(std::log2(ref.size()));
         auto first_level = opts.first_level != 0
             ? opts.first_level
@@ -211,7 +207,7 @@ static void render_video(wacfrac::VideoOptions& opts) {
     };
 
     auto c_ref = opts.focus;
-    auto refs = wacfrac::compute_references_all(c_ref, max_iterations, opts.escape_radius);
+    auto refs = wacfrac::compute_references_all(c_ref, max_iterations, std::numeric_limits<double>::infinity());
     auto ref_size = refs.double_ref.size();
     auto last_level = static_cast<std::size_t>(std::log2(ref_size));
     auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
@@ -316,7 +312,7 @@ int main(int argc, char* argv[])
     for (auto& pcmd : parse_result.commands)
         if (pcmd) { cmd = pcmd; break; }
     if (!cmd) {
-wacfrac::logging::error(
+        wacfrac::logging::error(
             "No render mode specified. Use one of: direct, perturbed, bla, video");
         return EXIT_FAILURE;
     }

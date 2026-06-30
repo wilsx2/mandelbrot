@@ -107,6 +107,8 @@ auto compute_reference_iteration(MultiComplex c, std::size_t max_n, double escap
         }
     }};
 
+    real_compute.join();
+    imag_compute.join();
     return n_1;
 }
 

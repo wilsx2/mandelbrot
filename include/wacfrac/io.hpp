@@ -48,7 +48,13 @@ void write_zoom_frames(std::filesystem::path directory, std::size_t segment_size
 
         if (!std::filesystem::exists(segment_filename)) {
             if (!std::filesystem::exists(frame_filename)) {
+                auto t_render {std::chrono::steady_clock::now()};
                 render_at_scale(pixels, initial);
+                auto render_ms {std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - t_render
+                )};
+
+                logging::info( "Frame #{}/{} rendered; took {}", frame, frames, render_ms);
                 write_ppm(frame_filename, res, pixels);
             }
 
