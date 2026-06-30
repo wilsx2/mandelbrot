@@ -57,6 +57,7 @@ struct SharedOptions {
     double escape_radius {2.0};
     std::vector<Pixel> palette {};
     bool continuous_coloring {false};
+    int log_level {2};
 
     void add_to(argumentum::ParameterConfig& args) {
         args.add_parameter(resolution, "--resolution", "-r")
@@ -94,6 +95,9 @@ struct SharedOptions {
         args.add_parameter(continuous_coloring, "--smooth-coloring", "-s")
             .nargs(0).absent(false)
             .help("Enable smooth/continuous coloring");
+        args.add_parameter(log_level, "--log-level")
+            .nargs(1).absent(2)
+            .help("Log level: 0=Trace, 1=Debug, 2=Info, 3=Warning, 4=Error, 5=Fatal");
     }
 };
 
