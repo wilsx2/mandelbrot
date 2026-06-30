@@ -48,21 +48,17 @@ auto make_viewport(const wacfrac::MultiComplex& center, const wacfrac::MultiFloa
 
 auto make_view(wacfrac::ImageOptions& opt) {
     auto view = make_viewport(opt.focus, opt.scale, opt.resolution);
+    auto precision = opt.precision ? opt.precision : view.required_precision();
 
-    if (opt.precision == 0)
-        opt.precision = view.required_precision();
-    if (opt.max_iterations == 0)
-        opt.max_iterations = view.required_iterations();
-
-    wacfrac::MultiFloat::default_precision(opt.precision);
-    wacfrac::MultiComplex::default_precision(opt.precision);
-    view.precision(opt.precision);
+    wacfrac::MultiFloat::default_precision(precision);
+    wacfrac::MultiComplex::default_precision(precision);
+    view.precision(precision);
 
     wacfrac::logging::print(wacfrac::logging::Severity::Info,
         "Configuration: output={} resolution={}x{} focus=({}, {}) zoom={} max_iterations={} precision={} numeric_type={}",
         opt.filepath, opt.resolution.width, opt.resolution.height,
         opt.focus.real(), opt.focus.imag(), opt.scale,
-        opt.max_iterations, opt.precision, opt.numeric_type);
+        0, opt.precision, opt.numeric_type);
 
     return view;
 }
@@ -151,13 +147,13 @@ static void render_image(wacfrac::ImageOptions& opts, F&& render_fn) {
 }
 
 static void render_direct(wacfrac::DirectOptions& opts) {
-    RenderConfig cfg{opts.max_iterations, opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    RenderConfig cfg{wacfrac::required_iterations(opts.scale), opts.escape_radius, &opts.palette, opts.continuous_coloring};
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         direct_render_pass<T>(pixels, opts.resolution, view, cfg);
     });
 }
 static void render_perturbed(wacfrac::PerturbedOptions& opts) {
-    RenderConfig cfg{opts.max_iterations, opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    RenderConfig cfg{wacfrac::required_iterations(opts.scale), opts.escape_radius, &opts.palette, opts.continuous_coloring};
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         auto c_ref = view.center;
         auto ref = wacfrac::compute_reference_mt<T>(c_ref, opts.max_iterations, opts.escape_radius);
@@ -168,11 +164,12 @@ static void render_perturbed(wacfrac::PerturbedOptions& opts) {
 }
 
 static void render_bla(wacfrac::BLAOptions& opts) {
-    RenderConfig cfg{opts.max_iterations, opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    auto max_iterations = wacfrac::required_iterations(opts.scale);
+    RenderConfig cfg{max_iterations, opts.escape_radius, &opts.palette, opts.continuous_coloring};
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         using CT = wacfrac::ComplexValueTypeT<T>;
         auto c_ref = view.center;
-        auto ref = wacfrac::compute_reference_mt<T>(c_ref, opts.max_iterations, opts.escape_radius);
+        auto ref = wacfrac::compute_reference_mt<T>(c_ref, max_iterations, opts.escape_radius);
         wacfrac::logging::print(wacfrac::logging::Severity::Info,
             "Reference at view center with orbit length {}", ref.size());
         auto last_level = static_cast<std::size_t>(std::log2(ref.size()));
