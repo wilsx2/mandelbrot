@@ -1,15 +1,20 @@
-29 (mostly busy)
+29 / 30
 - progressive encoding
-- show progress of video ex. X/Y frames
-- auto mode
-- auto numeric type
-- verbose flag
+- video mode params: frames/segments in a batch
+- video mode params: raw output
+- video mode params: max iteration heuristic parameters
+- video mode params: cut offs for numeric type and algorithm
+- skip prerendered (cached) frames
+- shared param: log level
+- show progress of video ex. X/Y frames, frame duration, time running
 - de-uglify video rendering code
 - fun bash scripts and examples
-
-30
-- Docs
-- Tex
+    - interactive prompt version of the cli (gum)
+    - palette generation scripts (pastel)
+    - pois
+    - palettes
+- auto mode
+- auto numeric type
 
 July
 - Tiling

@@ -63,7 +63,7 @@ template auto Viewport::find_periodic_reference<DoubleExpComplex>(std::size_t ma
 auto required_precision(MultiFloat zoom) -> std::size_t {
     using namespace std;
     using namespace boost::multiprecision;
-    double e {abs(log10(zoom))};
+    double e {abs(log10(zoom)) + 5.0};
     return static_cast<std::size_t>(max(10.0, e));
 }
 auto required_iterations(MultiFloat zoom, double modifier, double factor, double exponent) -> std::size_t {

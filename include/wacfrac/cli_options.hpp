@@ -53,7 +53,7 @@ struct SharedOptions {
         args.add_parameter(focus, "--focus", "-f")
             .nargs(2).absent({-0.5, 0.0})
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
-                target = MultiComplex{MultiFloat{parts[0], 2000}, MultiFloat{parts[1], 2000}}; // NOTE: Magic number
+                target = MultiComplex{MultiFloat{parts[0], 2000}, MultiFloat{parts[1], 2000}, 2000}; // NOTE: Magic number
             }))
             .help("Coordinates to zoom in on");
         args.add_parameter(escape_radius, "--escape-radius")
