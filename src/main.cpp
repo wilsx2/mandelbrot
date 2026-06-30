@@ -34,6 +34,10 @@ decltype(auto) with_numeric_type(const std::string& type, F&& f) {
     std::exit(EXIT_FAILURE);
 }
 
+auto get_max_iterations(const wacfrac::ImageOptions& opt) {
+    return opt.max_iterations ? opt.max_iterations : wacfrac::required_iterations(1.0/opt.scale);
+}
+
 auto make_viewport(const wacfrac::MultiComplex& center, const wacfrac::MultiFloat& scale, const wacfrac::Resolution& res) {
     wacfrac::Viewport view;
     view.center = center;
@@ -58,7 +62,7 @@ auto make_view(wacfrac::ImageOptions& opt) {
         "Configuration: output={} resolution={}x{} focus=({}, {}) zoom={} max_iterations={} precision={} numeric_type={}",
         opt.filepath, opt.resolution.width, opt.resolution.height,
         opt.focus.real(), opt.focus.imag(), opt.scale,
-        0, opt.precision, opt.numeric_type);
+        get_max_iterations(opt), opt.precision, opt.numeric_type);
 
     return view;
 }
@@ -147,16 +151,16 @@ static void render_image(wacfrac::ImageOptions& opts, F&& render_fn) {
 }
 
 static void render_direct(wacfrac::DirectOptions& opts) {
-    RenderConfig cfg{wacfrac::required_iterations(opts.scale), opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    RenderConfig cfg{get_max_iterations(opts), opts.escape_radius, &opts.palette, opts.continuous_coloring};
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         direct_render_pass<T>(pixels, opts.resolution, view, cfg);
     });
 }
 static void render_perturbed(wacfrac::PerturbedOptions& opts) {
-    RenderConfig cfg{wacfrac::required_iterations(opts.scale), opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    RenderConfig cfg{get_max_iterations(opts), opts.escape_radius, &opts.palette, opts.continuous_coloring};
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         auto c_ref = view.center;
-        auto ref = wacfrac::compute_reference_mt<T>(c_ref, opts.max_iterations, opts.escape_radius);
+        auto ref = wacfrac::compute_reference_mt<T>(c_ref, get_max_iterations(opts), opts.escape_radius);
         wacfrac::logging::print(wacfrac::logging::Severity::Info,
             "Reference at view center with orbit length {}", ref.size());
         perturbed_render_pass<T>(pixels, opts.resolution, view, cfg, ref, c_ref);
@@ -164,7 +168,7 @@ static void render_perturbed(wacfrac::PerturbedOptions& opts) {
 }
 
 static void render_bla(wacfrac::BLAOptions& opts) {
-    auto max_iterations = wacfrac::required_iterations(opts.scale);
+    auto max_iterations {get_max_iterations(opts)};
     RenderConfig cfg{max_iterations, opts.escape_radius, &opts.palette, opts.continuous_coloring};
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         using CT = wacfrac::ComplexValueTypeT<T>;
@@ -218,7 +222,7 @@ static void render_video(wacfrac::VideoOptions& opts) {
         auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
 
         constexpr double DIRECT_THRESHOLD = 1e13;
-        constexpr double PERTURB_THRESHOLD = 1e50;
+        constexpr double PERTURB_THRESHOLD = 1e25;
 
         // I am sorry for this function call.
         wacfrac::write_zoom_frames(

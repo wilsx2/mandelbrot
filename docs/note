@@ -1,10 +1,8 @@
 29 / 30
-- fix auto iter
 - compute references of multiple precisions so we can use the fastest one which is valid
-- video mode params: cut offs for numeric type (direct) and algorithm
 - shared param: log level
 - show progress of video ex. X/Y frames, frame duration, time running
-- de-uglify video rendering code
+- de-uglify video rendering and cli code
 - fun bash scripts and examples
     - interactive prompt version of the cli (gum)
     - palette generation scripts (pastel)
