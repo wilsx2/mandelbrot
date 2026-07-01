@@ -17,6 +17,8 @@
 
 namespace wacfrac {
 
+constexpr std::size_t DEFAULT_MP_PRECISION = 2000;
+
 template <typename F>
 auto make_nargs2_parser(F&& on_complete) {
     return [state = std::make_shared<std::array<std::string, 2>>(), on_complete]
@@ -48,18 +50,31 @@ auto make_nargs3_parser(F&& on_complete) {
 }
 
 static void parse_multifloat(MultiFloat& target, const std::string& value){
-    target = MultiFloat(value, 2000); // NOTE: Magic number
+    target = MultiFloat(value, DEFAULT_MP_PRECISION);
+}
+
+static void parse_palette_string(std::vector<Pixel>& target, const std::string& value) {
+    std::ranges::copy(
+        value | std::views::split(' ') | std::views::transform([](auto subrange) {
+            return parse_color(std::string_view(&*subrange.begin(), subrange.size()));
+        }),
+        std::back_inserter(target)
+    );
+    if (target.empty()) {
+        logging::info("Falling back to default palette");
+        target = wacfrac::palette::ULTRA;
+    }
 }
 
 struct SharedOptions {
     Resolution resolution {500, 500};
-    MultiComplex focus {0.0};
+    MultiComplex focus {-0.5, 0.0};
     double escape_radius {4.0};
     std::vector<Pixel> palette {};
     bool discrete_coloring {false};
     int log_level {2};
 
-    void add_to(argumentum::ParameterConfig& args) {
+    void add_parameters(argumentum::ParameterConfig& args) {
         args.add_parameter(resolution, "--resolution", "-r")
             .nargs(2).absent({500, 500})
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
@@ -70,7 +85,7 @@ struct SharedOptions {
         args.add_parameter(focus, "--focus", "-f")
             .nargs(2).absent({-0.5, 0.0})
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
-                target = MultiComplex{MultiFloat{parts[0], 2000}, MultiFloat{parts[1], 2000}, 2000}; // NOTE: Magic number
+                target = MultiComplex{MultiFloat{parts[0], DEFAULT_MP_PRECISION}, MultiFloat{parts[1], DEFAULT_MP_PRECISION}, DEFAULT_MP_PRECISION};
             }))
             .help("Coordinates to zoom in on");
         args.add_parameter(escape_radius, "--escape-radius", "-e")
@@ -78,19 +93,7 @@ struct SharedOptions {
             .help("Escape radius");
         args.add_parameter(palette, "--color-palette", "-c")
             .minargs(0).absent(palette::ULTRA)
-            .action([&](auto& target, const std::string& value){
-                std::ranges::copy(
-                    value | std::views::split(' ') | std::views::transform([](auto subrange) {
-                        return parse_color(std::string_view(&*subrange.begin(), subrange.size()));
-                    }),
-                    std::back_inserter(target)
-                );
-                if (target.empty()) {
-                    logging::info(
-                        "Falling back to default palette");
-                    target = wacfrac::palette::ULTRA;
-                }
-            })
+            .action(parse_palette_string)
             .help("Hex formatted colors mapped to escape time");
         args.add_parameter(discrete_coloring, "--discrete-coloring", "-d")
             .nargs(0).absent(false)
@@ -106,10 +109,27 @@ struct ImageOptions : public SharedOptions {
     MultiFloat scale {0.4};
     std::size_t max_iterations {0};
     std::size_t precision {0};
-    std::string numeric_type {"double"};
+    std::string numeric_type {"auto"};
 
-    void add_to(argumentum::ParameterConfig& args) {
-        SharedOptions::add_to(args);
+    auto effective_max_iterations() const -> std::size_t {
+        return max_iterations ? max_iterations : wacfrac::required_iterations(1.0 / scale);
+    }
+
+    auto effective_numeric_type() const -> std::string {
+        if (numeric_type != "auto")
+            return numeric_type;
+        auto p = precision ? precision : wacfrac::required_precision(1.0 / scale);
+        if (p > 1000) return "dexp";
+        if (p > 230)  return "long-double";
+        return "double";
+    }
+
+    auto effective_precision() const -> std::size_t {
+        return precision ? precision : wacfrac::required_precision(1.0 / scale);
+    }
+
+    void add_parameters(argumentum::ParameterConfig& args) {
+        SharedOptions::add_parameters(args);
 
         args.add_parameter(filepath, "--output", "-o")
             .nargs(1).absent("mandelbrot.ppm")
@@ -134,7 +154,7 @@ struct DirectOptions : argumentum::CommandOptions, public ImageOptions {
     using CommandOptions::CommandOptions;
     DirectOptions(): argumentum::CommandOptions("direct") {};
     void add_parameters(argumentum::ParameterConfig& args) override {
-        add_to(args);
+        ImageOptions::add_parameters(args);
     }
 };
 
@@ -142,7 +162,7 @@ struct PerturbedOptions : argumentum::CommandOptions, public ImageOptions {
     using CommandOptions::CommandOptions;
     PerturbedOptions(): argumentum::CommandOptions("perturbed") {};
     void add_parameters(argumentum::ParameterConfig& args) override {
-        add_to(args);
+        ImageOptions::add_parameters(args);
     }
 };
 
@@ -153,22 +173,22 @@ struct BLASearchOptions {
     double upper_exp {-(1 << 6)};
     std::size_t first_level {0};
 
-    void add_to(argumentum::ParameterConfig& args) {
+    void add_parameters(argumentum::ParameterConfig& args) {
         args.add_parameter(probe_grid, "--probes")
-            .nargs(2).absent({3, 3})
+            .nargs(2).absent({8, 8})
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
                 target.first = std::stoul(parts[0]);
                 target.second = std::stoul(parts[1]);
             }))
             .help("Probe grid dimensions (rows cols)");
         args.add_parameter(tolerance, "--tolerance", "-T")
-            .nargs(1).absent(1e-8)
+            .nargs(1).absent(1e-6)
             .help("Epsilon search tolerance");
         args.add_parameter(lower_exp, "--lower-exp", "-l")
             .nargs(1).absent(-(1 << 12))
             .help("Lower exponent for epsilon search");
         args.add_parameter(upper_exp, "--upper-exp", "-u")
-            .nargs(1).absent(-(1 << 0))
+            .nargs(1).absent(-(1 << 6))
             .help("Upper exponent for epsilon search");
         args.add_parameter(first_level, "--first-level", "-L")
             .nargs(1).absent(0)
@@ -183,8 +203,8 @@ struct BLAOptions : argumentum::CommandOptions, public ImageOptions, public BLAS
     double epsilon {0.0};
 
     void add_parameters(argumentum::ParameterConfig& args) override {
-        ImageOptions::add_to(args);
-        BLASearchOptions::add_to(args);
+        ImageOptions::add_parameters(args);
+        BLASearchOptions::add_parameters(args);
 
         args.add_parameter(epsilon, "--epsilon", "-E")
             .nargs(1).absent(0.0)
@@ -195,7 +215,7 @@ struct BLAOptions : argumentum::CommandOptions, public ImageOptions, public BLAS
 struct AutomaticOptions : argumentum::CommandOptions, public ImageOptions {
     using CommandOptions::CommandOptions;
     void add_parameters(argumentum::ParameterConfig& args) override {
-        add_to(args);
+        ImageOptions::add_parameters(args);
     }
 };
 
@@ -217,17 +237,17 @@ struct VideoOptions : argumentum::CommandOptions, public SharedOptions, public B
     std::tuple<double, double, double> iteration_parameters {250.0, 50.0, 1.5};
 
     void add_parameters(argumentum::ParameterConfig& args) override {
-        SharedOptions::add_to(args);
+        SharedOptions::add_parameters(args);
 
         args.add_parameter(directory, "--output", "-o")
             .nargs(1).absent("mandelbrot")
             .help("Path to the directory where video frames will be written to");
         args.add_parameter(initial_scale, "--initial-scale", "-a")
-            .nargs(1).absent(0.5)
+            .nargs(1).absent(2.0)
             .action(parse_multifloat)
             .help("Zoom factor at the first frame");
         args.add_parameter(final_scale, "--final-scale", "-b")
-            .nargs(1).absent(128.0)
+            .nargs(1).absent(1.25)
             .action(parse_multifloat)
             .help("Zoom factor at the last frame");
         args.add_parameter(frames_per_second, "--fps")
@@ -246,8 +266,8 @@ struct VideoOptions : argumentum::CommandOptions, public SharedOptions, public B
                 std::get<1>(target) = std::stod(parts[1]);
                 std::get<2>(target) = std::stod(parts[2]);
             }))
-            .help("(mod, fact, exp) -> max_n = mod + fact * exponential_scale^exp");
-        BLASearchOptions::add_to(args);
+            .help("func max_iterations(mod, fact, exp) = mod + fact * exponential_scale^exp");
+        BLASearchOptions::add_parameters(args);
     }
 };
 
