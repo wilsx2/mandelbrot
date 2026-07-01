@@ -254,8 +254,8 @@ static void render_video(wacfrac::VideoOptions& opts) {
                     auto probes = view.template generate_probes<T>(3, 3);
                     auto max_dc = wacfrac::to_complex<T>(view.compute_max_dc(c_ref));
                     wacfrac::BivariateLinearApproximator<T> bla{
-                        static_cast<double>(-(1 << 12)), static_cast<double>(-(1 << 0)),
-                        1e-8, probes, max_dc, ref, first_level,
+                        static_cast<double>(-(1 << 12)), static_cast<double>(-(1 << 6)),
+                        1e-10, probes, max_dc, ref, first_level,
                         opts.escape_radius
                     };
                     bla_render_pass<T>(pixels, opts.resolution, view, cfg, bla, c_ref);

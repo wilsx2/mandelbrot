@@ -185,14 +185,21 @@ struct BLAOptions : argumentum::CommandOptions, public ImageOptions {
 struct VideoOptions : argumentum::CommandOptions, public SharedOptions {
     using CommandOptions::CommandOptions;
 
+    // Files
     std::string directory {"mandelbrot"};
+    double frames_per_second {24.0};
+    std::size_t segment_size {64};
+    
+    // Zoom
     MultiFloat initial_scale {2.0};
     MultiFloat final_scale {1.25};
-    double frames_per_second {24.0};
     double zoom_per_second {2.0};
-    std::size_t segment_size {64};
+
+    // Iteration
     std::tuple<double, double, double> iteration_parameters {250.0, 50.0, 1.5};
-    // std::size_t cutoffs {}; // float direct | double direct | float perturbed | double perturbed | double bla | doubleexp bla
+    
+    // BLA Approximation
+    // TODO: Include
 
     void add_parameters(argumentum::ParameterConfig& args) override {
         SharedOptions::add_to(args);
