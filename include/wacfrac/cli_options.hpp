@@ -54,9 +54,9 @@ static void parse_multifloat(MultiFloat& target, const std::string& value){
 struct SharedOptions {
     Resolution resolution {500, 500};
     MultiComplex focus {0.0};
-    double escape_radius {2.0};
+    double escape_radius {4.0};
     std::vector<Pixel> palette {};
-    bool continuous_coloring {false};
+    bool discrete_coloring {false};
     int log_level {2};
 
     void add_to(argumentum::ParameterConfig& args) {
@@ -74,7 +74,7 @@ struct SharedOptions {
             }))
             .help("Coordinates to zoom in on");
         args.add_parameter(escape_radius, "--escape-radius", "-e")
-            .nargs(1).absent(2.0)
+            .nargs(1).absent(4.0)
             .help("Escape radius");
         args.add_parameter(palette, "--color-palette", "-c")
             .minargs(0).absent(palette::ULTRA)
@@ -92,9 +92,9 @@ struct SharedOptions {
                 }
             })
             .help("Hex formatted colors mapped to escape time");
-        args.add_parameter(continuous_coloring, "--smooth-coloring", "-s")
+        args.add_parameter(discrete_coloring, "--discrete-coloring", "-d")
             .nargs(0).absent(false)
-            .help("Enable smooth/continuous coloring");
+            .help("Disable smooth/continuous coloring");
         args.add_parameter(log_level, "--log-level")
             .nargs(1).absent(2)
             .help("Log level: 0=Trace, 1=Debug, 2=Info, 3=Warning, 4=Error, 5=Fatal");

@@ -85,18 +85,18 @@ struct RenderConfig {
     std::size_t max_iterations;
     double escape_radius;
     const std::vector<wacfrac::Pixel>* palette;
-    bool continuous_coloring;
+    bool discrete;
 };
 
-auto make_color_fn(const std::vector<wacfrac::Pixel>& palette, bool continuous, std::size_t max_iterations)
+auto make_color_fn(const std::vector<wacfrac::Pixel>& palette, bool discrete, std::size_t max_iterations)
     -> std::function<wacfrac::Pixel(std::complex<float>, std::size_t)>
 {
-    if (continuous) {
-        return std::bind_front(wacfrac::colorize_continuous, palette, max_iterations);
+    if (discrete) {
+        return [max_iterations, &palette](std::complex<float> /*z*/, std::size_t n) -> wacfrac::Pixel {
+            return wacfrac::colorize_discrete(palette, max_iterations, n);
+        };
     }
-    return [max_iterations, &palette](std::complex<float> /*z*/, std::size_t n) -> wacfrac::Pixel {
-        return wacfrac::colorize_discrete(palette, max_iterations, n);
-    };
+    return std::bind_front(wacfrac::colorize_continuous, palette, max_iterations);
 }
 
 template <typename T>
@@ -107,7 +107,7 @@ void direct_render_pass(std::span<wacfrac::Pixel> pixels,
         [max_iterations = cfg.max_iterations, escape_radius = cfg.escape_radius](T c) {
             return wacfrac::escape<T>(c, max_iterations, escape_radius);
         },
-        make_color_fn(*cfg.palette, cfg.continuous_coloring, cfg.max_iterations));
+        make_color_fn(*cfg.palette, cfg.discrete, cfg.max_iterations));
 }
 
 template <typename T>
@@ -119,7 +119,7 @@ void perturbed_render_pass(std::span<wacfrac::Pixel> pixels,
         [&ref, max_iterations = cfg.max_iterations, escape_radius = cfg.escape_radius](T dc) {
             return wacfrac::escape_perturbed<T>(ref, dc, max_iterations, escape_radius);
         },
-        make_color_fn(*cfg.palette, cfg.continuous_coloring, cfg.max_iterations),
+        make_color_fn(*cfg.palette, cfg.discrete, cfg.max_iterations),
         c_ref);
 }
 
@@ -136,7 +136,7 @@ void bla_render_pass(std::span<wacfrac::Pixel> pixels,
             total_skipped += std::get<2>(result);
             return result;
         },
-        make_color_fn(*cfg.palette, cfg.continuous_coloring, cfg.max_iterations),
+        make_color_fn(*cfg.palette, cfg.discrete, cfg.max_iterations),
         c_ref);
     auto avg_skipped = static_cast<double>(total_skipped) / res.area();
     wacfrac::logging::info(
@@ -165,13 +165,13 @@ static void render_image(wacfrac::ImageOptions& opts, F&& render_fn) {
 }
 
 static void render_direct(wacfrac::DirectOptions& opts) {
-    RenderConfig cfg{get_max_iterations(opts), opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    RenderConfig cfg{get_max_iterations(opts), opts.escape_radius, &opts.palette, opts.discrete_coloring};
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         direct_render_pass<T>(pixels, opts.resolution, view, cfg);
     });
 }
 static void render_perturbed(wacfrac::PerturbedOptions& opts) {
-    RenderConfig cfg{get_max_iterations(opts), opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    RenderConfig cfg{get_max_iterations(opts), opts.escape_radius, &opts.palette, opts.discrete_coloring};
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         auto c_ref = view.center;
         auto ref = wacfrac::compute_reference_mt<T>(c_ref, get_max_iterations(opts), std::numeric_limits<double>::infinity());
@@ -183,7 +183,7 @@ static void render_perturbed(wacfrac::PerturbedOptions& opts) {
 
 static void render_bla(wacfrac::BLAOptions& opts) {
     auto max_iterations {get_max_iterations(opts)};
-    RenderConfig cfg{max_iterations, opts.escape_radius, &opts.palette, opts.continuous_coloring};
+    RenderConfig cfg{max_iterations, opts.escape_radius, &opts.palette, opts.discrete_coloring};
     render_image(opts, [&, cfg]<typename T>(const auto& view, auto& pixels, NumericTypeTag<T>){
         using CT = wacfrac::ComplexValueTypeT<T>;
         auto c_ref = view.center;
@@ -211,7 +211,7 @@ static void render_automatic(wacfrac::AutomaticOptions& opts) {
         new_opts.focus = opts.focus;
         new_opts.escape_radius = opts.escape_radius;
         new_opts.palette = opts.palette;
-        new_opts.continuous_coloring = opts.continuous_coloring;
+        new_opts.discrete_coloring = opts.discrete_coloring;
         new_opts.log_level = opts.log_level;
         new_opts.filepath = opts.filepath;
         new_opts.scale = opts.scale;
@@ -271,7 +271,7 @@ static void render_video(wacfrac::VideoOptions& opts) {
             wacfrac::MultiComplex::default_precision(frame_precision);
             view.precision(frame_precision);
 
-            RenderConfig cfg{frame_max_iter, opts.escape_radius, &opts.palette, opts.continuous_coloring};
+            RenderConfig cfg{frame_max_iter, opts.escape_radius, &opts.palette, opts.discrete_coloring};
 
             auto scale_d = static_cast<double>(scale);
             auto ft = get_auto_numeric_type(frame_precision);
