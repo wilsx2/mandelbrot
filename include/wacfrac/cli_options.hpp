@@ -146,20 +146,14 @@ struct PerturbedOptions : argumentum::CommandOptions, public ImageOptions {
     }
 };
 
-struct BLAOptions : argumentum::CommandOptions, public ImageOptions {
-    using CommandOptions::CommandOptions;
-    BLAOptions(): argumentum::CommandOptions("bla") {};
-
-    std::pair<std::size_t, std::size_t> probe_grid {3, 3};
-    double tolerance {1e-8};
+struct BLASearchOptions {
+    std::pair<std::size_t, std::size_t> probe_grid {8, 8};
+    double tolerance {1e-6};
     double lower_exp {-(1 << 12)};
-    double upper_exp {-(1 << 0)};
-    double epsilon {0.0};
+    double upper_exp {-(1 << 6)};
     std::size_t first_level {0};
 
-    void add_parameters(argumentum::ParameterConfig& args) override {
-        ImageOptions::add_to(args);
-
+    void add_to(argumentum::ParameterConfig& args) {
         args.add_parameter(probe_grid, "--probes")
             .nargs(2).absent({3, 3})
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
@@ -176,12 +170,25 @@ struct BLAOptions : argumentum::CommandOptions, public ImageOptions {
         args.add_parameter(upper_exp, "--upper-exp", "-u")
             .nargs(1).absent(-(1 << 0))
             .help("Upper exponent for epsilon search");
-        args.add_parameter(epsilon, "--epsilon", "-E")
-            .nargs(1).absent(0.0)
-            .help("Direct epsilon value (0 = use binary search)");
         args.add_parameter(first_level, "--first-level", "-L")
             .nargs(1).absent(0)
             .help("First BLA level (0 = auto)");
+    }
+};
+
+struct BLAOptions : argumentum::CommandOptions, public ImageOptions, public BLASearchOptions {
+    using CommandOptions::CommandOptions;
+    BLAOptions(): argumentum::CommandOptions("bla") {};
+
+    double epsilon {0.0};
+
+    void add_parameters(argumentum::ParameterConfig& args) override {
+        ImageOptions::add_to(args);
+        BLASearchOptions::add_to(args);
+
+        args.add_parameter(epsilon, "--epsilon", "-E")
+            .nargs(1).absent(0.0)
+            .help("Direct epsilon value (0 = use binary search)");
     }
 };
 
@@ -193,7 +200,7 @@ struct AutomaticOptions : argumentum::CommandOptions, public ImageOptions {
 };
 
 
-struct VideoOptions : argumentum::CommandOptions, public SharedOptions {
+struct VideoOptions : argumentum::CommandOptions, public SharedOptions, public BLASearchOptions {
     using CommandOptions::CommandOptions;
 
     // Files
@@ -208,9 +215,6 @@ struct VideoOptions : argumentum::CommandOptions, public SharedOptions {
 
     // Iteration
     std::tuple<double, double, double> iteration_parameters {250.0, 50.0, 1.5};
-    
-    // BLA Approximation
-    // TODO: Include
 
     void add_parameters(argumentum::ParameterConfig& args) override {
         SharedOptions::add_to(args);
@@ -243,6 +247,7 @@ struct VideoOptions : argumentum::CommandOptions, public SharedOptions {
                 std::get<2>(target) = std::stod(parts[2]);
             }))
             .help("(mod, fact, exp) -> max_n = mod + fact * exponential_scale^exp");
+        BLASearchOptions::add_to(args);
     }
 };
 

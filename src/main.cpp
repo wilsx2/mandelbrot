@@ -246,8 +246,6 @@ static void render_video(wacfrac::VideoOptions& opts) {
     auto c_ref = opts.focus;
     auto refs = wacfrac::compute_references_all(c_ref, max_iterations, std::numeric_limits<double>::infinity());
     auto ref_size = refs.double_ref.size();
-    auto last_level = static_cast<std::size_t>(std::log2(ref_size));
-    auto first_level = std::max(0uz, last_level > 9 ? last_level - 9 : 0uz);
 
     wacfrac::logging::info(
         "Video pre-compute: final_zoom={} max_iterations={} precision={} ref_size={}",
@@ -285,11 +283,11 @@ static void render_video(wacfrac::VideoOptions& opts) {
                 } else {
                     wacfrac::logging::info(
                         "Frame zoom={} algorithm=BLA", scale_d);
-                    auto probes = view.template generate_probes<T>(3, 3);
+                    auto probes = view.template generate_probes<T>(opts.probe_grid.first, opts.probe_grid.second);
                     auto max_dc = wacfrac::to_complex<T>(view.compute_max_dc(c_ref));
-                    wacfrac::BivariateLinearApproximator<T> bla{
-                        static_cast<double>(-(1 << 12)), static_cast<double>(-(1 << 6)),
-                        1e-10, probes, max_dc, ref, first_level,
+                    wacfrac::BivariateLinearApproximator<T> bla {
+                        opts.upper_exp, opts.lower_exp,
+                        opts.tolerance, probes, max_dc, ref, opts.first_level,
                         opts.escape_radius
                     };
                     bla_render_pass<T>(pixels, opts.resolution, view, cfg, bla, c_ref);
