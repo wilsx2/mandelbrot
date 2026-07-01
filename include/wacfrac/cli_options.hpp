@@ -125,13 +125,14 @@ struct ImageOptions : public SharedOptions {
             .nargs(1).absent(0)
             .help("Decimal digits (0 = auto)");
         args.add_parameter(numeric_type, "--numeric-type", "-t")
-            .nargs(1).absent("double")
-            .help("Number type: double, long-double, dexp");
+            .nargs(1).absent("auto")
+            .help("Number type: auto, double, long-double, dexp");
     }
 };
 
 struct DirectOptions : argumentum::CommandOptions, public ImageOptions {
     using CommandOptions::CommandOptions;
+    DirectOptions(): argumentum::CommandOptions("direct") {};
     void add_parameters(argumentum::ParameterConfig& args) override {
         add_to(args);
     }
@@ -139,6 +140,7 @@ struct DirectOptions : argumentum::CommandOptions, public ImageOptions {
 
 struct PerturbedOptions : argumentum::CommandOptions, public ImageOptions {
     using CommandOptions::CommandOptions;
+    PerturbedOptions(): argumentum::CommandOptions("perturbed") {};
     void add_parameters(argumentum::ParameterConfig& args) override {
         add_to(args);
     }
@@ -146,6 +148,7 @@ struct PerturbedOptions : argumentum::CommandOptions, public ImageOptions {
 
 struct BLAOptions : argumentum::CommandOptions, public ImageOptions {
     using CommandOptions::CommandOptions;
+    BLAOptions(): argumentum::CommandOptions("bla") {};
 
     std::pair<std::size_t, std::size_t> probe_grid {3, 3};
     double tolerance {1e-8};
@@ -181,6 +184,14 @@ struct BLAOptions : argumentum::CommandOptions, public ImageOptions {
             .help("First BLA level (0 = auto)");
     }
 };
+
+struct AutomaticOptions : argumentum::CommandOptions, public ImageOptions {
+    using CommandOptions::CommandOptions;
+    void add_parameters(argumentum::ParameterConfig& args) override {
+        add_to(args);
+    }
+};
+
 
 struct VideoOptions : argumentum::CommandOptions, public SharedOptions {
     using CommandOptions::CommandOptions;

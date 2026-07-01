@@ -19,6 +19,9 @@
 
 namespace {
 
+constexpr double DIRECT_THRESHOLD = 1e13;
+constexpr double PERTURB_THRESHOLD = 1e25;
+
 template <typename T>
 struct NumericTypeTag { using type = T; };
 
@@ -39,6 +42,16 @@ auto get_max_iterations(const wacfrac::ImageOptions& opt) {
     return opt.max_iterations ? opt.max_iterations : wacfrac::required_iterations(1.0/opt.scale);
 }
 
+auto get_auto_numeric_type(unsigned int p) {
+    if (p > 1000) return "dexp"; // NOTE: Imprecise
+    if (p > 230) return "long-double";
+    return "double";
+}
+
+auto get_numeric_type(const wacfrac::ImageOptions& opt) {
+    return opt.numeric_type != "auto" ? opt.numeric_type : get_auto_numeric_type(opt.precision);
+}
+
 auto make_viewport(const wacfrac::MultiComplex& center, const wacfrac::MultiFloat& scale, const wacfrac::Resolution& res) {
     wacfrac::Viewport view;
     view.center = center;
@@ -53,11 +66,11 @@ auto make_viewport(const wacfrac::MultiComplex& center, const wacfrac::MultiFloa
 
 auto make_view(wacfrac::ImageOptions& opt) {
     auto view = make_viewport(opt.focus, opt.scale, opt.resolution);
-    auto precision = opt.precision ? opt.precision : view.required_precision();
+    opt.precision = opt.precision ? opt.precision : view.required_precision();
 
-    wacfrac::MultiFloat::default_precision(precision);
-    wacfrac::MultiComplex::default_precision(precision);
-    view.precision(precision);
+    wacfrac::MultiFloat::default_precision(opt.precision);
+    wacfrac::MultiComplex::default_precision(opt.precision);
+    view.precision(opt.precision);
 
     wacfrac::logging::info(
         "Configuration: output={} resolution={}x{} focus=({}, {}) zoom={} max_iterations={} precision={} numeric_type={}",
@@ -139,7 +152,7 @@ static void render_image(wacfrac::ImageOptions& opts, F&& render_fn) {
     auto t_render {std::chrono::steady_clock::now()};
 
     auto view {make_view(opts)};
-    with_numeric_type(opts.numeric_type, [&](auto tag) {
+    with_numeric_type(get_numeric_type(opts), [&](auto tag) {
         render_fn(view, pixels, tag);
     });
 
@@ -192,6 +205,36 @@ static void render_bla(wacfrac::BLAOptions& opts) {
     });
 }
 
+static void render_automatic(wacfrac::AutomaticOptions& opts) {
+    auto copy_opts {[&opts](wacfrac::ImageOptions& new_opts) {
+        new_opts.resolution = opts.resolution;
+        new_opts.focus = opts.focus;
+        new_opts.escape_radius = opts.escape_radius;
+        new_opts.palette = opts.palette;
+        new_opts.continuous_coloring = opts.continuous_coloring;
+        new_opts.log_level = opts.log_level;
+        new_opts.filepath = opts.filepath;
+        new_opts.scale = opts.scale;
+        new_opts.max_iterations = opts.max_iterations;
+        new_opts.precision = opts.precision;
+        new_opts.numeric_type = opts.numeric_type;
+    }};
+
+    if (opts.scale > PERTURB_THRESHOLD) {
+        wacfrac::BLAOptions new_opts;
+        copy_opts(new_opts);
+        render_bla(new_opts);
+    } else if (opts.scale > DIRECT_THRESHOLD) {
+        wacfrac::PerturbedOptions new_opts;
+        copy_opts(new_opts);
+        render_perturbed(new_opts);
+    } else {
+        wacfrac::DirectOptions new_opts;
+        copy_opts(new_opts);
+        render_direct(new_opts);
+    }
+}
+
 static void render_video(wacfrac::VideoOptions& opts) {
     auto final_view = make_viewport(opts.focus, opts.final_scale, opts.resolution);
     auto max_iterations = final_view.required_iterations();
@@ -199,12 +242,6 @@ static void render_video(wacfrac::VideoOptions& opts) {
 
     wacfrac::MultiFloat::default_precision(precision);
     wacfrac::MultiComplex::default_precision(precision);
-
-    auto pick_type = [](auto p) -> std::string {
-        if (p > 1000) return "dexp"; // NOTE: Imprecise
-        if (p > 230) return "long-double";
-        return "double";
-    };
 
     auto c_ref = opts.focus;
     auto refs = wacfrac::compute_references_all(c_ref, max_iterations, std::numeric_limits<double>::infinity());
@@ -215,9 +252,6 @@ static void render_video(wacfrac::VideoOptions& opts) {
     wacfrac::logging::info(
         "Video pre-compute: final_zoom={} max_iterations={} precision={} ref_size={}",
         opts.final_scale, max_iterations, precision, ref_size);
-
-    constexpr double DIRECT_THRESHOLD = 1e13;
-    constexpr double PERTURB_THRESHOLD = 1e25;
 
     // I am sorry for this function call.
     wacfrac::write_zoom_frames(
@@ -240,7 +274,7 @@ static void render_video(wacfrac::VideoOptions& opts) {
             RenderConfig cfg{frame_max_iter, opts.escape_radius, &opts.palette, opts.continuous_coloring};
 
             auto scale_d = static_cast<double>(scale);
-            auto ft = pick_type(frame_precision);
+            auto ft = get_auto_numeric_type(frame_precision);
 
             auto render_perturbed_or_bla = [&](auto tag, const auto& ref) {
                 using T = typename decltype(tag)::type;
@@ -290,6 +324,7 @@ static void dispatch_render(argumentum::CommandOptions* cmd) {
     if (auto* p = dynamic_cast<DirectOptions*>(cmd))    return render_direct(*p);
     if (auto* p = dynamic_cast<PerturbedOptions*>(cmd)) return render_perturbed(*p);
     if (auto* p = dynamic_cast<BLAOptions*>(cmd))       return render_bla(*p);
+    if (auto* p = dynamic_cast<AutomaticOptions*>(cmd)) return render_automatic(*p);
     if (auto* p = dynamic_cast<VideoOptions*>(cmd))     return render_video(*p);
 }
 
@@ -302,6 +337,7 @@ int main(int argc, char* argv[])
     params.add_command<wacfrac::DirectOptions>("direct").help("Direct escape-time rendering");
     params.add_command<wacfrac::PerturbedOptions>("perturbed").help("Perturbation-theory rendering");
     params.add_command<wacfrac::BLAOptions>("bla").help("Bivariate linear approximation rendering");
+    params.add_command<wacfrac::AutomaticOptions>("auto").help("Automatically selects the render mode heuristically");
     params.add_command<wacfrac::VideoOptions>("video").help("Sequential rendering (various methods)");
 
     auto parse_result {parser.parse_args(argc, argv)};
