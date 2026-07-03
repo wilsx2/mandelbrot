@@ -76,7 +76,7 @@ auto make_view(wacfrac::ImageOptions& opt) {
 auto make_color_fn(const wacfrac::SharedOptions& opts, std::size_t max_iterations)
     -> std::function<wacfrac::Pixel(std::complex<float>, std::size_t)>
 {
-    const auto& pal = opts.palette.empty() ? wacfrac::palette::ULTRA : opts.palette;
+    const auto& pal = opts.palette.empty() ? wacfrac::ULTRA : opts.palette;
     if (opts.discrete_coloring) {
         return [&pal, max_iterations](std::complex<float>, std::size_t n) {
             return wacfrac::colorize_discrete(pal, max_iterations, n);

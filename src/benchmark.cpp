@@ -1,19 +1,7 @@
-#include "wacfrac/analysis.hpp"
-#include "wacfrac/bla.hpp"
-#include "wacfrac/constants.hpp"
-#include "wacfrac/io.hpp"
-#include "wacfrac/orbit.hpp"
-#include "wacfrac/sa.hpp"
-#include "wacfrac/types.hpp"
-#include "wacfrac/viewport.hpp"
-#include <wacfrac/rendering.hpp>
 #include <wacfrac/wacfrac.hpp>
 #include <benchmark/benchmark.h>
 #include <filesystem>
 #include <format>
-#include <fstream>
-#include <ranges>
-#include <print>
 using namespace boost::multiprecision;
 
 namespace {
@@ -33,7 +21,7 @@ auto make_viewport(int zoom_exp) {
     wacfrac::MultiFloat::default_precision(prec);
     wacfrac::MultiComplex::default_precision(prec);
     zoom_factor.precision(prec);
-    auto view {wacfrac::Viewport(wacfrac::poi::BIG_BANG, wacfrac::MultiComplex{1.0, 1.0}).zoomed(zoom_factor)};
+    auto view {wacfrac::Viewport({0,0}, wacfrac::MultiComplex{1.0, 1.0}).zoomed(zoom_factor)};
     view.precision(prec);
     return view;
 }
@@ -44,7 +32,7 @@ auto compute_reference_dec(const wacfrac::Viewport& view, wacfrac::MultiComplex 
 }
 
 auto default_color_fn(std::size_t max_iterations) {
-    return std::bind_front(wacfrac::colorize_discrete, wacfrac::palette::ULTRA, max_iterations);
+    return std::bind_front(wacfrac::colorize_discrete, wacfrac::ULTRA, max_iterations);
 }
 
 void write_output(const std::string& name, std::span<const wacfrac::Pixel> pixels, const wacfrac::Resolution& res) {
@@ -102,7 +90,7 @@ BENCHMARK_TEMPLATE(compute_next_dz, wacfrac::DoubleExpComplex);
 template<wacfrac::Complex T>
 static void compute_reference_bench(benchmark::State& state) {
     auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
-    auto c {wacfrac::poi::BIG_BANG};
+    wacfrac::MultiComplex c {0.0,0.0};
     c.precision(wacfrac::required_precision(scale));
     for (auto _ : state) {
         auto ref {wacfrac::compute_reference<T>(c, wacfrac::required_iterations(scale))};
@@ -116,7 +104,7 @@ BENCHMARK_TEMPLATE(compute_reference_bench, wacfrac::DoubleExpComplex)->RangeMul
 template<wacfrac::Complex T>
 static void compute_reference_mt_bench(benchmark::State& state) {
     auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
-    auto c {wacfrac::poi::BIG_BANG};
+    wacfrac::MultiComplex c {0.0,0.0};
     c.precision(wacfrac::required_precision(scale));
     for (auto _ : state) {
         auto ref {wacfrac::compute_reference_mt<T>(c, wacfrac::required_iterations(scale))};
@@ -129,7 +117,7 @@ BENCHMARK_TEMPLATE(compute_reference_mt_bench, wacfrac::DoubleExpComplex)->Range
 
 static void find_period(benchmark::State& state) {
     auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
-    auto c {wacfrac::poi::BIG_BANG};
+    wacfrac::MultiComplex c {0.0,0.0};
     c.precision(wacfrac::required_precision(scale));
     for (auto _ : state) {
         auto period {wacfrac::PeriodFinder(c, scale / 2.0, scale / 2.0, wacfrac::required_iterations(scale)).next()};
@@ -166,40 +154,6 @@ BENCHMARK(find_nucleus)->ArgsProduct({
         get_fibonacci(8),
         get_fibonacci(16)
     },
-})->Unit(benchmark::kMillisecond);
-
-template <wacfrac::Complex T>
-static void compute_sa_coefficients(benchmark::State& state) {
-    auto view {make_viewport(state.range(0))};
-    auto reference {wacfrac::compute_reference<T>(view.center, view.required_iterations())};
-    auto probes {view.generate_probes<T>(state.range(2), state.range(2))};
-    for (auto _ : state) {
-        wacfrac::SeriesApproximator<T> sa {
-            reference,
-            static_cast<std::size_t>(state.range(1)),
-            probes,
-            std::pow(10.0, -state.range(3))
-        };
-        benchmark::DoNotOptimize(sa);
-    }
-}
-BENCHMARK_TEMPLATE(compute_sa_coefficients, std::complex<double>)->ArgsProduct({
-    {0, 25, 125, 250, 500, 1000, 2000}, // Zoom Factor Exponent
-    {1, 2, 4, 8, 16, 32, 64}, // Num Coeffs
-    {1, 2, 4, 8}, // Probe Rows/Cols
-    {1, 2, 4, 8}, // Tolerance Negative Exponent
-})->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(compute_sa_coefficients, std::complex<long double>)->ArgsProduct({
-    {0, 25, 125, 250, 500, 1000, 2000}, // Zoom Factor Exponent
-    {1, 2, 4, 8, 16, 32, 64}, // Num Coeffs
-    {1, 2, 4, 8}, // Probe Rows/Cols
-    {1, 2, 4, 8}, // Tolerance Negative Exponent
-})->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(compute_sa_coefficients, wacfrac::DoubleExpComplex)->ArgsProduct({
-    {0, 25, 125, 250, 500, 1000, 2000}, // Zoom Factor Exponent
-    {1, 2, 4, 8, 16, 32, 64}, // Num Coeffs
-    {1, 2, 4, 8}, // Probe Rows/Cols
-    {1, 2, 4, 8}, // Tolerance Negative Exponent
 })->Unit(benchmark::kMillisecond);
 
 template<typename T>
@@ -282,35 +236,6 @@ static void render_phase_perturbed(benchmark::State& state) {
     state.ResumeTiming();
 }
 BENCHMARK_TEMPLATE(render_phase_perturbed, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 25, 125}, {64, 128}})->Unit(benchmark::kMillisecond);
-
-template <wacfrac::Complex T>
-static void render_phase_sa(benchmark::State& state) {
-    auto zoom_exp {state.range(0)};
-    auto dim {static_cast<std::size_t>(state.range(1))};
-    auto coeff_count {static_cast<std::size_t>(state.range(2))};
-    wacfrac::Resolution res{dim, dim};
-    auto view {make_viewport(zoom_exp)};
-    auto max_iterations {view.required_iterations()};
-    auto c_ref {view.center};
-
-    auto ref {compute_reference_dec(view, c_ref, max_iterations)};
-    auto probes {view.generate_probes<T>(3, 3)};
-    wacfrac::SeriesApproximator<T> sa{ref, coeff_count, probes, 1e-6};
-
-    std::vector<wacfrac::Pixel> pixels(res.area());
-    for (auto _ : state) {
-        wacfrac::perturbed_render<T>(pixels, res, view,
-            [&sa](T dc) { return sa.approximate_escape(dc); },
-            default_color_fn(max_iterations),
-            c_ref
-        );
-    }
-    state.SetComplexityN(res.area());
-    state.PauseTiming();
-    write_output(std::format("phase_sa_{}_{}x{}_z{}_c{}", type_short_name<T>(), dim, dim, zoom_exp, coeff_count), pixels, res);
-    state.ResumeTiming();
-}
-BENCHMARK_TEMPLATE(render_phase_sa, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 25, 125}, {64}, {8, 16}})->Unit(benchmark::kMillisecond);
 
 template <wacfrac::Complex T>
 static void render_phase_bla(benchmark::State& state) {
@@ -408,44 +333,6 @@ static void e2e_perturbed(benchmark::State& state) {
     state.ResumeTiming();
 }
 BENCHMARK_TEMPLATE(e2e_perturbed, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 25, 125}, {64}})->Unit(benchmark::kMillisecond);
-
-template <wacfrac::Complex T>
-static void e2e_sa(benchmark::State& state) {
-    auto zoom_exp {state.range(0)};
-    auto dim {static_cast<std::size_t>(state.range(1))};
-    auto coeff_count {static_cast<std::size_t>(state.range(2))};
-    wacfrac::Resolution res{dim, dim};
-
-    std::vector<wacfrac::Pixel> pixels(res.area());
-    for (auto _ : state) {
-        auto view {make_viewport(zoom_exp)};
-        auto max_iterations {view.required_iterations()};
-        auto c_ref {view.center};
-        auto ref {compute_reference_dec(view, c_ref, max_iterations)};
-        auto probes {view.generate_probes<T>(3, 3)};
-        wacfrac::SeriesApproximator<T> sa{ref, coeff_count, probes, 1e-6};
-        wacfrac::perturbed_render<T>(pixels, res, view,
-            [&sa](T dc) { return sa.approximate_escape(dc); },
-            default_color_fn(max_iterations),
-            c_ref
-        );
-    }
-    state.PauseTiming();
-    auto view {make_viewport(zoom_exp)};
-    auto max_iterations {view.required_iterations()};
-    auto c_ref {view.center};
-    auto ref {compute_reference_dec(view, c_ref, max_iterations)};
-    std::vector<wacfrac::Pixel> ref_pixels(res.area());
-    wacfrac::perturbed_render<T>(ref_pixels, res, view,
-        [&ref, max_iterations](T dc) { return wacfrac::escape_perturbed<T>(ref, dc, max_iterations); },
-        default_color_fn(max_iterations),
-        c_ref
-    );
-    state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
-    write_output(std::format("e2e_sa_{}_{}x{}_z{}_c{}", type_short_name<T>(), dim, dim, zoom_exp, coeff_count), pixels, res);
-    state.ResumeTiming();
-}
-BENCHMARK_TEMPLATE(e2e_sa, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 25, 125}, {64}, {8, 16}})->Unit(benchmark::kMillisecond);
 
 template <wacfrac::Complex T>
 static void e2e_bla(benchmark::State& state) {

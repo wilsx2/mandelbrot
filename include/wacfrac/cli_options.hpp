@@ -3,7 +3,6 @@
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/log.hpp"
-#include "wacfrac/constants.hpp"
 #include "wacfrac/color.hpp"
 #include "wacfrac/viewport.hpp"
 #include <argumentum/argparse.h>
@@ -62,7 +61,7 @@ static void parse_palette_string(std::vector<Pixel>& target, const std::string& 
     );
     if (target.empty()) {
         logging::info("Falling back to default palette");
-        target = wacfrac::palette::ULTRA;
+        target = wacfrac::ULTRA;
     }
 }
 
@@ -92,7 +91,7 @@ struct SharedOptions {
             .nargs(1).absent(4.0)
             .help("Escape radius");
         args.add_parameter(palette, "--color-palette", "-c")
-            .minargs(0).absent(palette::ULTRA)
+            .minargs(0).absent(ULTRA)
             .action(parse_palette_string)
             .help("Hex formatted colors mapped to escape time");
         args.add_parameter(discrete_coloring, "--discrete-coloring", "-d")

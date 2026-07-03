@@ -19,13 +19,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_options(-Wall -Wextra -Werror)
-add_compile_options(-Wno-error=array-bounds) # Suppress false positives from Boost headers
+add_compile_options(-Wno-error=array-bounds)
 add_compile_options("$<$<CONFIG:Release>:-O3>")
 
 # Static Library
 add_library(libwacfrac STATIC
     src/wacfrac/analysis.cpp
-    src/wacfrac/sa.cpp
     src/wacfrac/color.cpp
     src/wacfrac/viewport.cpp
     src/wacfrac/orbit.cpp
