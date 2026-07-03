@@ -31,10 +31,6 @@ auto compute_reference_dec(const wacfrac::Viewport& view, wacfrac::MultiComplex 
     return wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations);
 }
 
-auto default_color_fn(std::size_t max_iterations) {
-    return std::bind_front(wacfrac::colorize_discrete, wacfrac::ULTRA, max_iterations);
-}
-
 void write_output(const std::string& name, std::span<const wacfrac::Pixel> pixels, const wacfrac::Resolution& res) {
     auto dir {std::filesystem::path("output")};
     std::filesystem::create_directories(dir);
@@ -198,10 +194,13 @@ static void render_phase_direct(benchmark::State& state) {
 
     std::vector<wacfrac::Pixel> pixels(res.area());
     for (auto _ : state) {
-        wacfrac::absolute_render<T>(pixels, res, view,
-            [max_iterations](T c) { return wacfrac::escape<T>(c, max_iterations); },
-            default_color_fn(max_iterations)
-        );
+        auto cs {wacfrac::sample_c_values<T>(view, res)};
+        auto escaped_orbits {cs | std::views::transform([&](auto c){
+            return wacfrac::escape(c, max_iterations);
+        })};
+        for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
+            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+        }
     }
     state.SetComplexityN(res.area());
     state.PauseTiming();
@@ -224,11 +223,13 @@ static void render_phase_perturbed(benchmark::State& state) {
 
     std::vector<wacfrac::Pixel> pixels(res.area());
     for (auto _ : state) {
-        wacfrac::perturbed_render<T>(pixels, res, view,
-            [&ref, max_iterations](T dc) { return wacfrac::escape_perturbed<T>(ref, dc, max_iterations); },
-            default_color_fn(max_iterations),
-            c_ref
-        );
+        auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+        auto escaped_orbits {dcs | std::views::transform([&](auto dc){
+            return wacfrac::escape_perturbed(ref, dc, max_iterations);
+        })};
+        for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
+            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+        }
     }
     state.SetComplexityN(res.area());
     state.PauseTiming();
@@ -255,11 +256,13 @@ static void render_phase_bla(benchmark::State& state) {
 
     std::vector<wacfrac::Pixel> pixels(res.area());
     for (auto _ : state) {
-        wacfrac::perturbed_render<T>(pixels, res, view,
-            [&bla](T dc) { return bla.escape_approximate(dc); },
-            default_color_fn(max_iterations),
-            c_ref
-        );
+        auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+        auto escaped_orbits {dcs | std::views::transform([&](auto dc){
+            return bla.escape_approximate(dc);
+        })};
+        for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
+            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+        }
     }
     state.SetComplexityN(res.area());
     state.PauseTiming();
@@ -280,19 +283,25 @@ static void e2e_direct(benchmark::State& state) {
     for (auto _ : state) {
         auto view {make_viewport(zoom_exp)};
         auto max_iterations {view.required_iterations()};
-        wacfrac::absolute_render<T>(pixels, res, view,
-            [max_iterations](T c) { return wacfrac::escape<T>(c, max_iterations); },
-            default_color_fn(max_iterations)
-        );
+        auto cs {wacfrac::sample_c_values<T>(view, res)};
+        auto escaped_orbits {cs | std::views::transform([&](auto c){
+            return wacfrac::escape(c, max_iterations);
+        })};
+        for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
+            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+        }
     }
     state.PauseTiming();
     auto view {make_viewport(zoom_exp)};
     auto max_iterations {view.required_iterations()};
     std::vector<wacfrac::Pixel> ref_pixels(res.area());
-    wacfrac::absolute_render<T>(ref_pixels, res, view,
-        [max_iterations](T c) { return wacfrac::escape<T>(c, max_iterations); },
-        default_color_fn(max_iterations)
-    );
+    auto ref_cs {wacfrac::sample_c_values<T>(view, res)};
+    auto ref_escaped_orbits {ref_cs | std::views::transform([&](auto c){
+        return wacfrac::escape(c, max_iterations);
+    })};
+    for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
+        pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+    }
     state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
     write_output(std::format("e2e_direct_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
     state.ResumeTiming();
@@ -311,11 +320,13 @@ static void e2e_perturbed(benchmark::State& state) {
         auto max_iterations {view.required_iterations()};
         auto c_ref {view.center};
         auto ref {compute_reference_dec(view, c_ref, max_iterations)};
-        wacfrac::perturbed_render<T>(pixels, res, view,
-            [&ref, max_iterations](T dc) { return wacfrac::escape_perturbed<T>(ref, dc, max_iterations); },
-            default_color_fn(max_iterations),
-            c_ref
-        );
+        auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+        auto escaped_orbits {dcs | std::views::transform([&](auto dc){
+            return wacfrac::escape_perturbed(ref, dc, max_iterations);
+        })};
+        for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
+            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+        }
     }
     state.PauseTiming();
     auto view {make_viewport(zoom_exp)};
@@ -323,11 +334,13 @@ static void e2e_perturbed(benchmark::State& state) {
     auto c_ref {view.center};
     auto ref {compute_reference_dec(view, c_ref, max_iterations)};
     std::vector<wacfrac::Pixel> ref_pixels(res.area());
-    wacfrac::perturbed_render<T>(ref_pixels, res, view,
-        [&ref, max_iterations](T dc) { return wacfrac::escape_perturbed<T>(ref, dc, max_iterations); },
-        default_color_fn(max_iterations),
-        c_ref
-    );
+    auto ref_dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+    auto ref_escaped_orbits {ref_dcs | std::views::transform([&](auto dc){
+        return wacfrac::escape_perturbed(ref, dc, max_iterations);
+    })};
+    for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
+        pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+    }
     state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
     write_output(std::format("e2e_perturbed_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
     state.ResumeTiming();
@@ -351,11 +364,13 @@ static void e2e_bla(benchmark::State& state) {
         auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
         auto probes {view.generate_probes<T>(3, 3)};
         wacfrac::BivariateLinearApproximator<T> bla {-256.0, 0.0, 1e-8, probes, max_dc, ref, first_level};
-        wacfrac::perturbed_render<T>(pixels, res, view,
-            [&bla](T dc) { return bla.escape_approximate(dc); },
-            default_color_fn(max_iterations),
-            c_ref
-        );
+        auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+        auto escaped_orbits {dcs | std::views::transform([&](auto dc){
+            return bla.escape_approximate(dc);
+        })};
+        for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
+            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+        }
     }
     state.PauseTiming();
     auto view {make_viewport(zoom_exp)};
@@ -363,11 +378,13 @@ static void e2e_bla(benchmark::State& state) {
     auto c_ref {view.center};
     auto ref {compute_reference_dec(view, c_ref, max_iterations)};
     std::vector<wacfrac::Pixel> ref_pixels(res.area());
-    wacfrac::perturbed_render<T>(ref_pixels, res, view,
-        [&ref, max_iterations](T dc) { return wacfrac::escape_perturbed<T>(ref, dc, max_iterations); },
-        default_color_fn(max_iterations),
-        c_ref
-    );
+    auto ref_dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+    auto ref_escaped_orbits {ref_dcs | std::views::transform([&](auto dc){
+        return wacfrac::escape_perturbed(ref, dc, max_iterations);
+    })};
+    for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
+        pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+    }
     state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
     write_output(std::format("e2e_bla_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
     state.ResumeTiming();

@@ -27,7 +27,7 @@ auto find_nucleus(MultiComplex c, std::size_t period,  std::size_t max_iteration
         auto [z, dz] = lemniscate_curve(c, period);
 
         MultiComplex correction = z / dz;
-        if (square_magnitude(correction) <= square_tolerance) {
+        if (norm(correction) <= square_tolerance) {
             logging::debug( "Nucleus converged in {} iterations at ({})", i+1, c);
             break;
         }

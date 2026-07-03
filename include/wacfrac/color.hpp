@@ -11,8 +11,6 @@ namespace wacfrac
 {
 
 struct Pixel { uint8_t r, g, b; };
-using Color = std::tuple<float,float,float>;
-enum class ColorEncoding { Rgb , Hsv , Hcl };
 
 inline const std::vector<Pixel> ULTRA {
     // https://stackoverflow.com/questions/16500656/which-color-gradient-is-used-to-color-mandelbrot-in-wikipedia

@@ -2,11 +2,31 @@
 #include "wacfrac/log.hpp"
 #include <complex>
 #include <wacfrac/viewport.tpp>
+#include "wacfrac/resolution.hpp"
 #include "wacfrac/types.hpp"
 #include <cmath>
 
 namespace wacfrac
 {
+
+Viewport::Viewport(const MultiComplex& center, const MultiComplex& dimensions)
+    : center(center)
+    , dimensions(dimensions)
+{}
+Viewport::Viewport(MultiComplex&& center, MultiComplex&& dimensions)
+    : center(center)
+    , dimensions(dimensions)
+{}
+Viewport::Viewport(const MultiComplex& center, const MultiFloat& zoom, const Resolution& res)
+    : center(center) {
+    auto aspect_ratio = res.width / static_cast<double>(res.height);
+    if (aspect_ratio >= 1.0) {
+        dimensions = {aspect_ratio, 1.0};
+    } else {
+        dimensions = {1.0, 1.0 / aspect_ratio};
+    }
+    dimensions /= zoom;
+}
 
 void Viewport::precision(std::size_t value) {
     center.precision(value);

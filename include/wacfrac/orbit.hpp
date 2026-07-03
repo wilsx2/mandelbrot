@@ -11,20 +11,20 @@ namespace wacfrac
 {
 
 template <Complex T>
-auto square_magnitude(const T& a) {
+auto norm(const T& a) {
     return a.real()*a.real() + a.imag()*a.imag();
 }
 
 template <Complex T>
-auto magnitude(const T& a) {
+auto abs(const T& a) {
     using std::sqrt;
     using boost::multiprecision::sqrt;
-    return sqrt(square_magnitude(a));
+    return sqrt(norm(a));
 }
 
 template <Complex T>
 auto escaped(const T& a, double escape_radius = 2.0) {
-    return square_magnitude(a) > escape_radius*escape_radius;
+    return norm(a) > escape_radius*escape_radius;
 }
 
 template <Complex T, std::invocable<T> F>
@@ -65,7 +65,18 @@ struct ReferenceSet {
     std::vector<std::complex<double>> double_ref;
     std::vector<std::complex<long double>> long_double_ref;
     std::vector<DoubleExpComplex> dexp_ref;
+
+    template <typename T>
+    auto select() const -> const std::vector<T>& {
+        if constexpr (std::is_same_v<T, std::complex<double>>)
+            return double_ref;
+        else if constexpr (std::is_same_v<T, std::complex<long double>>)
+            return long_double_ref;
+        else
+            return dexp_ref;
+    }
 };
+
 
 auto compute_references_all(MultiComplex c, std::size_t max_n, double escape_radius = 2.0) -> ReferenceSet;
 

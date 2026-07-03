@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <wacfrac/types.hpp>
+#include <wacfrac/resolution.hpp>
 #include <cstddef>
 
 namespace wacfrac
@@ -11,6 +12,10 @@ struct Viewport {
     MultiComplex center;
     MultiComplex dimensions;
 
+    Viewport() = default;
+    Viewport(const MultiComplex& center, const MultiComplex& dimensions);
+    Viewport(MultiComplex&& center, MultiComplex&& dimensions);
+    Viewport(const MultiComplex& center, const MultiFloat& zoom, const Resolution& res);
     void precision(std::size_t value);
     auto zoomed(MultiFloat scale) const -> Viewport;
     auto sample(std::size_t x, std::size_t y, std::size_t width, std::size_t height) const -> MultiComplex;

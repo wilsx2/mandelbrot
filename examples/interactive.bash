@@ -7,7 +7,7 @@ if [[ $(gum choose --header="Render Type: " image video) == "image" ]]; then
     palette=$(gum file --padding="1 0 0 0" --header="Color Palette:" ./colors)
     resolution=$(gum choose --header="Resolution:" "100 100" "500 500" "720 1280" "1280 720" "1920 1080" "3840 2160")
     output=$(gum input --header="Output File:" --placeholder="mandelbrot.ppm")
-    cmd="../build/wacfrac auto -f $(cat $poi) -z $zoom -c \"$(cat $palette)\" -r $resolution -o $output"
+    cmd="../build/wacfrac image -f $(cat $poi) -z $zoom -c \"$(cat $palette)\" -r $resolution -o $output"
 else
     poi=$(gum file --padding="1 0 0 0" --header="Focus Point:" ./poi)
     initial=$(gum input --header="Initial Zoom: (Scientific notation accepted. Larger zooms take longer to render)" --placeholder="0.4")
