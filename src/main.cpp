@@ -171,6 +171,8 @@ void render_video(wacfrac::VideoOptions& opts) {
                 frame_opts.filepath = "frame_" + wacfrac::file_suffix(frame % opts.segment_size, opts.segment_size) + ".ppm";
                 frame_opts.scale = scale;
                 render_image(frame_opts);
+            } else {
+                wacfrac::logging::debug( "Frame #{} has already been rendered; skipping", frame);
             }
             if (frame != 0 && (frame % opts.segment_size == opts.segment_size - 1
             || static_cast<std::size_t>(frame) == total_frames - 1)) {
