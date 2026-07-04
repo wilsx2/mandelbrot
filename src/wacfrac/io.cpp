@@ -64,13 +64,13 @@ auto file_suffix_format(std::size_t max) -> std::string {
 auto concatenate_images(std::filesystem::path output, std::string_view pattern, float fps) -> bool {
     return std::system(std::format(
         "ffmpeg -y -framerate {} -i {} -c:v libx264 -pix_fmt yuv420p {}", // TODO: Pipe into my stdout
-        fps, pattern, output
+        fps, pattern, output.string()
     ).c_str()) == EXIT_SUCCESS;
 }
 auto concatenate_videos(std::filesystem::path output, std::string_view pattern) -> bool {
     return std::system(std::format(
         "ffmpeg -f concat -safe 0 -i <(printf \"file '$PWD/%s'\n\" {}) -c copy {}",
-        pattern, output
+        pattern, output.string()
     ).c_str()) == EXIT_SUCCESS;
 }
 

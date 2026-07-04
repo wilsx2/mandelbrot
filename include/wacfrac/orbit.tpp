@@ -83,7 +83,7 @@ auto compute_reference_iteration(MultiComplex c, std::size_t max_n, double escap
     MultiFloat computed_re;
     MultiFloat computed_im;
 
-    std::barrier sync (2, [&](){
+    std::barrier sync (2, [&]() noexcept {
         store_at_n(n_1, computed_re, computed_im);
         ++n_1;
         if (n_1 >= max_n || escaped(next_z, escape_radius))

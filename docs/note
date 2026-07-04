@@ -1,8 +1,29 @@
 July
 - GPU
+    - Features 
+        - Coloring
+        - Direct Escape
+        - Perturbed Escape
+        - FloatExp
+        - BLA
+    - Benchmark
+    - CLI
 - Distribute / Parallel
-- Tiling
-- Cache References
-- Cache BLAs coefficients
-- Cloud
-- ? Analyze for zoom points
+    - Features 
+        - Shared filesystem (Google Drive, Amazon EFS)
+        - MPI (stride = # ranks, offset = my rank)
+    - Profile time spent doing:
+        - Reference calculation
+        - BLA calculation
+        - Per-pixel calculations
+- Time-target (as opposed to zoom-target) Video Mode
+    - Calculate reference in parallel with frame rendering
+- Cloud (Amazon EC2, g4dn?)
+
+- ? Hierarchical merging (if file size / merge times become a bottleneck)
+- ? Cache references (if startup times become a bottleneck)
+- ? Cache BLAs coefficients (if BLA calculation becomes a bottleneck)
+- ? Use periods (if above)
+- ? Adapt threshholds to per-pixel dc rather than zoom depth (if inconsistent behavior between resolutions)
+- ? Tiling (if 4k frames take long enough to benefit from distributed parallelization)
+- ? Analyze for zoom points (if we need a deeper zoom)

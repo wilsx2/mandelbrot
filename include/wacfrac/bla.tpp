@@ -137,7 +137,7 @@ auto BivariateLinearApproximator<T>::compute_zn(T dc, T dzm, std::size_t m) cons
         auto next_bla = bla_at(m, level);
         if (next_bla && next_bla->is_valid(dzm)) {
             bla = next_bla;
-            n = m + (1 << level);
+            n = m + (std::size_t{1} << level);
             break;
         }
     }

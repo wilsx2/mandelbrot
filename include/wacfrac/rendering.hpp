@@ -3,7 +3,6 @@
 #include "wacfrac/bla.hpp"
 #include "wacfrac/io.hpp"
 #include "wacfrac/types.hpp"
-#include <linux/limits.h>
 #include <wacfrac/color.hpp>
 #include <wacfrac/log.hpp>
 #include <wacfrac/orbit.hpp>
