@@ -50,6 +50,23 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_EXTENSIONS OFF)
 find_package(CUDAToolkit REQUIRED)
 
+# Generate .clangd config for clangd LSP if using Clang
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  get_filename_component(_clangd_cuda_path ${CMAKE_CUDA_COMPILER} DIRECTORY)
+  get_filename_component(_clangd_cuda_path ${_clangd_cuda_path} DIRECTORY)
+  set(CLANGD_CUDA_PATH "${_clangd_cuda_path}")
+  set(CLANGD_CUDA_ARCH "${CMAKE_CUDA_ARCHITECTURES}")
+  set(CLANGD_CXX_STANDARD "${CMAKE_CXX_STANDARD}")
+  set(CLANGD_SOURCE_DIR "${CMAKE_SOURCE_DIR}")
+  set(CLANGD_VCPKG_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/include")
+  set(CLANGD_CUDA_INCLUDE_DIR "${_clangd_cuda_path}/targets/x86_64-linux/include")
+  set(CLANGD_CUDA_CCCL_INCLUDE_DIR "${CLANGD_CUDA_INCLUDE_DIR}/cccl")
+  configure_file(
+    "${CMAKE_SOURCE_DIR}/.clangd.in"
+    "${CMAKE_SOURCE_DIR}/.clangd"
+    @ONLY
+  )
+endif()
 
 # Static Library
 add_library(libwacfrac STATIC
