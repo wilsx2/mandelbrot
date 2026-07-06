@@ -4,7 +4,6 @@
 #include "wacfrac/orbit.hpp"
 #include "wacfrac/wacfrac.hpp"
 #include <argumentum/argparse.h>
-#include <argumentum/inc/optionpack.h>
 #include <array>
 #include <boost/optional.hpp>
 #include <cstddef>
