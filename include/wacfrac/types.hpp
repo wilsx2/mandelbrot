@@ -1,6 +1,8 @@
 #pragma once
 
+#include "wacfrac/complex_concept.hpp"
 #include "wacfrac/floatexp.hpp"
+
 #include <boost/multiprecision/mpc.hpp>
 #include <boost/multiprecision/gmp.hpp>
 #include <boost/multiprecision/number.hpp>
@@ -15,39 +17,6 @@ using DoubleExpComplex = boost::multiprecision::number<boost::multiprecision::ba
 // using SingleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<SingleExp>>; Unused
 // using QuadExpComplex   = boost::multiprecision::complex_adaptor<QuadExp>; Unused
 
-namespace detail {
-
-template <typename T, typename = void>
-struct ComplexValueTypeImpl {};
-
-template <typename T>
-struct ComplexValueTypeImpl<T, std::void_t<typename T::value_type>> {
-    using type = typename T::value_type;
-};
-
-} // namespace detail
-
-template <typename T>
-struct ComplexValueType : detail::ComplexValueTypeImpl<T> {};
-
-template <typename T>
-using ComplexValueTypeT = typename ComplexValueType<T>::type;
-
-template <typename T>
-concept Complex = requires(T a, T b) {
-    { a.real() };
-    { a.imag() };
-    T{0.0, 0.0};
-    { a + b } -> std::convertible_to<T>;
-    { a - b } -> std::convertible_to<T>;
-    { a * b } -> std::convertible_to<T>;
-    { a / b } -> std::convertible_to<T>;
-    { -a } -> std::convertible_to<T>;
-    { a += b } -> std::same_as<T&>;
-    { a -= b } -> std::same_as<T&>;
-    { a *= b } -> std::same_as<T&>;
-    { a /= b } -> std::same_as<T&>;
-};
 
 template <typename Real>
 auto to_real(const MultiFloat& val) -> Real {

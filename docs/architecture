@@ -1,0 +1,23 @@
+Tasks
+    - Reference computation
+    - BLA computation
+    - Per-pixel escape time & coloring
+    - Image Encoding
+    - Video Encoding
+    - Upload
+
+Structure
+    Orchestrator
+        Calculates the reference orbit (several frames ahead) and broadcasts to renderers
+        Assigns encoders a segment
+        Assigns frames to renderers, along with the information of its segment's encoder
+    Rendering Pool (Workers)
+        Receives frames and computes its viewport (ideally does this while the GPU is busy)
+        Computes pixel data of that viewport on the GPU
+        Sends the raw data to the associated encoder for that segment
+        Notifies the orchestrator when it is ready for another assignment
+    Encoding Pool (Workers)
+        Receives raw frame data encodes it for local storage
+        When it has all frames, encodes frames into a video segment
+        Saves video segments to shared storage
+        Notifies the orchestrator when it is ready for another assignment

@@ -15,19 +15,19 @@ constexpr auto type_short_name() -> std::string_view {
     return "unknown";
 }
 
-auto make_viewport(int zoom_exp) {
-    auto zoom_factor {pow(wacfrac::MultiFloat(10.0), zoom_exp)};
+auto make_viewport(int64_t zoom_exp) {
+    auto zoom_factor {pow(wacfrac::MultiFloat(10.0), static_cast<unsigned>(zoom_exp))};
     auto prec {wacfrac::required_precision(zoom_factor)};
-    wacfrac::MultiFloat::default_precision(prec);
-    wacfrac::MultiComplex::default_precision(prec);
-    zoom_factor.precision(prec);
+    wacfrac::MultiFloat::default_precision(static_cast<unsigned>(prec));
+    wacfrac::MultiComplex::default_precision(static_cast<unsigned>(prec));
+    zoom_factor.precision(static_cast<unsigned>(prec));
     auto view {wacfrac::Viewport({0,0}, wacfrac::MultiComplex{1.0, 1.0}).zoomed(zoom_factor)};
-    view.precision(prec);
+    view.precision(static_cast<unsigned>(prec));
     return view;
 }
 
 auto compute_reference_dec(const wacfrac::Viewport& view, wacfrac::MultiComplex c_ref, std::size_t max_iterations) {
-    c_ref.precision(view.required_precision());
+    c_ref.precision(static_cast<unsigned>(view.required_precision()));
     return wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations);
 }
 
@@ -87,7 +87,7 @@ template<wacfrac::Complex T>
 static void compute_reference_bench(benchmark::State& state) {
     auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
     wacfrac::MultiComplex c {0.0,0.0};
-    c.precision(wacfrac::required_precision(scale));
+    c.precision(static_cast<unsigned>(wacfrac::required_precision(scale)));
     for (auto _ : state) {
         auto ref {wacfrac::compute_reference<T>(c, wacfrac::required_iterations(scale))};
         benchmark::DoNotOptimize(ref);
@@ -101,7 +101,7 @@ template<wacfrac::Complex T>
 static void compute_reference_mt_bench(benchmark::State& state) {
     auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
     wacfrac::MultiComplex c {0.0,0.0};
-    c.precision(wacfrac::required_precision(scale));
+    c.precision(static_cast<unsigned>(wacfrac::required_precision(scale)));
     for (auto _ : state) {
         auto ref {wacfrac::compute_reference_mt<T>(c, wacfrac::required_iterations(scale))};
         benchmark::DoNotOptimize(ref);
@@ -114,7 +114,7 @@ BENCHMARK_TEMPLATE(compute_reference_mt_bench, wacfrac::DoubleExpComplex)->Range
 static void find_period(benchmark::State& state) {
     auto scale {boost::multiprecision::pow(wacfrac::MultiFloat(10.0),-state.range(0))};
     wacfrac::MultiComplex c {0.0,0.0};
-    c.precision(wacfrac::required_precision(scale));
+    c.precision(static_cast<unsigned>(wacfrac::required_precision(scale)));
     for (auto _ : state) {
         auto period {wacfrac::PeriodFinder(c, scale / 2.0, scale / 2.0, wacfrac::required_iterations(scale)).next()};
         benchmark::DoNotOptimize(period);
@@ -302,7 +302,7 @@ static void e2e_direct(benchmark::State& state) {
     for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
         pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
     }
-    state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
+    state.counters["mismatch"] = static_cast<double>(count_mismatches(pixels, ref_pixels));
     write_output(std::format("e2e_direct_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
     state.ResumeTiming();
 }
@@ -341,7 +341,7 @@ static void e2e_perturbed(benchmark::State& state) {
     for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
         pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
     }
-    state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
+    state.counters["mismatch"] = static_cast<double>(count_mismatches(pixels, ref_pixels));
     write_output(std::format("e2e_perturbed_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
     state.ResumeTiming();
 }
@@ -385,7 +385,7 @@ static void e2e_bla(benchmark::State& state) {
     for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
         pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
     }
-    state.counters["mismatch"] = count_mismatches(pixels, ref_pixels);
+    state.counters["mismatch"] = static_cast<double>(count_mismatches(pixels, ref_pixels));
     write_output(std::format("e2e_bla_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
     state.ResumeTiming();
 }

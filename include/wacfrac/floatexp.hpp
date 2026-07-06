@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <ios>
 #include <iostream>
 #include <limits>
@@ -95,26 +96,33 @@ struct FloatExp {
 namespace detail {
 
 // IEEE 754 bit-manipulation
+template<class To, class From>
+To bit_cast(const From& from) noexcept {
+    To to;
+    std::memcpy(&to, &from, sizeof(to));
+    return to;
+}
+
 template<std::floating_point M>
 M frexp_fast(M x, int* e) {
     if constexpr (std::is_same_v<M, double>) {
-        uint64_t bits = std::bit_cast<uint64_t>(x);
+        uint64_t bits = bit_cast<uint64_t>(x);
         int biased_e = static_cast<int>((bits >> 52) & 0x7FF);
         if (biased_e == 0) {
             return (bits & 0x7FFFFFFFFFFFFFFFULL) == 0 ? M(0) : std::frexp(x, e);
         }
         *e = biased_e - 1022;
         bits = (bits & 0x800FFFFFFFFFFFFFULL) | (static_cast<uint64_t>(1022) << 52);
-        return std::bit_cast<double>(bits);
+        return bit_cast<double>(bits);
     } else if constexpr (std::is_same_v<M, float>) {
-        uint32_t bits = std::bit_cast<uint32_t>(x);
+        uint32_t bits = bit_cast<uint32_t>(x);
         int biased_e = static_cast<int>((bits >> 23) & 0xFF);
         if (biased_e == 0) {
             return (bits & 0x7FFFFFFF) == 0 ? M(0) : std::frexp(x, e);
         }
         *e = biased_e - 126;
         bits = (bits & 0x807FFFFF) | (126u << 23);
-        return std::bit_cast<float>(bits);
+        return bit_cast<float>(bits);
     } else {
         return std::frexp(x, e);
     }
@@ -125,7 +133,7 @@ template<std::floating_point M>
 M ldexp_fast(M x, int k) {
     if (x == M(0)) return M(0);
     if constexpr (std::is_same_v<M, double>) {
-        uint64_t bits = std::bit_cast<uint64_t>(x);
+        uint64_t bits = bit_cast<uint64_t>(x);
         int64_t be = static_cast<int64_t>((bits >> 52) & 0x7FF);
         int64_t nbe = be + k;
         if (nbe >= 0x7FF) {
@@ -135,9 +143,9 @@ M ldexp_fast(M x, int k) {
         } else {
             bits = (bits & 0x800FFFFFFFFFFFFFULL) | (static_cast<uint64_t>(nbe) << 52);
         }
-        return std::bit_cast<double>(bits);
+        return bit_cast<double>(bits);
     } else if constexpr (std::is_same_v<M, float>) {
-        uint32_t bits = std::bit_cast<uint32_t>(x);
+        uint32_t bits = bit_cast<uint32_t>(x);
         int64_t be = static_cast<int64_t>((bits >> 23) & 0xFF);
         int64_t nbe = be + k;
         if (nbe >= 0xFF) {
@@ -147,7 +155,7 @@ M ldexp_fast(M x, int k) {
         } else {
             bits = (bits & 0x807FFFFF) | (static_cast<uint32_t>(nbe) << 23);
         }
-        return std::bit_cast<float>(bits);
+        return bit_cast<float>(bits);
     } else {
         return std::ldexp(x, k);
     }

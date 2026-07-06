@@ -15,7 +15,7 @@ template <Complex T>
 BivariateLinearApproximator<T>::BivariateLinearApproximator(const std::vector<T>& ref, std::size_t first_level, double escape_radius)
     : _ref(ref)
     , _first_level(first_level)
-    , _last_level(ref.size() < 2 ? 0 : std::log2(ref.size()))
+    , _last_level(ref.size() < 2 ? std::size_t{0} : static_cast<std::size_t>(std::log2(ref.size())))
     , _columns(ref.size() < 2 ? 0 : ref.size() - 2)
     , _escape_radius(escape_radius)
 {

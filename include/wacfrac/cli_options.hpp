@@ -6,6 +6,7 @@
 #include <argumentum/argparse.h>
 #include <argumentum/inc/optionpack.h>
 #include <array>
+#include <boost/optional.hpp>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -147,7 +148,7 @@ enum class RenderType { Direct , Perturbed , BLA };
 struct ImageOptions : argumentum::CommandOptions {
     using CommandOptions::CommandOptions;
     std::shared_ptr<SharedOptions> shared;
-    std::optional<const ReferenceSet&> ref_set;
+    boost::optional<const ReferenceSet&> ref_set;
 
     std::string filepath {"mandelbrot.ppm"};
     MultiFloat scale {0.4};

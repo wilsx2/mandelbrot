@@ -52,8 +52,8 @@ void render_image(const wacfrac::ImageOptions& opts) {
             return "???";
         }());
 
-    wacfrac::MultiFloat::default_precision(p);
-    wacfrac::MultiComplex::default_precision(p);
+    wacfrac::MultiFloat::default_precision(static_cast<unsigned>(p));
+    wacfrac::MultiComplex::default_precision(static_cast<unsigned>(p));
 
     std::vector<wacfrac::Pixel> pixels(opts.shared->resolution.area());
 
@@ -136,8 +136,8 @@ void render_video(wacfrac::VideoOptions& opts) {
     auto max_iterations = final_view.required_iterations();
     auto precision = final_view.required_precision();
 
-    wacfrac::MultiFloat::default_precision(precision);
-    wacfrac::MultiComplex::default_precision(precision);
+    wacfrac::MultiFloat::default_precision(static_cast<unsigned>(precision));
+    wacfrac::MultiComplex::default_precision(static_cast<unsigned>(precision));
 
     auto refs = wacfrac::compute_references_all(
         opts.shared->focus,
@@ -149,11 +149,11 @@ void render_video(wacfrac::VideoOptions& opts) {
         opts.final_scale, max_iterations, precision, refs.double_ref.size());
     auto total_frames {wacfrac::total_frames(
         opts.initial_scale, opts.final_scale, 
-        opts.zoom_per_second, opts.frames_per_second)};
+        opts.zoom_per_second, static_cast<float>(opts.frames_per_second))};
     auto total_segments {total_frames / opts.segment_size};
     auto scales {wacfrac::frame_zooms(
         opts.initial_scale, opts.final_scale, 
-        opts.zoom_per_second, opts.frames_per_second)};
+        opts.zoom_per_second, static_cast<float>(opts.frames_per_second))};
     for (auto&& [frame, scale] : std::views::enumerate(std::move(scales))) {
         auto segment = frame / opts.segment_size;
         auto frame_filename {"frame_" + wacfrac::file_suffix(frame % opts.segment_size, opts.segment_size) + ".ppm"};
@@ -176,10 +176,13 @@ void render_video(wacfrac::VideoOptions& opts) {
                 auto status {wacfrac::concatenate_images(
                     segment_filename,
                     "frame_%" + wacfrac::file_suffix_format(opts.segment_size) + ".ppm",
-                    opts.frames_per_second
+                    static_cast<float>(opts.frames_per_second)
                 )};
                 if (status) {
-                    (void) std::system("rm frame_*.ppm");
+                    for (auto& entry : std::filesystem::directory_iterator("."))
+                        if (auto name = entry.path().filename().string();
+                            name.starts_with("frame_") && name.ends_with(".ppm"))
+                            std::filesystem::remove(entry.path());
                     wacfrac::logging::info("Segment #{} composed", segment);
                 } else {
                     wacfrac::logging::error("Segment #{} failed to compose", segment);
@@ -191,7 +194,10 @@ void render_video(wacfrac::VideoOptions& opts) {
     }
     auto status {wacfrac::concatenate_videos("final.mp4", "segment_*.mp4")};
     if (status) {
-        (void) std::system("rm segment_*.mp4");
+        for (auto& entry : std::filesystem::directory_iterator("."))
+            if (auto name = entry.path().filename().string();
+                name.starts_with("segment_") && name.ends_with(".mp4"))
+                std::filesystem::remove(entry.path());
         wacfrac::logging::info("Video render complete");
     } else {
         wacfrac::logging::error("Final video failed to compose");

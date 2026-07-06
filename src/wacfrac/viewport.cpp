@@ -29,8 +29,8 @@ Viewport::Viewport(const MultiComplex& center, const MultiFloat& zoom, const Res
 }
 
 void Viewport::precision(std::size_t value) {
-    center.precision(value);
-    dimensions.precision(value);
+    center.precision(static_cast<unsigned>(value));
+    dimensions.precision(static_cast<unsigned>(value));
 }
 
 auto Viewport::zoomed(MultiFloat factor) const -> Viewport {
@@ -88,8 +88,8 @@ auto required_precision(MultiFloat zoom) -> std::size_t {
 }
 auto required_iterations(MultiFloat zoom, double modifier, double factor, double exponent) -> std::size_t {
     if (zoom > 1.0)
-        return modifier;
-    return modifier + factor * std::pow(static_cast<double>(-boost::multiprecision::log10(zoom)), exponent);
+        return static_cast<std::size_t>(modifier);
+    return static_cast<std::size_t>(modifier + factor * std::pow(static_cast<double>(-boost::multiprecision::log10(zoom)), exponent));
 }
 
 }   // namespace wacfrac

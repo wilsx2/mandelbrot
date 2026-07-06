@@ -10,19 +10,16 @@ July
     - CLI
 - Distribute / Parallel
     - Features 
-        - Shared filesystem (Google Drive, Amazon EFS)
-        - MPI (stride = # ranks, offset = my rank)
-    - Profile time spent doing:
-        - Reference calculation
-        - BLA calculation
-        - Per-pixel calculations
+        - Shared filesystem (Amazon EFS/S3, MinIO)
+        - MPI
+    - Profile & Optimize
 - Time-target (as opposed to zoom-target) Video Mode
     - Calculate reference in parallel with frame rendering
+- Local Machines
 - Cloud (Amazon EC2, g4dn?)
 
-- ? Hierarchical merging (if file size / merge times become a bottleneck)
-- ? Cache references (if startup times become a bottleneck)
 - ? Cache BLAs coefficients (if BLA calculation becomes a bottleneck)
+  ? Fix glitch (if existence becomes evident)
 - ? Use periods (if above)
 - ? Adapt threshholds to per-pixel dc rather than zoom depth (if inconsistent behavior between resolutions)
 - ? Tiling (if 4k frames take long enough to benefit from distributed parallelization)

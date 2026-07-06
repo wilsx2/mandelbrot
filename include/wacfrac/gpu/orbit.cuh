@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wacfrac/types.hpp"
+#include "wacfrac/complex_concept.hpp"
 #include <cuda/std/span>
 #include <cuda/std/complex>
 

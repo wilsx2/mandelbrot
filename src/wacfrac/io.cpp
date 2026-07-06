@@ -2,10 +2,13 @@
 #include "wacfrac/log.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/types.hpp"
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <format>
+#include <random>
 #include <span>
+#include <vector>
 
 namespace wacfrac
 {
@@ -68,10 +71,35 @@ auto concatenate_images(std::filesystem::path output, std::string_view pattern, 
     ).c_str()) == EXIT_SUCCESS;
 }
 auto concatenate_videos(std::filesystem::path output, std::string_view pattern) -> bool {
-    return std::system(std::format(
-        "ffmpeg -f concat -safe 0 -i <(printf \"file '$PWD/%s'\n\" {}) -c copy {}",
-        pattern, output.string()
+    auto star = pattern.find('*');
+    if (star == std::string_view::npos)
+        return false;
+
+    std::string prefix(pattern.substr(0, star));
+    std::string suffix(pattern.substr(star + 1));
+
+    std::vector<std::filesystem::path> matches;
+    for (auto& entry : std::filesystem::directory_iterator("."))
+        if (auto name = entry.path().filename().string();
+            name.starts_with(prefix) && name.ends_with(suffix))
+            matches.push_back(std::filesystem::absolute(entry.path()));
+    std::ranges::sort(matches);
+
+    auto tmp = std::filesystem::temp_directory_path() / std::format("wacfrac_concat_{}.txt", std::random_device{}());
+    std::ofstream file(tmp);
+    if (!file.is_open())
+        return false;
+    for (auto& path : matches)
+        file << "file '" << path.string() << "'\n";
+    file.close();
+
+    auto result = std::system(std::format(
+        "ffmpeg -f concat -safe 0 -i \"{}\" -c copy \"{}\"",
+        tmp.string(), output.string()
     ).c_str()) == EXIT_SUCCESS;
+
+    std::filesystem::remove(tmp);
+    return result;
 }
 
 }   // namespace wacfrac

@@ -1,0 +1,11 @@
+{
+  "name": "wacfrac",
+  "version": "0.1.0",
+  "description": "High-performance Mandelbrot set renderer",
+  "dependencies": [
+    "boost-log",
+    "boost-multiprecision",
+    "benchmark",
+    "tbb"
+  ]
+}
