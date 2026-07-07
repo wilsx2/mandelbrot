@@ -42,20 +42,22 @@ void render(Config config,
             T delta,
             float escape_radius,
             std::size_t max_iterations,
+            bool discrete_coloring,
             cuda::std::span<const Pixel> palette) {
     auto tid {cuda::gpu_thread.rank(cuda::grid, config)};
     if (tid < pixels.size()) {
-        pixels[tid] = colorize_discrete(
-            escape(
-                sample_c_value(
-                    tid,
-                    row_width,
-                    start,
-                    delta),
-                max_iterations,
-                escape_radius),
+
+        auto [z, n] {escape(
+            sample_c_value(
+                tid,
+                row_width,
+                start,
+                delta),
             max_iterations,
-            palette);
+            escape_radius)};
+        pixels[tid] = discrete_coloring
+            ? colorize_discrete(n, max_iterations, palette)
+            : colorize_continuous(z, n, max_iterations, palette);
     }
 }
 

@@ -12,7 +12,7 @@ class GpuRenderer {
     GpuRenderer(int device_id, const Resolution& resolution, const std::vector<Pixel>& palette);
     ~GpuRenderer();
     template <Complex T>
-    auto render(const Viewport&, std::size_t max_n, double escape_radius = 4.0, bool discrete = true) -> std::span<Pixel>;
+    auto render(const Viewport&, std::size_t max_n, double escape_radius = 4.0, bool discrete = false) -> std::span<Pixel>;
 
     private:
     class Impl;

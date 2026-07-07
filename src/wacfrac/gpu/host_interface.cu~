@@ -48,8 +48,7 @@ struct GpuRenderer::Impl {
         wacfrac::logging::debug("Launching render kernel");
         cuda::launch(stream, config, gpu::render<T, decltype(config)>,
                     pixels, resolution.width, start, delta,
-                    escape_radius, max_n, palette);
-        (void) discrete;
+                    escape_radius, max_n, discrete, palette);
         stream.sync();
         wacfrac::logging::debug("Finished with render");
         return pixels;

@@ -18,14 +18,14 @@ auto escaped(T z, float escape_radius) -> bool {
 
 template <Complex T>
 __inline__ __device__
-auto escape(T c, std::size_t max_n, float escape_radius) -> std::size_t {
+auto escape(T c, std::size_t max_n, float escape_radius) -> cuda::std::pair<cuda::std::complex<float>, std::size_t> {
     T z {0.0};
     std::size_t n {0};
     while (n < max_n && !escaped(z, escape_radius)) {
         z = z*z + c;
         ++n;
     }
-    return n;
+    return cuda::std::make_pair(static_cast<cuda::std::complex<float>>(z), n);
 }
 
 } // namespace gpu
