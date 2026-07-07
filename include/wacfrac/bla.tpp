@@ -64,7 +64,7 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(
         auto epsilon {pow(ComplexValueTypeT<T>{10.0}, middle)};
         compute_blas(epsilon, max_dc);
 
-        if (upper_exp - lower_exp < 1e-3) {
+        if (upper_exp - lower_exp < 1e-3) { // TODO: Replace magic number with convergence radius
             logging::trace( "BLA search iter {}: epsilon=10^{} (converged)", iter, middle);
             break;
         }    

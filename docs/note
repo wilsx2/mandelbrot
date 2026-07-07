@@ -1,11 +1,19 @@
+7: Basic Escape
+8: BLA
+9: FloatExp
+10: Bench, CLI
+11: Mirror improvements from device code in host code, Optimize
+
 July
 - GPU
     - Features 
         X Coloring
         X Direct Escape
-        - Perturbed Escape
-        - FloatExp
+        X Perturbed Escape
+        - Generalize to many types
         - BLA
+        - Qued
+        - FloatExp
     - Benchmark
     - CLI
 - Distribute / Parallel
@@ -18,6 +26,9 @@ July
 - Local Machines
 - Cloud (Amazon EC2, g4dn?)
 
+- Move most things to headers to allow for inlining optimizations
+- Float Overloads
+- Replace long double with boost::float128 for Windows compatability
 - Switch to unsigned int for iterations, especially in GPU code
 - ? Cache BLAs coefficients (if BLA calculation becomes a bottleneck)
   ? Fix glitch (if existence becomes evident)

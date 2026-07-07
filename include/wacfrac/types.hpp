@@ -17,6 +17,37 @@ using DoubleExpComplex = boost::multiprecision::number<boost::multiprecision::ba
 // using SingleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<SingleExp>>; Unused
 // using QuadExpComplex   = boost::multiprecision::complex_adaptor<QuadExp>; Unused
 
+struct ReferenceSet {
+    std::vector<std::complex<double>> double_ref;
+    std::vector<std::complex<long double>> long_double_ref;
+    std::vector<DoubleExpComplex> dexp_ref;
+
+    template <typename T>
+    auto select() const -> const std::vector<T>& {
+        if constexpr (std::is_same_v<T, std::complex<double>>)
+            return double_ref;
+        else if constexpr (std::is_same_v<T, std::complex<long double>>)
+            return long_double_ref;
+        else
+            return dexp_ref;
+    }
+
+    template <typename T>
+    auto select() -> std::vector<T>& {
+        if constexpr (std::is_same_v<T, std::complex<double>>)
+            return double_ref;
+        else if constexpr (std::is_same_v<T, std::complex<long double>>)
+            return long_double_ref;
+        else
+            return dexp_ref;
+    }
+
+    void reserve(std::size_t size) {
+        select<std::complex<double>>().reserve(size);
+        select<std::complex<long double>>().reserve(size);
+        select<DoubleExpComplex>().reserve(size);
+    }
+};
 
 template <typename Real>
 auto to_real(const MultiFloat& val) -> Real {
