@@ -1,4 +1,6 @@
+#include <climits>
 #include <cstddef>
+#include <vector>
 #include "wacfrac/gpu/host_interface.hpp"
 #include "wacfrac/complex_concept.hpp"
 #include "wacfrac/gpu/rendering.cuh"
@@ -23,18 +25,24 @@ struct GpuRenderer::Impl {
     cuda::stream stream;
     cuda::device_buffer<Pixel> palette;
     cuda::host_buffer<Pixel> pixels;
+    std::vector<cuda::std::complex<double>> host_reference;
+    cuda::device_buffer<cuda::std::complex<double>> device_reference;
     Resolution resolution;
 
-    Impl(int device_id, const Resolution& resolution, const std::vector<Pixel>& palette)
+    Impl(int device_id, const Resolution& resolution, const std::vector<Pixel>& palette, std::size_t ref_capacity)
         : device{0}
         , stream{device}
         , palette{cuda::make_buffer<Pixel>(stream, cuda::device_default_memory_pool(device), palette.begin(), palette.end())}
         , pixels{cuda::make_buffer<Pixel>(stream, cuda::pinned_default_memory_pool(), resolution.area(), cuda::no_init)}
-        , resolution{resolution} {
+        , device_reference{stream, cuda::device_default_memory_pool(device)}
+        , resolution{resolution}
+    {
+        host_reference.reserve(ref_capacity);
         wacfrac::logging::debug("Constructed GpuRender::Impl");
     } 
+
     template <Complex T>
-    inline auto render(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
+    inline auto render_direct(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
         using CT = ComplexValueTypeT<T>;
         MultiComplex start_mc {view.center - view.dimensions / 2.0};
         T start {
@@ -49,7 +57,7 @@ struct GpuRenderer::Impl {
         
         constexpr auto threads_per_block {256};
         auto config {cuda::distribute<threads_per_block>(resolution.area())};
-        wacfrac::logging::debug("Launching render kernel");
+        wacfrac::logging::debug("Launching direct render kernel");
         cuda::launch(stream, config, gpu::render_direct<T, decltype(config)>,
                     pixels, resolution.width, start, delta,
                     escape_radius, max_n, discrete, palette);
@@ -57,19 +65,75 @@ struct GpuRenderer::Impl {
         wacfrac::logging::debug("Finished with render");
         return pixels;
     }
+
+    template <Complex T>
+    inline auto render_perturbed(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
+        using CT = ComplexValueTypeT<T>;
+        T ref_c {to_complex<T>(view.center)};
+        MultiComplex corner_mc {view.center - view.dimensions / 2.0};
+        T start {to_complex<T>(corner_mc) - ref_c};
+        T delta {
+            static_cast<CT>(view.dimensions.real()) / static_cast<CT>(resolution.width),
+            static_cast<CT>(view.dimensions.imag()) / static_cast<CT>(resolution.height)
+        };
+        wacfrac::logging::debug("Pixel delta: {} + i{}", delta.real(), delta.imag());
+        
+        constexpr auto threads_per_block {256};
+        auto config {cuda::distribute<threads_per_block>(resolution.area())};
+        wacfrac::logging::debug("Launching perturbed render kernel");
+        cuda::launch(stream, config, gpu::render_perturbed<T, decltype(config)>,
+                    pixels, resolution.width, start, delta, device_reference,
+                    escape_radius, max_n, discrete, palette);
+        stream.sync();
+        wacfrac::logging::debug("Finished with render");
+        return pixels;
+    }
+    void reserve_reference(std::size_t n) {
+        host_reference.reserve(n);
+        if (n > device_reference.size()) {
+            device_reference = cuda::make_buffer<cuda::std::complex<double>>(
+                stream, cuda::device_default_memory_pool(device),
+                n, cuda::no_init);
+        }
+    }
+
+    template <Complex T>
+    inline void copy_reference(const std::span<T>& reference) {
+        host_reference.insert(host_reference.end(), reference.begin(), reference.end());
+        device_reference = cuda::make_buffer<cuda::std::complex<double>>(
+            stream, cuda::device_default_memory_pool(device),
+            host_reference.begin(), host_reference.end());
+    }
 };
 
-GpuRenderer::GpuRenderer(int device_id, const Resolution& resolution, const std::vector<Pixel>& palette)
-    : _pimpl(std::make_unique<Impl>(device_id, resolution, palette)) {}
+GpuRenderer::GpuRenderer(int device_id, const Resolution& resolution, const std::vector<Pixel>& palette, std::size_t reference_capacity)
+    : _pimpl(std::make_unique<Impl>(device_id, resolution, palette, reference_capacity)) {}
 GpuRenderer::~GpuRenderer() = default;
 
 template <Complex T>
-auto GpuRenderer::render(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
-    return _pimpl->render<T>(view, max_n, escape_radius, discrete);
+auto GpuRenderer::render_direct(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
+    return _pimpl->render_direct<T>(view, max_n, escape_radius, discrete);
 }
 template
-auto GpuRenderer::render<cuda::std::complex<double>>(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel>;
+auto GpuRenderer::render_direct<cuda::std::complex<double>>(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel>;
 
+template <Complex T>
+auto GpuRenderer::render_perturbed(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
+    return _pimpl->render_perturbed<T>(view, max_n, escape_radius, discrete);
+}
+template
+auto GpuRenderer::render_perturbed<cuda::std::complex<double>>(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel>;
+
+template <Complex T>
+void GpuRenderer::copy_reference(const std::span<T>& reference) {
+    _pimpl->copy_reference(reference);
+}
+template
+void GpuRenderer::copy_reference<std::complex<double>>(const std::span<std::complex<double>>&);
+
+void GpuRenderer::reserve_reference(std::size_t n) {
+    _pimpl->reserve_reference(n);
+}
 
 auto GpuRenderer::device_count() -> int {
     return static_cast<int>(cuda::devices.size());

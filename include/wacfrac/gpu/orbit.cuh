@@ -36,20 +36,32 @@ auto escape_direct(T c, std::size_t max_n, float escape_radius) -> cuda::std::pa
         });
 }
 
-/*
+
 template <Complex T>
 __inline__ __device__
 auto escape_perturbed(T dc, cuda::std::span<const T> reference, std::size_t max_n, float escape_radius) -> cuda::std::pair<cuda::std::complex<float>, std::size_t> {
-    std::size_t ref_n {0};
-    std::size_t n {0};
+    static const T TWO{2.0, 0.0};
     T dz {0.0};
-    while (n < max_n && !escaped(z, escape_radius)) {
-        z = z*z + c;
-        ++n;
-    }
-    return cuda::std::make_pair(static_cast<cuda::std::complex<float>>(z), n);
+    std::size_t ref_n {0};
+    return escape_generic<T>(max_n, escape_radius,
+        [&](T& z, std::size_t& n){
+            dz = TWO * dz * reference[ref_n] + dz * dz + dc;
+            ++ref_n;
+            ++n;
+
+            if (ref_n >= reference.size()) {
+                z = dz;
+                ref_n = 0;
+            } else {
+                z = {reference[ref_n] + dz};
+                if (norm(z) < norm(dz)) {
+                    dz = z;
+                    ref_n = 0;
+                }
+            }
+        });
 }
-*/
+
 
 } // namespace gpu
 

@@ -61,6 +61,38 @@ void render_direct(Config config,
     }
 }
 
+template <Complex T, typename Config>
+__global__
+void render_perturbed(Config config,
+            cuda::std::span<Pixel> pixels,
+            std::size_t row_width,
+            T start,
+            T delta,
+            cuda::std::span<const T> reference,
+            float escape_radius,
+            std::size_t max_iterations,
+            bool discrete_coloring,
+            cuda::std::span<const Pixel> palette) {
+    auto tid {cuda::gpu_thread.rank(cuda::grid, config)};
+    if (tid == 0) {
+        std::printf("ref size %d\n", reference.size());
+    }
+    if (tid < pixels.size()) {
+        auto [z, n] {escape_perturbed(
+            sample_c_value(
+                tid,
+                row_width,
+                start,
+                delta),
+            reference,
+            max_iterations,
+            escape_radius)};
+        pixels[tid] = discrete_coloring
+            ? colorize_discrete(n, max_iterations, palette)
+            : colorize_continuous(z, n, max_iterations, palette);
+    }
+}
+
 } // namespace gpu
 
 } // namespace gpu
