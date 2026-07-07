@@ -35,7 +35,7 @@ auto sample_c_value(std::size_t idx,
 
 template <Complex T, typename Config>
 __global__
-void render(Config config,
+void render_direct(Config config,
             cuda::std::span<Pixel> pixels,
             std::size_t row_width,
             T start,
@@ -47,7 +47,7 @@ void render(Config config,
     auto tid {cuda::gpu_thread.rank(cuda::grid, config)};
     if (tid < pixels.size()) {
 
-        auto [z, n] {escape(
+        auto [z, n] {escape_direct(
             sample_c_value(
                 tid,
                 row_width,

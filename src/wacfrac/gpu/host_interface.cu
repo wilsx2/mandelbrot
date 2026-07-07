@@ -36,17 +36,21 @@ struct GpuRenderer::Impl {
     template <Complex T>
     inline auto render(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
         using CT = ComplexValueTypeT<T>;
-        T start {view.center - view.dimensions / 2.0};
-        T delta { // NOTE: Not using to_real casts defined in wacfrac/types.hpp
+        MultiComplex start_mc {view.center - view.dimensions / 2.0};
+        T start {
+            static_cast<CT>(start_mc.real()),
+            static_cast<CT>(start_mc.imag())
+        };
+        T delta {
             static_cast<CT>(view.dimensions.real()) / static_cast<CT>(resolution.width),
-            static_cast<CT>(view.dimensions.real()) / static_cast<CT>(resolution.height)
+            static_cast<CT>(view.dimensions.imag()) / static_cast<CT>(resolution.height)
         };
         wacfrac::logging::debug("Pixel delta: {} + i{}", delta.real(), delta.imag());
         
         constexpr auto threads_per_block {256};
         auto config {cuda::distribute<threads_per_block>(resolution.area())};
         wacfrac::logging::debug("Launching render kernel");
-        cuda::launch(stream, config, gpu::render<T, decltype(config)>,
+        cuda::launch(stream, config, gpu::render_direct<T, decltype(config)>,
                     pixels, resolution.width, start, delta,
                     escape_radius, max_n, discrete, palette);
         stream.sync();
@@ -64,7 +68,7 @@ auto GpuRenderer::render(const Viewport& view, std::size_t max_n, double escape_
     return _pimpl->render<T>(view, max_n, escape_radius, discrete);
 }
 template
-auto GpuRenderer::render<std::complex<double>>(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel>;
+auto GpuRenderer::render<cuda::std::complex<double>>(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel>;
 
 
 auto GpuRenderer::device_count() -> int {
