@@ -42,7 +42,12 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
 add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-diag-suppress=20014>) # Boost host-only warnings in CUDA compilation
+if(MSVC)
+    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>)
+endif()
 
 set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA compute capability")
 set(CMAKE_CUDA_STANDARD 20)
@@ -61,15 +66,14 @@ add_library(libwacfrac STATIC
     src/wacfrac/io.cpp
     src/wacfrac/bla.cpp
     src/wacfrac/log.cpp
-    src/wacfrac/gpu/color.cu
-    src/wacfrac/gpu/orbit.cu
-    src/wacfrac/gpu/rendering.cu
 )
 set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libwacfrac PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-target_compile_definitions(libwacfrac PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:CCCL_IGNORE_MSVC_TRADITIONAL_PREPROCESSOR_WARNING>)
+if(MSVC)
+    target_compile_definitions(libwacfrac PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:CCCL_IGNORE_MSVC_TRADITIONAL_PREPROCESSOR_WARNING>)
+endif()
 target_link_libraries(libwacfrac PUBLIC
     Boost::headers
     Boost::log
@@ -93,4 +97,18 @@ add_executable(wacfrac src/main.cpp)
 target_link_libraries(wacfrac PRIVATE
     libwacfrac
     Argumentum::argumentum
+)
+
+# GPU Test
+add_executable(gpu_test src/gpu_test.cu src/gpu_test.cpp)
+if(MSVC)
+    set_source_files_properties(src/gpu_test.cpp PROPERTIES
+        COMPILE_DEFINITIONS "NOMINMAX"
+    )
+endif()
+if (MSVC)
+    target_compile_definitions(gpu_test PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:CCCL_IGNORE_MSVC_TRADITIONAL_PREPROCESSOR_WARNING>)
+endif()
+target_link_libraries(gpu_test PRIVATE
+    libwacfrac
 )

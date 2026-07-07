@@ -9,12 +9,24 @@ namespace wacfrac {
 namespace gpu {
 
 template <Complex T>
-__device__
-auto escaped(T z, float escape_radius) -> bool;
+__inline__ __device__
+auto escaped(T z, float escape_radius) -> bool
+{
+    return norm(z) < escape_radius;
+}
 
 template <Complex T>
-__device__
-auto escape(T c, std::size_t max_n, float escape_radius) -> std::size_t;
+__inline__ __device__
+auto escape(T c, std::size_t max_n, float escape_radius) -> std::size_t
+{
+    T z {0.0};
+    auto n {0uz};
+    while (n < max_n && !escaped(z, escape_radius)) {
+        z = z*z + c;
+        ++n;
+    }
+    return n;
+}
 
 } // namespace gpu
 

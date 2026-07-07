@@ -1,32 +1,61 @@
 #pragma once
 
-#include "wacfrac/resolution.hpp"
 #include "wacfrac/color.hpp"
+#include "wacfrac/gpu/color.cuh"
+#include "wacfrac/gpu/orbit.cuh"
 #include "wacfrac/complex_concept.hpp"
+#include <cuda/__functional/call_or.h>
+#include <cuda/buffer> 
+#include <cuda/devices>
+#include <cuda/launch>
+#include <cuda/memory_pool>
 #include <cuda/std/span>
 #include <cuda/std/complex>
+#include <cuda/stream>
 
 namespace wacfrac {
 
 namespace gpu {
 
 template <Complex T>
-__device__
+__inline__ __device__
 auto sample_c_value(std::size_t idx,
-                    Resolution res,
-                    T delta,
-                    float escape_radius) -> T;
+                    std::size_t col_size,
+                    T start,
+                    T delta) -> T {
+    auto x {idx / col_size};
+    auto y {idx % col_size};
+    return T{
+        start.real() + delta.real() * x,
+        start.imag() + delta.imag() * y
+    };
+}
 
-template <Complex T>
+template <Complex T, typename Config>
 __global__
-void render(Pixel* pixels,
-            std::size_t width,
+void render(Config config,
+            cuda::std::span<Pixel> pixels,
             std::size_t height,
             T start,
             T delta,
             float escape_radius,
             std::size_t max_iterations,
-            cuda::std::span<const Pixel> palette);
+            cuda::std::span<const Pixel> palette) {
+    auto tid {cuda::gpu_thread.rank(cuda::grid, config)};
+    if (tid < pixels.size()) {
+        pixels[tid] = colorize_discrete(
+            escape(
+                sample_c_value(
+                    tid,
+                    height,
+                    start,
+                    delta),
+                max_iterations,
+                escape_radius),
+            palette,
+            max_iterations);
+    }
+}
 
 } // namespace gpu
 

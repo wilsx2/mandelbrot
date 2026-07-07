@@ -4,16 +4,16 @@
 #include <cuda/std/span>
 #include <cuda/std/complex>
 
-namespace wacfrac {
+namespace wacfrac::gpu {
 
-namespace gpu {
-
-__device__
+__inline__ __device__
 auto colorize_discrete(cuda::std::span<const Pixel> palette,
                        std::size_t max_n,
-                       cuda::std::span<const std::size_t> n)
-                       -> Pixel;
+                       std::size_t n) -> Pixel
+{
+    if (n == max_n)
+        return palette.back();
+    return palette.at(n % palette.size());
+}
 
-} // namespace gpu
-
-} // namespace gpu
+} // namespace wacfrac::gpu
