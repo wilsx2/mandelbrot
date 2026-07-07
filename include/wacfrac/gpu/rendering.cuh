@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include "wacfrac/color.hpp"
 #include "wacfrac/gpu/color.cuh"
 #include "wacfrac/gpu/orbit.cuh"
@@ -12,6 +13,7 @@
 #include <cuda/std/span>
 #include <cuda/std/complex>
 #include <cuda/stream>
+#include <cstdio>
 
 namespace wacfrac {
 
@@ -20,11 +22,11 @@ namespace gpu {
 template <Complex T>
 __inline__ __device__
 auto sample_c_value(std::size_t idx,
-                    std::size_t col_size,
+                    std::size_t row_width,
                     T start,
                     T delta) -> T {
-    auto x {idx / col_size};
-    auto y {idx % col_size};
+    auto x {idx % row_width};
+    auto y {idx / row_width};
     return T{
         start.real() + delta.real() * x,
         start.imag() + delta.imag() * y
@@ -35,7 +37,7 @@ template <Complex T, typename Config>
 __global__
 void render(Config config,
             cuda::std::span<Pixel> pixels,
-            std::size_t height,
+            std::size_t row_width,
             T start,
             T delta,
             float escape_radius,
@@ -47,13 +49,13 @@ void render(Config config,
             escape(
                 sample_c_value(
                     tid,
-                    height,
+                    row_width,
                     start,
                     delta),
                 max_iterations,
                 escape_radius),
-            palette,
-            max_iterations);
+            max_iterations,
+            palette);
     }
 }
 

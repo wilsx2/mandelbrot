@@ -47,6 +47,7 @@ add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-diag-suppress=20014>) # Boost ho
 if(MSVC)
     add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>)
+    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:alignedNew->)
 endif()
 
 set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA compute capability")
@@ -66,6 +67,7 @@ add_library(libwacfrac STATIC
     src/wacfrac/io.cpp
     src/wacfrac/bla.cpp
     src/wacfrac/log.cpp
+    src/wacfrac/gpu/host_interface.cu
 )
 set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libwacfrac PUBLIC
@@ -100,7 +102,7 @@ target_link_libraries(wacfrac PRIVATE
 )
 
 # GPU Test
-add_executable(gpu_test src/gpu_test.cu src/gpu_test.cpp)
+add_executable(gpu_test src/gpu_test.cpp)
 if(MSVC)
     set_source_files_properties(src/gpu_test.cpp PROPERTIES
         COMPILE_DEFINITIONS "NOMINMAX"
