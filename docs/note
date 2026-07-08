@@ -1,8 +1,7 @@
-7: Basic Escape
-8: BLA
-9: FloatExp
-10: Bench, CLI
-11: Mirror improvements from device code in host code, Optimize
+9: Types
+10: BLA
+11: Bench, CLI
+12: Mirror improvements from device code in host code, Optimize
 
 July
 - GPU
@@ -11,9 +10,10 @@ July
         X Direct Escape
         X Perturbed Escape
         - Generalize to many types
+            - float
+            - Quad
+            - FloatExp
         - BLA
-        - Qued
-        - FloatExp
     - Benchmark
     - CLI
 - Distribute / Parallel
@@ -26,9 +26,11 @@ July
 - Local Machines
 - Cloud (Amazon EC2, g4dn?)
 
+- Type traits for float -> complex conversion
 - Move most things to headers to allow for inlining optimizations
 - Float Overloads
-- Replace long double with boost::float128 for Windows compatability
+- Replace long double with a DoubleDouble type for both Windows and GPU compatability
+- Make as many functions/classes as possible compatible with CUDA and C++ code (DRY)
 - Switch to unsigned int for iterations, especially in GPU code
 - ? Cache BLAs coefficients (if BLA calculation becomes a bottleneck)
   ? Fix glitch (if existence becomes evident)

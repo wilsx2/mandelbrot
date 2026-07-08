@@ -40,9 +40,7 @@ void render_direct(Config config,
             std::size_t row_width,
             T start,
             T delta,
-            float escape_radius,
             std::size_t max_iterations,
-            bool discrete_coloring,
             cuda::std::span<const Pixel> palette) {
     auto tid {cuda::gpu_thread.rank(cuda::grid, config)};
     if (tid < pixels.size()) {
@@ -53,11 +51,8 @@ void render_direct(Config config,
                 row_width,
                 start,
                 delta),
-            max_iterations,
-            escape_radius)};
-        pixels[tid] = discrete_coloring
-            ? colorize_discrete(n, max_iterations, palette)
-            : colorize_continuous(z, n, max_iterations, palette);
+            max_iterations)};
+        pixels[tid] = colorize(z, n, max_iterations, palette);
     }
 }
 
@@ -69,9 +64,7 @@ void render_perturbed(Config config,
             T start,
             T delta,
             cuda::std::span<const T> reference,
-            float escape_radius,
             std::size_t max_iterations,
-            bool discrete_coloring,
             cuda::std::span<const Pixel> palette) {
     auto tid {cuda::gpu_thread.rank(cuda::grid, config)};
     if (tid == 0) {
@@ -85,11 +78,8 @@ void render_perturbed(Config config,
                 start,
                 delta),
             reference,
-            max_iterations,
-            escape_radius)};
-        pixels[tid] = discrete_coloring
-            ? colorize_discrete(n, max_iterations, palette)
-            : colorize_continuous(z, n, max_iterations, palette);
+            max_iterations)};
+        pixels[tid] = colorize(z, n, max_iterations, palette);
     }
 }
 

@@ -10,26 +10,28 @@ namespace wacfrac {
 
 namespace gpu {
 
+constexpr float ESCAPE_RADIUS = 4.0f;
+
 template <Complex T>
 __inline__ __device__
-auto escaped(T z, float escape_radius) -> bool {
-    return norm(z) > escape_radius;
+auto escaped(T z) -> bool {
+    return norm(z) > ESCAPE_RADIUS;
 }
 
 template <Complex T, std::invocable<T&, std::size_t&> F>
 __inline__ __device__
-auto escape_generic(std::size_t max_n, double escape_radius, F&& next_orbit) -> cuda::std::pair<cuda::std::complex<float>, std::size_t> {
+auto escape_generic(std::size_t max_n, F&& next_orbit) -> cuda::std::pair<cuda::std::complex<float>, std::size_t> {
     T z {0.0};
     std::size_t n {0};
-    while (n < max_n && !escaped(z, escape_radius))
+    while (n < max_n && !escaped(z))
         next_orbit(z, n);
     return cuda::std::make_pair(static_cast<cuda::std::complex<float>>(z), n);
 }
 
 template <Complex T>
 __inline__ __device__
-auto escape_direct(T c, std::size_t max_n, float escape_radius) -> cuda::std::pair<cuda::std::complex<float>, std::size_t> {
-    return escape_generic<T>(max_n, escape_radius,
+auto escape_direct(T c, std::size_t max_n) -> cuda::std::pair<cuda::std::complex<float>, std::size_t> {
+    return escape_generic<T>(max_n,
         [&c](T& z, std::size_t& n){
             z = z*z + c;
             ++n;
@@ -39,11 +41,11 @@ auto escape_direct(T c, std::size_t max_n, float escape_radius) -> cuda::std::pa
 
 template <Complex T>
 __inline__ __device__
-auto escape_perturbed(T dc, cuda::std::span<const T> reference, std::size_t max_n, float escape_radius) -> cuda::std::pair<cuda::std::complex<float>, std::size_t> {
+auto escape_perturbed(T dc, cuda::std::span<const T> reference, std::size_t max_n) -> cuda::std::pair<cuda::std::complex<float>, std::size_t> {
     static const T TWO{2.0, 0.0};
     T dz {0.0};
     std::size_t ref_n {0};
-    return escape_generic<T>(max_n, escape_radius,
+    return escape_generic<T>(max_n,
         [&](T& z, std::size_t& n){
             dz = TWO * dz * reference[ref_n] + dz * dz + dc;
             ++ref_n;

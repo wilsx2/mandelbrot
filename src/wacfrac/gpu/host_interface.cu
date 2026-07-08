@@ -43,7 +43,7 @@ struct GpuRenderer::Impl {
     } 
 
     template <Complex T>
-    inline auto render_direct(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
+    inline auto render_direct(const Viewport& view, std::size_t max_n) -> std::span<Pixel> {
         using CT = ComplexValueTypeT<T>;
         MultiComplex start_mc {view.center - view.dimensions / 2.0};
         T start {
@@ -61,14 +61,14 @@ struct GpuRenderer::Impl {
         wacfrac::logging::debug("Launching direct render kernel");
         cuda::launch(stream, config, gpu::render_direct<T, decltype(config)>,
                     pixels, resolution.width, start, delta,
-                    escape_radius, max_n, discrete, palette);
+                    max_n, palette);
         stream.sync();
         wacfrac::logging::debug("Finished with render");
         return pixels;
     }
 
     template <Complex T>
-    inline auto render_perturbed(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
+    inline auto render_perturbed(const Viewport& view, std::size_t max_n) -> std::span<Pixel> {
         using CT = ComplexValueTypeT<T>;
         T ref_c {to_complex<T>(view.center)};
         MultiComplex corner_mc {view.center - view.dimensions / 2.0};
@@ -84,7 +84,7 @@ struct GpuRenderer::Impl {
         wacfrac::logging::debug("Launching perturbed render kernel");
         cuda::launch(stream, config, gpu::render_perturbed<T, decltype(config)>,
                     pixels, resolution.width, start, delta, device_references.select<T>(),
-                    escape_radius, max_n, discrete, palette);
+                    max_n, palette);
         stream.sync();
         wacfrac::logging::debug("Finished with render");
         return pixels;
@@ -114,18 +114,18 @@ GpuRenderer::GpuRenderer(int device_id, const Resolution& resolution, const std:
 GpuRenderer::~GpuRenderer() = default;
 
 template <Complex T>
-auto GpuRenderer::render_direct(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
-    return _pimpl->render_direct<T>(view, max_n, escape_radius, discrete);
+auto GpuRenderer::render_direct(const Viewport& view, std::size_t max_n) -> std::span<Pixel> {
+    return _pimpl->render_direct<T>(view, max_n);
 }
 template
-auto GpuRenderer::render_direct<cuda::std::complex<double>>(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel>;
+auto GpuRenderer::render_direct<cuda::std::complex<double>>(const Viewport& view, std::size_t max_n) -> std::span<Pixel>;
 
 template <Complex T>
-auto GpuRenderer::render_perturbed(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel> {
-    return _pimpl->render_perturbed<T>(view, max_n, escape_radius, discrete);
+auto GpuRenderer::render_perturbed(const Viewport& view, std::size_t max_n) -> std::span<Pixel> {
+    return _pimpl->render_perturbed<T>(view, max_n);
 }
 template
-auto GpuRenderer::render_perturbed<cuda::std::complex<double>>(const Viewport& view, std::size_t max_n, double escape_radius, bool discrete) -> std::span<Pixel>;
+auto GpuRenderer::render_perturbed<cuda::std::complex<double>>(const Viewport& view, std::size_t max_n) -> std::span<Pixel>;
 
 void GpuRenderer::copy_references(const ReferenceSet& references) {
     _pimpl->copy_references(references);
