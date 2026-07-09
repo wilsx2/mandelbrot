@@ -13,7 +13,7 @@ class BivariateLinearApproximator {
     BivariateLinearApproximator(ComplexValueTypeT<T> epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0, double escape_radius = 2.0);
     BivariateLinearApproximator(double lower_exp, double upper_exp, double tolerance,
                                 const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0, double escape_radius = 2.0);
-    auto escape_approximate(T dc) const -> std::tuple<T, std::size_t, std::size_t>;
+    auto escape_approximate(T dc) const -> std::tuple<T, unsigned, unsigned>;
 
     private:
     BivariateLinearApproximator() = default;
@@ -31,18 +31,18 @@ class BivariateLinearApproximator {
             return a*dzm + b*dc;
         }
     };
-    auto compute_bla(ComplexValueTypeT<T> epsilon, T max_dc, std::size_t m, std::size_t n) const -> Bla;
+    auto compute_bla(ComplexValueTypeT<T> epsilon, T max_dc, unsigned m, unsigned n) const -> Bla;
     auto compute_blas(ComplexValueTypeT<T> epsilon, T max_dc) -> void;
     auto merge_blas(T max_dc, const Bla& x, const Bla& y) const -> Bla;
-    auto compute_zn(T dc, T dzm, std::size_t m) const -> std::optional<std::pair<T, std::size_t>>;
+    auto compute_zn(T dc, T dzm, unsigned m) const -> std::optional<std::pair<T, unsigned>>;
 
     struct ColumnInfo {
         std::size_t first;
         std::size_t count;
     };
-    auto bla_exists(std::size_t m, std::size_t level) const -> bool;
-    auto bla_at(std::size_t m, std::size_t level) const -> const Bla*;
-    auto bla_at(std::size_t m, std::size_t level) -> Bla*;
+    auto bla_exists(unsigned m, std::size_t level) const -> bool;
+    auto bla_at(unsigned m, std::size_t level) const -> const Bla*;
+    auto bla_at(unsigned m, std::size_t level) -> Bla*;
 
     std::optional<std::reference_wrapper<const std::vector<T>>> _ref;
     std::size_t _first_level;

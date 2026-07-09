@@ -6,7 +6,7 @@
 
 namespace wacfrac {
 
-auto find_nucleus(MultiComplex c, std::size_t period, std::size_t max_iterations) -> MultiComplex;
+auto find_nucleus(MultiComplex c, std::size_t period, unsigned max_iterations) -> MultiComplex;
 
 template<Complex T, typename F = double>
 auto is_reference_degenerate(const std::vector<T>& ref, F tolerance = 1e-3) -> bool {

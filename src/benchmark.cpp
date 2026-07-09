@@ -26,7 +26,7 @@ auto make_viewport(unsigned zoom_exp) {
     return view;
 }
 
-auto compute_reference_dec(const wacfrac::Viewport& view, wacfrac::MultiComplex c_ref, std::size_t max_iterations) {
+auto compute_reference_dec(const wacfrac::Viewport& view, wacfrac::MultiComplex c_ref, unsigned max_iterations) {
     c_ref.precision(static_cast<unsigned>(view.required_precision()));
     return wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations);
 }
@@ -55,7 +55,7 @@ auto count_mismatches(std::span<const wacfrac::Pixel> test, std::span<const wacf
 template<wacfrac::Complex T>
 static void compute_next_orbit(benchmark::State& state) {
     T z {0.0, 0.0};
-    auto n {0uz};
+    unsigned n {0u};
     T c {0.0, 0.0};
     for (auto _ : state) {
         wacfrac::compute_next_orbit(z, n, c);

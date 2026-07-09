@@ -151,7 +151,7 @@ struct ImageOptions : argumentum::CommandOptions {
 
     std::string filepath {"mandelbrot.ppm"};
     MultiFloat scale {0.4};
-    std::size_t max_iterations {0};
+    unsigned max_iterations {0u};
     std::size_t precision {0};
     std::string numeric_type {"auto"};
     std::string render_type {"auto"};
@@ -159,7 +159,7 @@ struct ImageOptions : argumentum::CommandOptions {
     // Manual BLA Override
     double epsilon {0.0};
 
-    auto effective_max_iterations() const -> std::size_t {
+    auto effective_max_iterations() const -> unsigned {
         return max_iterations ? max_iterations
         : wacfrac::required_iterations(1.0 / scale, 
             std::get<0>(shared->iteration_parameters),

@@ -10,7 +10,7 @@
 namespace wacfrac {
 
 template <Complex T = std::complex<double>>
-auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius = 4.0) -> std::vector<T> {
+auto compute_reference(MultiComplex c, unsigned max_n, double escape_radius = 4.0) -> std::vector<T> {
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={}", c, max_n, escape_radius);
 
     std::vector<T> reference;
@@ -18,7 +18,7 @@ auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius =
     reference.emplace_back(to_complex<T>(MultiComplex{0.0, 0.0}));
 
     MultiComplex z{0.0, 0.0};
-    for (auto n{0uz}; n < max_n - 1 && !escaped(z, escape_radius);) {
+    for (auto n{0u}; n < max_n - 1 && !escaped(z, escape_radius);) {
         compute_next_orbit(z, n, c);
         reference.emplace_back(to_complex<T>(z));
     }
@@ -28,7 +28,7 @@ auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius =
 }
 
 template <Complex T = std::complex<double>>
-auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radius = 4.0) -> std::vector<T> {
+auto compute_reference_mt(MultiComplex c, unsigned max_n, double escape_radius = 4.0) -> std::vector<T> {
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
     if (max_n == 0)
         return {};
@@ -37,7 +37,7 @@ auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radiu
     reference[0] = T{0.0, 0.0};
     using CT = ComplexValueTypeT<T>;
 
-    auto count = compute_reference_iteration(c, max_n, escape_radius, [&](std::size_t n, const MultiFloat& r, const MultiFloat& i) {
+    auto count = compute_reference_iteration(c, max_n, escape_radius, [&](unsigned n, const MultiFloat& r, const MultiFloat& i) {
         reference[n] = T{to_real<CT>(r), to_real<CT>(i)};
     });
 
@@ -46,12 +46,12 @@ auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radiu
     return reference;
 }
 
-template <std::invocable<std::size_t, const MultiFloat&, const MultiFloat&> F>
-auto compute_reference_iteration(MultiComplex c, std::size_t max_n, double escape_radius, F&& store_at_n) -> std::size_t {
+template <std::invocable<unsigned, const MultiFloat&, const MultiFloat&> F>
+auto compute_reference_iteration(MultiComplex c, unsigned max_n, double escape_radius, F&& store_at_n) -> unsigned {
     if (max_n == 0)
         return 0;
 
-    auto n_1 {1uz};
+    auto n_1 {1u};
     MultiComplex z {0.0, 0.0};
     MultiComplex next_z {0.0, 0.0};
     auto running {true};
@@ -89,7 +89,7 @@ auto compute_reference_iteration(MultiComplex c, std::size_t max_n, double escap
     return n_1;
 }
 
-inline auto compute_reference_set(MultiComplex c, std::size_t max_n, double escape_radius = 4.0) -> ReferenceSet {
+inline auto compute_reference_set(MultiComplex c, unsigned max_n, double escape_radius = 4.0) -> ReferenceSet {
     ReferenceSet refs;
     if (max_n == 0)
         return refs;
@@ -101,7 +101,7 @@ inline auto compute_reference_set(MultiComplex c, std::size_t max_n, double esca
     refs.double_ref[0]      = std::complex<double>{0.0, 0.0};
     refs.dexp_ref[0]        = to_complex<DoubleExpComplex>(MultiComplex{0.0, 0.0});
 
-    auto count = compute_reference_iteration(c, max_n, escape_radius, [&](std::size_t n, const MultiFloat& r, const MultiFloat& i) {
+    auto count = compute_reference_iteration(c, max_n, escape_radius, [&](unsigned n, const MultiFloat& r, const MultiFloat& i) {
         refs.float_ref[n]       = std::complex<float>{to_real<float>(r), to_real<float>(i)};
         refs.double_ref[n]      = std::complex<double>{to_real<double>(r), to_real<double>(i)};
         refs.dexp_ref[n]        = DoubleExpComplex{to_real<DoubleExp>(r), to_real<DoubleExp>(i)};

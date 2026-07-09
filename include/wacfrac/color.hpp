@@ -45,7 +45,7 @@ auto parse_color(std::string_view filename) -> Pixel;
 #if defined(__CUDACC__)
 __host__ __device__
 #endif 
-inline auto colorize_discrete(std::size_t n, std::size_t max_n, STD::span<const Pixel> palette) -> Pixel {
+inline auto colorize_discrete(unsigned n, unsigned max_n, STD::span<const Pixel> palette) -> Pixel {
     if (n == max_n)
         return palette.back();
     return palette[n % palette.size()];
@@ -54,13 +54,13 @@ inline auto colorize_discrete(std::size_t n, std::size_t max_n, STD::span<const 
 #if defined(__CUDACC__)
 __host__ __device__
 #endif 
-inline auto colorize_continuous(STD::complex<float> z, std::size_t n, std::size_t max_n, STD::span<const Pixel> palette) -> Pixel
+inline auto colorize_continuous(STD::complex<float> z, unsigned n, unsigned max_n, STD::span<const Pixel> palette) -> Pixel
 {
     if (n == max_n)
         return palette.back();
     auto cont_n {n - STD::log(std::log(STD::abs(z))) / STD::log(2.0)};
-    auto n1     {static_cast<std::size_t>(STD::floor(cont_n))};
-    auto n2     {static_cast<std::size_t>(STD::ceil(cont_n))};
+    auto n1     {static_cast<unsigned>(STD::floor(cont_n))};
+    auto n2     {static_cast<unsigned>(STD::ceil(cont_n))};
     auto color1 {palette[n1 % palette.size()]};
     auto color2 {palette[n2 % palette.size()]};
     auto progress {STD::fmod(cont_n, 1.0)};

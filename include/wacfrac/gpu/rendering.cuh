@@ -41,7 +41,7 @@ void render_direct(Config config,
             std::size_t row_width,
             T start,
             T delta,
-            std::size_t max_iterations,
+            unsigned max_iterations,
             cuda::std::span<const Pixel> palette) {
     auto tid {cuda::gpu_thread.rank(cuda::grid, config)};
     if (tid < pixels.size()) {
@@ -66,7 +66,7 @@ void render_perturbed(Config config,
             T start,
             T delta,
             cuda::std::span<const T> reference,
-            std::size_t max_iterations,
+            unsigned max_iterations,
             cuda::std::span<const Pixel> palette) {
     auto tid {cuda::gpu_thread.rank(cuda::grid, config)};
     if (tid == 0) {

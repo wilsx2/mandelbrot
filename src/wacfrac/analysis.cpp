@@ -20,10 +20,10 @@ static auto lemniscate_curve(MultiComplex c, std::size_t period) -> std::pair<Mu
 }
 
 // https://www.mrob.com/pub/muency/newtonraphsonmethod.html
-auto find_nucleus(MultiComplex c, std::size_t period,  std::size_t max_iterations) -> MultiComplex {
+auto find_nucleus(MultiComplex c, std::size_t period, unsigned max_iterations) -> MultiComplex {
     auto square_tolerance = MultiFloat{1.0} / pow(MultiFloat{10.0}, 2 * c.precision());
     logging::debug( "Finding nucleus at ({}) period={} max_iterations={}", c, period, max_iterations);
-    for (auto i {0uz}; i < max_iterations; ++i) {
+    for (unsigned i {0u}; i < max_iterations; ++i) {
         auto [z, dz] = lemniscate_curve(c, period);
 
         MultiComplex correction = z / dz;

@@ -43,7 +43,7 @@ struct GpuRenderer::Impl {
     } 
 
     template <Complex T>
-    inline auto render_direct(const Viewport& view, std::size_t max_n) -> std::span<Pixel> {
+    inline auto render_direct(const Viewport& view, unsigned max_n) -> std::span<Pixel> {
         using CT = ComplexValueTypeT<T>;
         MultiComplex start_mc {view.center - view.dimensions / 2.0};
         T start {
@@ -68,7 +68,7 @@ struct GpuRenderer::Impl {
     }
 
     template <Complex T>
-    inline auto render_perturbed(const Viewport& view, std::size_t max_n) -> std::span<Pixel> {
+    inline auto render_perturbed(const Viewport& view, unsigned max_n) -> std::span<Pixel> {
         using CT = ComplexValueTypeT<T>;
         T ref_c {to_complex<T>(view.center)};
         MultiComplex corner_mc {view.center - view.dimensions / 2.0};
@@ -114,18 +114,18 @@ GpuRenderer::GpuRenderer(int device_id, const Resolution& resolution, const std:
 GpuRenderer::~GpuRenderer() = default;
 
 template <Complex T>
-auto GpuRenderer::render_direct(const Viewport& view, std::size_t max_n) -> std::span<Pixel> {
+auto GpuRenderer::render_direct(const Viewport& view, unsigned max_n) -> std::span<Pixel> {
     return _pimpl->render_direct<T>(view, max_n);
 }
 template
-auto GpuRenderer::render_direct<cuda::std::complex<double>>(const Viewport& view, std::size_t max_n) -> std::span<Pixel>;
+auto GpuRenderer::render_direct<cuda::std::complex<double>>(const Viewport& view, unsigned max_n) -> std::span<Pixel>;
 
 template <Complex T>
-auto GpuRenderer::render_perturbed(const Viewport& view, std::size_t max_n) -> std::span<Pixel> {
+auto GpuRenderer::render_perturbed(const Viewport& view, unsigned max_n) -> std::span<Pixel> {
     return _pimpl->render_perturbed<T>(view, max_n);
 }
 template
-auto GpuRenderer::render_perturbed<cuda::std::complex<double>>(const Viewport& view, std::size_t max_n) -> std::span<Pixel>;
+auto GpuRenderer::render_perturbed<cuda::std::complex<double>>(const Viewport& view, unsigned max_n) -> std::span<Pixel>;
 
 void GpuRenderer::copy_references(const ReferenceSet& references) {
     _pimpl->copy_references(references);

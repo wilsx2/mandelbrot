@@ -68,7 +68,7 @@ auto Viewport::required_precision() const -> std::size_t {
     return wacfrac::required_precision(dimensions.real());
 }
 
-auto Viewport::required_iterations(double modifier, double factor, double exponent) const -> std::size_t {
+auto Viewport::required_iterations(double modifier, double factor, double exponent) const -> unsigned {
     return wacfrac::required_iterations(dimensions.real(), modifier, factor, exponent);
 }
 
@@ -76,9 +76,9 @@ template auto Viewport::generate_probes<std::complex<float>>(std::size_t cols, s
 template auto Viewport::generate_probes<std::complex<double>>(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<double>>;
 template auto Viewport::generate_probes<DoubleExpComplex>(std::size_t cols, std::size_t rows) const -> std::vector<DoubleExpComplex>;
 
-template auto Viewport::find_periodic_reference<std::complex<float>>(std::size_t max_n, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<std::complex<float>>>;
-template auto Viewport::find_periodic_reference<std::complex<double>>(std::size_t max_n, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<std::complex<double>>>;
-template auto Viewport::find_periodic_reference<DoubleExpComplex>(std::size_t max_n, std::size_t find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<DoubleExpComplex>>;
+template auto Viewport::find_periodic_reference<std::complex<float>>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<std::complex<float>>>;
+template auto Viewport::find_periodic_reference<std::complex<double>>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<std::complex<double>>>;
+template auto Viewport::find_periodic_reference<DoubleExpComplex>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<DoubleExpComplex>>;
 
 auto required_precision(MultiFloat zoom) -> std::size_t {
     using namespace std;
@@ -86,10 +86,10 @@ auto required_precision(MultiFloat zoom) -> std::size_t {
     double e {abs(log10(zoom)) + 5.0};
     return static_cast<std::size_t>(max(10.0, e));
 }
-auto required_iterations(MultiFloat zoom, double modifier, double factor, double exponent) -> std::size_t {
+auto required_iterations(MultiFloat zoom, double modifier, double factor, double exponent) -> unsigned {
     if (zoom > 1.0)
-        return static_cast<std::size_t>(modifier);
-    return static_cast<std::size_t>(modifier + factor * std::pow(static_cast<double>(-boost::multiprecision::log10(zoom)), exponent));
+        return static_cast<unsigned>(modifier);
+    return static_cast<unsigned>(modifier + factor * std::pow(static_cast<double>(-boost::multiprecision::log10(zoom)), exponent));
 }
 
 }   // namespace wacfrac

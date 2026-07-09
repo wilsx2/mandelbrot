@@ -59,7 +59,7 @@ void render_image(const wacfrac::ImageOptions& opts) {
 
     auto start = std::chrono::steady_clock::now();
     with_numeric_type(num_type, [&]<typename T>(NumericTypeTag<T>){
-        std::vector<std::pair<std::complex<float>, std::size_t>> escaped_orbits;
+        std::vector<std::pair<std::complex<float>, unsigned>> escaped_orbits;
         escaped_orbits.reserve(pixels.size());
 
         if (render_type == wacfrac::RenderType::Direct) {

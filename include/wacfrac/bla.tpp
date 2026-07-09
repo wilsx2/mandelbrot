@@ -15,13 +15,13 @@ template <Complex T>
 BivariateLinearApproximator<T>::BivariateLinearApproximator(const std::vector<T>& ref, std::size_t first_level, double escape_radius)
     : _ref(ref)
     , _first_level(first_level)
-    , _last_level(ref.size() < 2 ? std::size_t{0} : static_cast<std::size_t>(std::log2(ref.size())))
+    , _last_level(ref.size() < 2 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(ref.size()))))
     , _columns(ref.size() < 2 ? 0 : ref.size() - 2)
     , _escape_radius(escape_radius)
 {
     auto i {0uz};
     for (auto m : std::views::iota(1uz, ref.size() - 1)) {
-        auto cz {static_cast<std::size_t>(std::countr_zero(m - 1))};
+        auto cz {static_cast<unsigned>(std::countr_zero(m - 1))};
         auto size {cz >= _first_level
             ? 1 + std::min(cz - _first_level, _last_level - _first_level)
             : 0uz};
@@ -48,10 +48,10 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(
 {
     logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", tolerance, probes.size(), lower_exp, upper_exp);
 
-    std::vector<std::size_t> true_escape_times;
+    std::vector<unsigned> true_escape_times;
     true_escape_times.reserve(probes.size());
     std::ranges::transform(probes, std::back_inserter(true_escape_times),
-        [this, &ref](T p) -> std::size_t { return escape_perturbed<T>(p, ref, ref.size(), _escape_radius).second; });
+        [this, &ref](T p) -> unsigned { return escape_perturbed<T>(p, ref, static_cast<unsigned>(ref.size()), _escape_radius).second; });
 
     auto prev_avg_skipped {-1.0};
     BivariateLinearApproximator<T> prev_bla;
@@ -70,7 +70,7 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(
         }    
 
         auto all_correct{true};
-        auto total_skipped{0uz};
+        auto total_skipped{0u};
         for (auto&& [i, probe] : probes | std::views::enumerate) {
             auto [_, approx_escape_time, skipped] = escape_approximate(probe);
 
@@ -104,10 +104,10 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(
 }
 
 template <Complex T>
-auto BivariateLinearApproximator<T>::escape_approximate(T dc) const -> std::tuple<T, std::size_t, std::size_t> {
-    auto ref_n {0uz};
-    auto n {0uz};
-    auto skipped {0uz};
+auto BivariateLinearApproximator<T>::escape_approximate(T dc) const -> std::tuple<T, unsigned, unsigned> {
+    unsigned ref_n {0u};
+    unsigned n {0u};
+    unsigned skipped {0u};
     T dz {0.0, 0.0};
     T z {0.0, 0.0};
     while (n < _ref->get().size() && !escaped(z, _escape_radius)) {
@@ -126,7 +126,7 @@ auto BivariateLinearApproximator<T>::escape_approximate(T dc) const -> std::tupl
 }
 
 template <Complex T>
-auto BivariateLinearApproximator<T>::compute_zn(T dc, T dzm, std::size_t m) const -> std::optional<std::pair<T, std::size_t>> {
+auto BivariateLinearApproximator<T>::compute_zn(T dc, T dzm, unsigned m) const -> std::optional<std::pair<T, unsigned>> {
     auto bla = bla_at(m, _first_level);
     if (!bla || !bla->is_valid(dzm))
         return std::nullopt;
@@ -136,7 +136,7 @@ auto BivariateLinearApproximator<T>::compute_zn(T dc, T dzm, std::size_t m) cons
         auto next_bla = bla_at(m, level);
         if (next_bla && next_bla->is_valid(dzm)) {
             bla = next_bla;
-            n = m + (std::size_t{1} << level);
+            n = m + (1u << level);
             break;
         }
     }
@@ -148,7 +148,7 @@ auto BivariateLinearApproximator<T>::compute_zn(T dc, T dzm, std::size_t m) cons
 }
 
 template <Complex T>
-auto BivariateLinearApproximator<T>::compute_bla(ComplexValueTypeT<T> epsilon, T max_dc, std::size_t m, std::size_t n) const -> Bla {
+auto BivariateLinearApproximator<T>::compute_bla(ComplexValueTypeT<T> epsilon, T max_dc, unsigned m, unsigned n) const -> Bla {
     using Real = ComplexValueTypeT<T>;
     using std::abs;
     auto l {n - m};
@@ -202,19 +202,19 @@ auto BivariateLinearApproximator<T>::merge_blas(T max_dc, const Bla& x, const Bl
 }
 
 template <Complex T>
-auto BivariateLinearApproximator<T>::bla_exists(std::size_t m, std::size_t level) const -> bool {
+auto BivariateLinearApproximator<T>::bla_exists(unsigned m, std::size_t level) const -> bool {
     return level >= _first_level && m > 0 && m - 1 < _columns.size() && level - _first_level < _columns.at(m - 1).count;
 }
 
 template <Complex T>
-auto BivariateLinearApproximator<T>::bla_at(std::size_t m, std::size_t level) const -> const Bla* {
+auto BivariateLinearApproximator<T>::bla_at(unsigned m, std::size_t level) const -> const Bla* {
     if (bla_exists(m, level))
         return &_blas.at(_columns.at(m - 1).first + level - _first_level);
     return nullptr;
 }
 
 template <Complex T>
-auto BivariateLinearApproximator<T>::bla_at(std::size_t m, std::size_t level) -> Bla* {
+auto BivariateLinearApproximator<T>::bla_at(unsigned m, std::size_t level) -> Bla* {
     if (bla_exists(m, level))
         return &_blas.at(_columns.at(m - 1).first + level - _first_level);
     return nullptr;
