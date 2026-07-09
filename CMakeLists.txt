@@ -48,6 +48,7 @@ if(MSVC)
     add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>)
     add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:alignedNew->)
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "Embedded")
 endif()
 # TODO: Add optimization
 set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA compute capability")

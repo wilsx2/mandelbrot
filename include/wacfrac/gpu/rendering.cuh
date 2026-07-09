@@ -9,7 +9,6 @@
 #include <cuda/launch>
 #include <cuda/memory_pool>
 #include <cuda/std/span>
-#include <cuda/std/complex>
 #include <cuda/stream>
 #include <cstdio>
 #include <cstddef>

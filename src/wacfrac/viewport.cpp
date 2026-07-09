@@ -1,6 +1,5 @@
 #include "wacfrac/viewport.hpp"
 #include "wacfrac/log.hpp"
-#include <complex>
 #include <wacfrac/viewport.tpp>
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/types.hpp"
@@ -72,12 +71,12 @@ auto Viewport::required_iterations(double modifier, double factor, double expone
     return wacfrac::required_iterations(dimensions.real(), modifier, factor, exponent);
 }
 
-template auto Viewport::generate_probes<std::complex<float>>(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<float>>;
-template auto Viewport::generate_probes<std::complex<double>>(std::size_t cols, std::size_t rows) const -> std::vector<std::complex<double>>;
+template auto Viewport::generate_probes<SingleComplex>(std::size_t cols, std::size_t rows) const -> std::vector<SingleComplex>;
+template auto Viewport::generate_probes<DoubleComplex>(std::size_t cols, std::size_t rows) const -> std::vector<DoubleComplex>;
 template auto Viewport::generate_probes<DoubleExpComplex>(std::size_t cols, std::size_t rows) const -> std::vector<DoubleExpComplex>;
 
-template auto Viewport::find_periodic_reference<std::complex<float>>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<std::complex<float>>>;
-template auto Viewport::find_periodic_reference<std::complex<double>>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<std::complex<double>>>;
+template auto Viewport::find_periodic_reference<SingleComplex>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<SingleComplex>>;
+template auto Viewport::find_periodic_reference<DoubleComplex>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<DoubleComplex>>;
 template auto Viewport::find_periodic_reference<DoubleExpComplex>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<DoubleExpComplex>>;
 
 auto required_precision(MultiFloat zoom) -> std::size_t {

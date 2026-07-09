@@ -2,14 +2,13 @@
 #include "wacfrac/orbit.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/log.hpp"
-#include <complex>
 #include <vector>
 #include <barrier>
 #include <thread>
 
 namespace wacfrac {
 
-template <Complex T = std::complex<double>>
+template <Complex T = DoubleComplex>
 auto compute_reference(MultiComplex c, unsigned max_n, double escape_radius = 4.0) -> std::vector<T> {
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={}", c, max_n, escape_radius);
 
@@ -27,7 +26,7 @@ auto compute_reference(MultiComplex c, unsigned max_n, double escape_radius = 4.
     return reference;
 }
 
-template <Complex T = std::complex<double>>
+template <Complex T = DoubleComplex>
 auto compute_reference_mt(MultiComplex c, unsigned max_n, double escape_radius = 4.0) -> std::vector<T> {
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
     if (max_n == 0)
@@ -97,13 +96,13 @@ inline auto compute_reference_set(MultiComplex c, unsigned max_n, double escape_
     refs.float_ref.resize(max_n);
     refs.double_ref.resize(max_n);
     refs.dexp_ref.resize(max_n);
-    refs.float_ref[0]       = std::complex<float>{0.0f, 0.0f};
-    refs.double_ref[0]      = std::complex<double>{0.0, 0.0};
+    refs.float_ref[0]       = SingleComplex{0.0f, 0.0f};
+    refs.double_ref[0]      = DoubleComplex{0.0, 0.0};
     refs.dexp_ref[0]        = to_complex<DoubleExpComplex>(MultiComplex{0.0, 0.0});
 
     auto count = compute_reference_iteration(c, max_n, escape_radius, [&](unsigned n, const MultiFloat& r, const MultiFloat& i) {
-        refs.float_ref[n]       = std::complex<float>{to_real<float>(r), to_real<float>(i)};
-        refs.double_ref[n]      = std::complex<double>{to_real<double>(r), to_real<double>(i)};
+        refs.float_ref[n]       = SingleComplex{to_real<float>(r), to_real<float>(i)};
+        refs.double_ref[n]      = DoubleComplex{to_real<double>(r), to_real<double>(i)};
         refs.dexp_ref[n]        = DoubleExpComplex{to_real<DoubleExp>(r), to_real<DoubleExp>(i)};
     });
 

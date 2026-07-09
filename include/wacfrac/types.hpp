@@ -1,5 +1,6 @@
 #pragma once
 
+#include "wacfrac/complex_adapter.hpp"
 #include "wacfrac/complex_concept.hpp"
 #include "wacfrac/floatexp.hpp"
 
@@ -19,22 +20,22 @@ using DoubleExp = FloatExp<double, int64_t>;
 using MultiFloat   = boost::multiprecision::mpfr_float;
 
 // Complex Types
-using SingleComplex = std::complex<float>;
-using DoubleComplex = std::complex<double>;
+using SingleComplex = ComplexAdapter<float>;
+using DoubleComplex = ComplexAdapter<double>;
 using MultiComplex  = boost::multiprecision::mpc_complex;
 using SingleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<SingleExp>>;
 using DoubleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<DoubleExp>>;
 
 struct ReferenceSet {
-    std::vector<std::complex<float>> float_ref;
-    std::vector<std::complex<double>> double_ref;
+    std::vector<SingleComplex> float_ref;
+    std::vector<DoubleComplex> double_ref;
     std::vector<DoubleExpComplex> dexp_ref;
 
     template <typename T>
     auto select() const -> const std::vector<T>& {
-        if constexpr (std::is_same_v<T, std::complex<float>>)
+        if constexpr (std::is_same_v<T, SingleComplex>)
             return float_ref;
-        else if constexpr (std::is_same_v<T, std::complex<double>>)
+        else if constexpr (std::is_same_v<T, DoubleComplex>)
             return double_ref;
         else
             return dexp_ref;
@@ -42,17 +43,17 @@ struct ReferenceSet {
 
     template <typename T>
     auto select() -> std::vector<T>& {
-        if constexpr (std::is_same_v<T, std::complex<float>>)
+        if constexpr (std::is_same_v<T, SingleComplex>)
             return float_ref;
-        else if constexpr (std::is_same_v<T, std::complex<double>>)
+        else if constexpr (std::is_same_v<T, DoubleComplex>)
             return double_ref;
         else
             return dexp_ref;
     }
 
     void reserve(std::size_t size) {
-        select<std::complex<float>>().reserve(size);
-        select<std::complex<double>>().reserve(size);
+        select<SingleComplex>().reserve(size);
+        select<DoubleComplex>().reserve(size);
         select<DoubleExpComplex>().reserve(size);
     }
 };

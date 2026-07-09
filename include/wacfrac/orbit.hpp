@@ -7,11 +7,9 @@
 #include <cstddef>
 
 #if defined(__CUDACC__)
-    #include <cuda/std/complex>
     #include <cuda/std/span>
     #define STD cuda::std
 #else 
-    #include <complex>
     #include <span>
     #define STD std
 #endif
@@ -30,7 +28,7 @@ void compute_next_orbit(T& z, unsigned& n, const T& c) {
     ++n;
 }
 
-template <Complex T = std::complex<double>>
+template <Complex T = ComplexAdapter<double>>
 #if defined(__CUDACC__)
 __forceinline__ __host__ __device__
 #else
@@ -42,7 +40,7 @@ void compute_next_perturbation(T& z, T& dz, unsigned& n, const T& dc, STD::span<
     ++n;
 }
 
-template <Complex T = std::complex<double>>
+template <Complex T = ComplexAdapter<double>>
 #if defined(__CUDACC__)
 __forceinline__ __host__ __device__
 #else
@@ -80,11 +78,12 @@ __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-auto escape_generic(T z, unsigned max_n, double escape_radius, F&& next_orbit) -> STD::pair<STD::complex<float>, unsigned> {
+auto escape_generic(T z, unsigned max_n, double escape_radius, F&& next_orbit) -> STD::pair<ComplexAdapter<float>, unsigned> {
     unsigned n {0u};
     while (n < max_n && !escaped(z, escape_radius))
         next_orbit(z, n);
-    return STD::make_pair(static_cast<STD::complex<float>>(z), n);
+    return STD::make_pair(
+        ComplexAdapter<float>{static_cast<float>(z.real()), static_cast<float>(z.imag())}, n);
 }
 
 template <Complex T>
@@ -93,7 +92,7 @@ __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-auto escape(const T& c, unsigned max_n, double escape_radius) -> STD::pair<STD::complex<float>, unsigned> {
+auto escape(const T& c, unsigned max_n, double escape_radius) -> STD::pair<ComplexAdapter<float>, unsigned> {
     return escape_generic<T>(0.0, max_n, escape_radius,
         [&c](T& z, unsigned& n){
             compute_next_orbit(z, n, c);
@@ -106,7 +105,7 @@ __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-auto escape_perturbed(const T& dc, STD::span<const T> ref, unsigned max_n, double escape_radius) -> STD::pair<STD::complex<float>, unsigned> {
+auto escape_perturbed(const T& dc, STD::span<const T> ref, unsigned max_n, double escape_radius) -> STD::pair<ComplexAdapter<float>, unsigned> {
     unsigned ref_n {0u};
     T dz {0.0};
     T z {ref[ref_n] + dz};

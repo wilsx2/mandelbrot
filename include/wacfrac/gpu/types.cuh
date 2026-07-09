@@ -1,5 +1,6 @@
 #pragma once
 
+#include "wacfrac/complex_adapter.hpp"
 #include <cccl/cuda/__container/buffer.h>
 #include <cccl/cuda/__device/device_ref.h>
 #include <cccl/cuda/__stream/stream.h>
@@ -7,7 +8,6 @@
 #include <cuda/stream>
 #include <cuda/memory_pool>
 #include <cuda/buffer>
-#include <cuda/std/complex>
 #include <type_traits>
 
 namespace wacfrac::gpu {
@@ -15,8 +15,8 @@ namespace wacfrac::gpu {
 struct ReferenceSet {
     cuda::device_ref device;
     cuda::stream_ref stream;
-    cuda::device_buffer<cuda::std::complex<float>> float_ref;
-    cuda::device_buffer<cuda::std::complex<double>> double_ref;
+    cuda::device_buffer<wacfrac::ComplexAdapter<float>> float_ref;
+    cuda::device_buffer<wacfrac::ComplexAdapter<double>> double_ref;
 
     ReferenceSet(cuda::device_ref device, cuda::stream_ref stream)
         : device(device)
@@ -27,7 +27,7 @@ struct ReferenceSet {
 
     template <typename T>
     auto select() const -> const auto& {
-        if constexpr (std::is_same_v<T, cuda::std::complex<float>>)
+        if constexpr (std::is_same_v<T, wacfrac::ComplexAdapter<float>>)
             return float_ref;
         else
             return double_ref;
@@ -35,7 +35,7 @@ struct ReferenceSet {
 
     template <typename T>
     auto select() -> auto& {
-        if constexpr (std::is_same_v<T, cuda::std::complex<float>>)
+        if constexpr (std::is_same_v<T, wacfrac::ComplexAdapter<float>>)
             return float_ref;
         else
             return double_ref;
@@ -52,8 +52,8 @@ struct ReferenceSet {
     }
 
     void reserve(std::size_t size) {
-        reserve<cuda::std::complex<float>>(size);
-        reserve<cuda::std::complex<double>>(size);
+        reserve<wacfrac::ComplexAdapter<float>>(size);
+        reserve<wacfrac::ComplexAdapter<double>>(size);
     }
 };
 

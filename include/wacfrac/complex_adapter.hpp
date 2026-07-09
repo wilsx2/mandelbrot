@@ -1,7 +1,7 @@
 #pragma once
 
 #include "wacfrac/hd_macro.hpp"
-#include <complex>
+#include <cmath>
 #include <format>
 
 namespace wacfrac {
@@ -18,12 +18,37 @@ class ComplexAdapter {
     WACFRAC_HD ComplexAdapter() : _real(0), _imag(0) {}
     WACFRAC_HD ComplexAdapter(const T& n) : _real(n), _imag(0) {}
     WACFRAC_HD ComplexAdapter(const T& r, const T& i) : _real(r), _imag(i) {}
-    WACFRAC_HD ComplexAdapter(const ComplexAdapter&) = default;
-    WACFRAC_HD ComplexAdapter& operator=(const ComplexAdapter&) = default;
+    ComplexAdapter(const ComplexAdapter& rhs) = default;
+    template<typename U>
+    WACFRAC_HD ComplexAdapter(const ComplexAdapter<U>& other)
+        : _real(static_cast<T>(other.real())), _imag(static_cast<T>(other.imag())) {}
+    ComplexAdapter& operator=(const ComplexAdapter&) = default;
     WACFRAC_HD
     auto& operator=(const T& n) {
         _real = n;
         _imag = 0;
+        return *this;
+    }
+    WACFRAC_HD
+    auto& operator+=(const T& rhs) noexcept {
+        _real += rhs;
+        return *this;
+    }
+    WACFRAC_HD
+    auto& operator-=(const T& rhs) noexcept {
+        _real -= rhs;
+        return *this;
+    }
+    WACFRAC_HD
+    auto& operator*=(const T& rhs) noexcept {
+        _real *= rhs;
+        _imag *= rhs;
+        return *this;
+    }
+    WACFRAC_HD
+    auto& operator/=(const T& rhs) {
+        _real /= rhs;
+        _imag /= rhs;
         return *this;
     }
     WACFRAC_HD
@@ -79,10 +104,7 @@ class ComplexAdapter {
     const auto& imag() const {
         return _imag;
     }
-    template<typename U> // TODO: Delete
-    operator std::complex<U>() const {
-        return {static_cast<U>(_real), static_cast<U>(_imag)};
-    }
+
 };
 
 template<typename T>
@@ -111,15 +133,57 @@ inline auto operator/(ComplexAdapter<T> lhs, const ComplexAdapter<T>& rhs) {
 
 template<typename T>
 WACFRAC_HD 
+inline auto operator+(ComplexAdapter<T> lhs, const T& rhs) {
+    return lhs += rhs;
+}
+
+template<typename T>
+WACFRAC_HD 
+inline auto operator+(const T& lhs, ComplexAdapter<T> rhs) {
+    return rhs += lhs;
+}
+
+template<typename T>
+WACFRAC_HD 
+inline auto operator-(ComplexAdapter<T> lhs, const T& rhs) {
+    return lhs -= rhs;
+}
+
+template<typename T>
+WACFRAC_HD 
+inline auto operator-(const T& lhs, ComplexAdapter<T> rhs) {
+    return -(rhs -= lhs);
+}
+
+template<typename T>
+WACFRAC_HD 
+inline auto operator*(ComplexAdapter<T> lhs, const T& rhs) {
+    return lhs *= rhs;
+}
+
+template<typename T>
+WACFRAC_HD 
+inline auto operator*(const T& lhs, ComplexAdapter<T> rhs) {
+    return rhs *= lhs;
+}
+
+template<typename T>
+WACFRAC_HD 
+inline auto operator/(ComplexAdapter<T> lhs, const T& rhs) {
+    return lhs /= rhs;
+}
+
+template<typename T>
+WACFRAC_HD 
 inline auto abs(const ComplexAdapter<T>& a) {
-    return a.real()*a.real() + a.imag()*a.imag();
+    using std::sqrt;
+    return sqrt(a.real()*a.real() + a.imag()*a.imag());
 }
 
 template<typename T>
 WACFRAC_HD 
 inline auto norm(const ComplexAdapter<T>& a) {
-    using namespace std;
-    return sqrt(abs(a));
+    return a.real()*a.real() + a.imag()*a.imag();
 }
 
 } // namespace wacfrac

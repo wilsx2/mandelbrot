@@ -10,8 +10,8 @@ namespace {
 
 template <typename T>
 constexpr auto type_short_name() -> std::string_view {
-    if constexpr (std::is_same_v<T, std::complex<float>>) return "single";
-    if constexpr (std::is_same_v<T, std::complex<double>>) return "double";
+    if constexpr (std::is_same_v<T, wacfrac::ComplexAdapter<float>>) return "single";
+    if constexpr (std::is_same_v<T, wacfrac::ComplexAdapter<double>>) return "double";
     if constexpr (std::is_same_v<T, wacfrac::DoubleExpComplex>) return "dexp";
     return "unknown";
 }
@@ -65,8 +65,8 @@ static void compute_next_orbit(benchmark::State& state) {
         benchmark::DoNotOptimize(c);
     }
 }
-BENCHMARK_TEMPLATE(compute_next_orbit, std::complex<float>);
-BENCHMARK_TEMPLATE(compute_next_orbit, std::complex<double>);
+BENCHMARK_TEMPLATE(compute_next_orbit, wacfrac::ComplexAdapter<float>);
+BENCHMARK_TEMPLATE(compute_next_orbit, wacfrac::ComplexAdapter<double>);
 BENCHMARK_TEMPLATE(compute_next_orbit, wacfrac::DoubleExpComplex);
 #ifdef BOOST_MP_HAVE_MPC
 BENCHMARK_TEMPLATE(compute_next_orbit, boost::multiprecision::mpc_complex_100);
@@ -83,8 +83,8 @@ static void compute_next_dz(benchmark::State& state) {
         benchmark::DoNotOptimize(dz_n);
     }
 }
-BENCHMARK_TEMPLATE(compute_next_dz, std::complex<float>);
-BENCHMARK_TEMPLATE(compute_next_dz, std::complex<double>);
+BENCHMARK_TEMPLATE(compute_next_dz, wacfrac::ComplexAdapter<float>);
+BENCHMARK_TEMPLATE(compute_next_dz, wacfrac::ComplexAdapter<double>);
 BENCHMARK_TEMPLATE(compute_next_dz, wacfrac::DoubleExpComplex);
 
 template<wacfrac::Complex T>
@@ -97,8 +97,8 @@ static void compute_reference_bench(benchmark::State& state) {
         benchmark::DoNotOptimize(ref);
     }
 }
-BENCHMARK_TEMPLATE(compute_reference_bench, std::complex<float>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(compute_reference_bench, std::complex<double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference_bench, wacfrac::ComplexAdapter<float>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference_bench, wacfrac::ComplexAdapter<double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(compute_reference_bench, wacfrac::DoubleExpComplex)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 
 template<wacfrac::Complex T>
@@ -111,8 +111,8 @@ static void compute_reference_mt_bench(benchmark::State& state) {
         benchmark::DoNotOptimize(ref);
     }
 }
-BENCHMARK_TEMPLATE(compute_reference_mt_bench, std::complex<float>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(compute_reference_mt_bench, std::complex<double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference_mt_bench, wacfrac::ComplexAdapter<float>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(compute_reference_mt_bench, wacfrac::ComplexAdapter<double>)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(compute_reference_mt_bench, wacfrac::DoubleExpComplex)->RangeMultiplier(2)->Range(0, 1024)->Unit(benchmark::kMillisecond);
 
 static void find_period(benchmark::State& state) {
@@ -170,12 +170,12 @@ static void compute_bla_coefficients(benchmark::State& state) {
         benchmark::DoNotOptimize(bla);
     }
 }
-BENCHMARK_TEMPLATE(compute_bla_coefficients, std::complex<float>)->ArgsProduct({
+BENCHMARK_TEMPLATE(compute_bla_coefficients, wacfrac::ComplexAdapter<float>)->ArgsProduct({
     {0, 25, 125, 250, 500, 1000, 2000}, // Zoom Factor Exponent
     {1, 2, 4, 8}, // Probe Rows/Cols
     {1, 2, 4, 8}, // Tolerance Negative Exponent
 })->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(compute_bla_coefficients, std::complex<double>)->ArgsProduct({
+BENCHMARK_TEMPLATE(compute_bla_coefficients, wacfrac::ComplexAdapter<double>)->ArgsProduct({
     {0, 25, 125, 250, 500, 1000, 2000}, // Zoom Factor Exponent
     {1, 2, 4, 8}, // Probe Rows/Cols
     {1, 2, 4, 8}, // Tolerance Negative Exponent
@@ -211,8 +211,8 @@ static void render_phase_direct(benchmark::State& state) {
     write_output(std::format("phase_direct_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
     state.ResumeTiming();
 }
-BENCHMARK_TEMPLATE(render_phase_direct, std::complex<float>)->ArgsProduct({{0, 10, 25}, {32, 64, 128}})->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(render_phase_direct, std::complex<double>)->ArgsProduct({{0, 10, 25}, {32, 64, 128}})->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(render_phase_direct, wacfrac::ComplexAdapter<float>)->ArgsProduct({{0, 10, 25}, {32, 64, 128}})->Unit(benchmark::kMillisecond);
+BENCHMARK_TEMPLATE(render_phase_direct, wacfrac::ComplexAdapter<double>)->ArgsProduct({{0, 10, 25}, {32, 64, 128}})->Unit(benchmark::kMillisecond);
 
 template <wacfrac::Complex T>
 static void render_phase_perturbed(benchmark::State& state) {
@@ -311,7 +311,6 @@ static void e2e_direct(benchmark::State& state) {
     state.ResumeTiming();
 }
 BENCHMARK_TEMPLATE(e2e_direct, wacfrac::ComplexAdapter<double>)->ArgsProduct({{0}, {32, 64}})->Unit(benchmark::kMillisecond);
-BENCHMARK_TEMPLATE(e2e_direct, std::complex<double>)->ArgsProduct({{0}, {32, 64}})->Unit(benchmark::kMillisecond);
 
 template <wacfrac::Complex T>
 static void e2e_perturbed(benchmark::State& state) {

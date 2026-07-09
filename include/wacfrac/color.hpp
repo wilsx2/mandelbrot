@@ -1,16 +1,15 @@
 #pragma once
 
+#include "wacfrac/complex_adapter.hpp"
 #include <cstdint>
 #include <cstddef>
 #include <initializer_list>
 #include <vector>
 
 #if defined(__CUDACC__)
-    #include <cuda/std/complex>
     #include <cuda/std/span>
     #define STD cuda::std
 #else 
-    #include <complex>
     #include <span>
     #define STD std
 #endif
@@ -54,11 +53,11 @@ inline auto colorize_discrete(unsigned n, unsigned max_n, STD::span<const Pixel>
 #if defined(__CUDACC__)
 __host__ __device__
 #endif 
-inline auto colorize_continuous(STD::complex<float> z, unsigned n, unsigned max_n, STD::span<const Pixel> palette) -> Pixel
+inline auto colorize_continuous(ComplexAdapter<float> z, unsigned n, unsigned max_n, STD::span<const Pixel> palette) -> Pixel
 {
     if (n == max_n)
         return palette.back();
-    auto cont_n {n - STD::log(std::log(STD::abs(z))) / STD::log(2.0)};
+    auto cont_n {n - STD::log(std::log(abs(z))) / STD::log(2.0)};
     auto n1     {static_cast<unsigned>(STD::floor(cont_n))};
     auto n2     {static_cast<unsigned>(STD::ceil(cont_n))};
     auto color1 {palette[n1 % palette.size()]};

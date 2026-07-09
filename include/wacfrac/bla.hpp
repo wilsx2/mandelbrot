@@ -1,13 +1,12 @@
 #pragma once
 
 #include <wacfrac/orbit.hpp>
-#include <complex>
 #include <vector>
 #include <optional>
 
 namespace wacfrac {
 
-template <Complex T = std::complex<float>>
+template <Complex T = SingleComplex>
 class BivariateLinearApproximator {
     public:
     BivariateLinearApproximator(ComplexValueTypeT<T> epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0, double escape_radius = 2.0);

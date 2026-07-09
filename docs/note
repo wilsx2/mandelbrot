@@ -10,6 +10,7 @@ July
         X Direct Escape
         X Perturbed Escape
         - Generalize to many types
+            X float
             - FloatExp
         - BLA
     - Benchmark
@@ -27,7 +28,6 @@ July
 - Type traits for float type -> complex conversion
 - Move most things to headers to allow for inlining optimizations
 - Make as many functions/classes as possible compatible with CUDA and C++ code (DRY)
-- Switch to unsigned int for iterations, especially in GPU code
 - ? Cache BLAs coefficients (if BLA calculation becomes a bottleneck)
   ? Fix glitch (if existence becomes evident)
 - ? Use periods (if above)

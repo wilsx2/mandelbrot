@@ -14,7 +14,6 @@
 #include <cccl/cuda/__memory_pool/pinned_memory_pool.h>
 #include <cccl/cuda/__memory_resource/shared_resource.h>
 #include <cccl/cuda/__utility/no_init.h>
-#include <complex>
 #include <cuda/buffer>
 #include <cuda/devices>
 #include <cuda/memory_pool>
@@ -99,13 +98,13 @@ struct GpuRenderer::Impl {
         auto& host_ref {host_references.select<T>()};
         auto& device_ref {device_references.select<T>()};
         host_ref.insert(host_ref.end(), reference.begin(), reference.end());
-        device_ref = cuda::make_buffer<cuda::std::complex<double>>(
+        device_ref = cuda::make_buffer<wacfrac::ComplexAdapter<double>>(
             stream, cuda::device_default_memory_pool(device),
             host_ref.begin(), host_ref.end());
     }
 
     inline void copy_references(const ReferenceSet& references) {
-        copy_reference<std::complex<double>>(references.select<std::complex<double>>());
+        copy_reference<DoubleComplex>(references.select<DoubleComplex>());
     }
 };
 
@@ -118,14 +117,14 @@ auto GpuRenderer::render_direct(const Viewport& view, unsigned max_n) -> std::sp
     return _pimpl->render_direct<T>(view, max_n);
 }
 template
-auto GpuRenderer::render_direct<cuda::std::complex<double>>(const Viewport& view, unsigned max_n) -> std::span<Pixel>;
+auto GpuRenderer::render_direct<DoubleComplex>(const Viewport& view, unsigned max_n) -> std::span<Pixel>;
 
 template <Complex T>
 auto GpuRenderer::render_perturbed(const Viewport& view, unsigned max_n) -> std::span<Pixel> {
     return _pimpl->render_perturbed<T>(view, max_n);
 }
 template
-auto GpuRenderer::render_perturbed<cuda::std::complex<double>>(const Viewport& view, unsigned max_n) -> std::span<Pixel>;
+auto GpuRenderer::render_perturbed<DoubleComplex>(const Viewport& view, unsigned max_n) -> std::span<Pixel>;
 
 void GpuRenderer::copy_references(const ReferenceSet& references) {
     _pimpl->copy_references(references);
