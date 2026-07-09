@@ -41,7 +41,7 @@ struct GpuRenderer::Impl {
         wacfrac::logging::debug("Constructed GpuRender::Impl");
     } 
 
-    template <Complex T>
+    template <ComplexConcept T>
     inline auto render_direct(const Viewport& view, unsigned max_n) -> std::span<Pixel> {
         using CT = ComplexValueTypeT<T>;
         MultiComplex start_mc {view.center - view.dimensions / 2.0};
@@ -66,7 +66,7 @@ struct GpuRenderer::Impl {
         return pixels;
     }
 
-    template <Complex T>
+    template <ComplexConcept T>
     inline auto render_perturbed(const Viewport& view, unsigned max_n) -> std::span<Pixel> {
         using CT = ComplexValueTypeT<T>;
         T ref_c {to_complex<T>(view.center)};
@@ -93,12 +93,12 @@ struct GpuRenderer::Impl {
         device_references.reserve(n);
     }
 
-    template <Complex T>
+    template <ComplexConcept T>
     inline void copy_reference(std::span<const T> reference) {
         auto& host_ref {host_references.select<T>()};
         auto& device_ref {device_references.select<T>()};
         host_ref.insert(host_ref.end(), reference.begin(), reference.end());
-        device_ref = cuda::make_buffer<wacfrac::ComplexAdapter<double>>(
+        device_ref = cuda::make_buffer<wacfrac::Complex<double>>(
             stream, cuda::device_default_memory_pool(device),
             host_ref.begin(), host_ref.end());
     }
@@ -112,14 +112,14 @@ GpuRenderer::GpuRenderer(int device_id, const Resolution& resolution, const std:
     : _pimpl(std::make_unique<Impl>(device_id, resolution, palette, reference_capacity)) {}
 GpuRenderer::~GpuRenderer() = default;
 
-template <Complex T>
+template <ComplexConcept T>
 auto GpuRenderer::render_direct(const Viewport& view, unsigned max_n) -> std::span<Pixel> {
     return _pimpl->render_direct<T>(view, max_n);
 }
 template
 auto GpuRenderer::render_direct<DoubleComplex>(const Viewport& view, unsigned max_n) -> std::span<Pixel>;
 
-template <Complex T>
+template <ComplexConcept T>
 auto GpuRenderer::render_perturbed(const Viewport& view, unsigned max_n) -> std::span<Pixel> {
     return _pimpl->render_perturbed<T>(view, max_n);
 }

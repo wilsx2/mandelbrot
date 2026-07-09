@@ -1,3 +1,4 @@
+#include "wacfrac/complex_concept.hpp"
 #include "wacfrac/viewport.hpp"
 #include "wacfrac/log.hpp"
 #include "wacfrac/reference.hpp"
@@ -7,7 +8,7 @@
 
 namespace wacfrac {
 
-template<Complex T>
+template<ComplexConcept T>
 auto Viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<T> {
     using CT = ComplexValueTypeT<T>;
     std::vector<T> probes;
@@ -40,7 +41,7 @@ auto Viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std:
 }
 
 // https://philthompson.me/2023/Faster-Mandelbrot-Set-Rendering-with-BLA-Bivariate-Linear-Approximation.html
-template<Complex T>
+template<ComplexConcept T>
 auto Viewport::find_periodic_reference(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<T>> {
     using boost::multiprecision::isnan;
     logging::info( "Searching for periodic reference (max_n={}, nucleus_iter={})", max_n, find_nucleus_iter);

@@ -17,7 +17,7 @@
 namespace wacfrac
 {
 
-template <Complex T>
+template <ComplexConcept T>
 #if defined(__CUDACC__)
 __forceinline__ __host__ __device__
 #else
@@ -28,7 +28,7 @@ void compute_next_orbit(T& z, unsigned& n, const T& c) {
     ++n;
 }
 
-template <Complex T = ComplexAdapter<double>>
+template <ComplexConcept T = DoubleComplex>
 #if defined(__CUDACC__)
 __forceinline__ __host__ __device__
 #else
@@ -40,7 +40,7 @@ void compute_next_perturbation(T& z, T& dz, unsigned& n, const T& dc, STD::span<
     ++n;
 }
 
-template <Complex T = ComplexAdapter<double>>
+template <ComplexConcept T = DoubleComplex>
 #if defined(__CUDACC__)
 __forceinline__ __host__ __device__
 #else
@@ -62,7 +62,7 @@ void rebase_perturbation(T& z, T& dz, STD::span<const T> ref, unsigned& ref_n) {
     }
 }
 
-template <Complex T>
+template <ComplexConcept T>
 #if defined(__CUDACC__)
 __forceinline__ __host__ __device__
 #else
@@ -72,40 +72,40 @@ auto escaped(const T& z, double escape_radius) -> bool {
     return norm(z) > escape_radius;
 }
 
-template <Complex T, std::invocable<T&, unsigned&> F>
+template <ComplexConcept T, std::invocable<T&, unsigned&> F>
 #if defined(__CUDACC__)
 __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-auto escape_generic(T z, unsigned max_n, double escape_radius, F&& next_orbit) -> STD::pair<ComplexAdapter<float>, unsigned> {
+auto escape_generic(T z, unsigned max_n, double escape_radius, F&& next_orbit) -> STD::pair<Complex<float>, unsigned> {
     unsigned n {0u};
     while (n < max_n && !escaped(z, escape_radius))
         next_orbit(z, n);
     return STD::make_pair(
-        ComplexAdapter<float>{static_cast<float>(z.real()), static_cast<float>(z.imag())}, n);
+        SingleComplex{static_cast<float>(z.real()), static_cast<float>(z.imag())}, n);
 }
 
-template <Complex T>
+template <ComplexConcept T>
 #if defined(__CUDACC__)
 __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-auto escape(const T& c, unsigned max_n, double escape_radius) -> STD::pair<ComplexAdapter<float>, unsigned> {
+auto escape(const T& c, unsigned max_n, double escape_radius) -> STD::pair<Complex<float>, unsigned> {
     return escape_generic<T>(0.0, max_n, escape_radius,
         [&c](T& z, unsigned& n){
             compute_next_orbit(z, n, c);
         });
 }
 
-template <Complex T>
+template <ComplexConcept T>
 #if defined(__CUDACC__)
 __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-auto escape_perturbed(const T& dc, STD::span<const T> ref, unsigned max_n, double escape_radius) -> STD::pair<ComplexAdapter<float>, unsigned> {
+auto escape_perturbed(const T& dc, STD::span<const T> ref, unsigned max_n, double escape_radius) -> STD::pair<Complex<float>, unsigned> {
     unsigned ref_n {0u};
     T dz {0.0};
     T z {ref[ref_n] + dz};

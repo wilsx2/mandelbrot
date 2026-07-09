@@ -22,9 +22,9 @@ struct Viewport {
     auto compute_max_dc(MultiComplex c) const -> MultiComplex;
     auto required_precision() const -> std::size_t;
     auto required_iterations(double modifier = 250.0, double factor = 50.0, double exponent = 1.5) const -> unsigned;
-    template<Complex T>
+    template<ComplexConcept T>
     auto generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<T>;
-    template<Complex T>
+    template<ComplexConcept T>
     auto find_periodic_reference(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<T>>;
 };
 auto required_precision(MultiFloat zoom_factor) -> std::size_t;

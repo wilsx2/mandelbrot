@@ -11,9 +11,9 @@ class GpuRenderer {
     static auto device_count() -> int;
     GpuRenderer(int device_id, const Resolution& resolution, const std::vector<Pixel>& palette, std::size_t reference_capacity = 0);
     ~GpuRenderer();
-    template <Complex T>
+    template <ComplexConcept T>
     auto render_direct(const Viewport&, unsigned max_n) -> std::span<Pixel>;
-    template <Complex T>
+    template <ComplexConcept T>
     auto render_perturbed(const Viewport&, unsigned max_n) -> std::span<Pixel>;
     void copy_references(const ReferenceSet&);
     void reserve_references(std::size_t n);

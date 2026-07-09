@@ -13,7 +13,7 @@
 namespace wacfrac
 {
 
-template <Complex T>
+template <ComplexConcept T>
 auto sample_c_values(const Viewport& view, const Resolution& res, T center = 0.0) {
     using CT = ComplexValueTypeT<T>;
     auto start {to_complex<T>(view.sample(0, 0, res.width, res.height)) - T(center)};

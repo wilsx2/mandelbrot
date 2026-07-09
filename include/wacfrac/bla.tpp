@@ -11,7 +11,7 @@
 
 namespace wacfrac {
 
-template <Complex T>
+template <ComplexConcept T>
 BivariateLinearApproximator<T>::BivariateLinearApproximator(const std::vector<T>& ref, std::size_t first_level, double escape_radius)
     : _ref(ref)
     , _first_level(first_level)
@@ -31,7 +31,7 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(const std::vector<T>
     _blas.resize(i);
 }
 
-template <Complex T>
+template <ComplexConcept T>
 BivariateLinearApproximator<T>::BivariateLinearApproximator(ComplexValueTypeT<T> epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level, double escape_radius)
     : BivariateLinearApproximator(ref, first_level, escape_radius)
 {
@@ -40,7 +40,7 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(ComplexValueTypeT<T>
     logging::debug( "BLA computed: {} coefficients across {} columns, levels {}-{}", _blas.size(), _columns.size(), _first_level, _last_level);
 }
 
-template <Complex T>
+template <ComplexConcept T>
 BivariateLinearApproximator<T>::BivariateLinearApproximator(
     double lower_exp, double upper_exp, double tolerance,
     const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level, double escape_radius)
@@ -103,7 +103,7 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(
     logging::info( "BLA epsilon search complete");
 }
 
-template <Complex T>
+template <ComplexConcept T>
 auto BivariateLinearApproximator<T>::escape_approximate(T dc) const -> std::tuple<T, unsigned, unsigned> {
     unsigned ref_n {0u};
     unsigned n {0u};
@@ -125,7 +125,7 @@ auto BivariateLinearApproximator<T>::escape_approximate(T dc) const -> std::tupl
     return std::make_tuple(dz, n, skipped);
 }
 
-template <Complex T>
+template <ComplexConcept T>
 auto BivariateLinearApproximator<T>::compute_zn(T dc, T dzm, unsigned m) const -> std::optional<std::pair<T, unsigned>> {
     auto bla = bla_at(m, _first_level);
     if (!bla || !bla->is_valid(dzm))
@@ -147,7 +147,7 @@ auto BivariateLinearApproximator<T>::compute_zn(T dc, T dzm, unsigned m) const -
     return {{bla->approximate_dzn(dzm, dc), n}};
 }
 
-template <Complex T>
+template <ComplexConcept T>
 auto BivariateLinearApproximator<T>::compute_bla(ComplexValueTypeT<T> epsilon, T max_dc, unsigned m, unsigned n) const -> Bla {
     using Real = ComplexValueTypeT<T>;
     using std::abs;
@@ -161,7 +161,7 @@ auto BivariateLinearApproximator<T>::compute_bla(ComplexValueTypeT<T> epsilon, T
     return {a, b, r};
 }
 
-template <Complex T>
+template <ComplexConcept T>
 auto BivariateLinearApproximator<T>::compute_blas(ComplexValueTypeT<T> epsilon, T max_dc) -> void {
     std::vector<Bla> current_level (_ref->get().size() - 2);
     for (auto m : std::views::iota(1uz, _ref->get().size() - 1)) {
@@ -188,7 +188,7 @@ auto BivariateLinearApproximator<T>::compute_blas(ComplexValueTypeT<T> epsilon, 
     _blas.shrink_to_fit();
 }
 
-template <Complex T>
+template <ComplexConcept T>
 auto BivariateLinearApproximator<T>::merge_blas(T max_dc, const Bla& x, const Bla& y) const -> Bla {
     using Real = ComplexValueTypeT<T>;
     using std::abs;
@@ -201,19 +201,19 @@ auto BivariateLinearApproximator<T>::merge_blas(T max_dc, const Bla& x, const Bl
     return {a, b, r};
 }
 
-template <Complex T>
+template <ComplexConcept T>
 auto BivariateLinearApproximator<T>::bla_exists(unsigned m, std::size_t level) const -> bool {
     return level >= _first_level && m > 0 && m - 1 < _columns.size() && level - _first_level < _columns.at(m - 1).count;
 }
 
-template <Complex T>
+template <ComplexConcept T>
 auto BivariateLinearApproximator<T>::bla_at(unsigned m, std::size_t level) const -> const Bla* {
     if (bla_exists(m, level))
         return &_blas.at(_columns.at(m - 1).first + level - _first_level);
     return nullptr;
 }
 
-template <Complex T>
+template <ComplexConcept T>
 auto BivariateLinearApproximator<T>::bla_at(unsigned m, std::size_t level) -> Bla* {
     if (bla_exists(m, level))
         return &_blas.at(_columns.at(m - 1).first + level - _first_level);

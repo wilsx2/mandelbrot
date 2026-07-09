@@ -19,7 +19,7 @@ namespace gpu {
 
 constexpr auto ESCAPE_RADIUS {4.0};
 
-template <Complex T>
+template <ComplexConcept T>
 __inline__ __device__
 auto sample_c_value(std::size_t idx,
                     std::size_t row_width,
@@ -33,7 +33,7 @@ auto sample_c_value(std::size_t idx,
     };
 }
 
-template <Complex T, typename Config>
+template <ComplexConcept T, typename Config>
 __global__
 void render_direct(Config config,
             cuda::std::span<Pixel> pixels,
@@ -57,7 +57,7 @@ void render_direct(Config config,
     }
 }
 
-template <Complex T, typename Config>
+template <ComplexConcept T, typename Config>
 __global__
 void render_perturbed(Config config,
             cuda::std::span<Pixel> pixels,

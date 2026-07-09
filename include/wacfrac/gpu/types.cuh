@@ -15,8 +15,8 @@ namespace wacfrac::gpu {
 struct ReferenceSet {
     cuda::device_ref device;
     cuda::stream_ref stream;
-    cuda::device_buffer<wacfrac::ComplexAdapter<float>> float_ref;
-    cuda::device_buffer<wacfrac::ComplexAdapter<double>> double_ref;
+    cuda::device_buffer<wacfrac::Complex<float>> float_ref;
+    cuda::device_buffer<wacfrac::Complex<double>> double_ref;
 
     ReferenceSet(cuda::device_ref device, cuda::stream_ref stream)
         : device(device)
@@ -27,7 +27,7 @@ struct ReferenceSet {
 
     template <typename T>
     auto select() const -> const auto& {
-        if constexpr (std::is_same_v<T, wacfrac::ComplexAdapter<float>>)
+        if constexpr (std::is_same_v<T, wacfrac::Complex<float>>)
             return float_ref;
         else
             return double_ref;
@@ -35,7 +35,7 @@ struct ReferenceSet {
 
     template <typename T>
     auto select() -> auto& {
-        if constexpr (std::is_same_v<T, wacfrac::ComplexAdapter<float>>)
+        if constexpr (std::is_same_v<T, wacfrac::Complex<float>>)
             return float_ref;
         else
             return double_ref;
@@ -52,8 +52,8 @@ struct ReferenceSet {
     }
 
     void reserve(std::size_t size) {
-        reserve<wacfrac::ComplexAdapter<float>>(size);
-        reserve<wacfrac::ComplexAdapter<double>>(size);
+        reserve<wacfrac::Complex<float>>(size);
+        reserve<wacfrac::Complex<double>>(size);
     }
 };
 

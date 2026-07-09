@@ -24,7 +24,7 @@ template <typename T>
 using ComplexValueTypeT = typename ComplexValueType<T>::type;
 
 template <typename T>
-concept Complex = requires(T a, T b) {
+concept ComplexConcept = requires(T a, T b) {
     { a.real() };
     { a.imag() };
     { norm(a) };

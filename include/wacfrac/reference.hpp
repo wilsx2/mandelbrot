@@ -8,7 +8,7 @@
 
 namespace wacfrac {
 
-template <Complex T = DoubleComplex>
+template <ComplexConcept T = DoubleComplex>
 auto compute_reference(MultiComplex c, unsigned max_n, double escape_radius = 4.0) -> std::vector<T> {
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={}", c, max_n, escape_radius);
 
@@ -26,7 +26,7 @@ auto compute_reference(MultiComplex c, unsigned max_n, double escape_radius = 4.
     return reference;
 }
 
-template <Complex T = DoubleComplex>
+template <ComplexConcept T = DoubleComplex>
 auto compute_reference_mt(MultiComplex c, unsigned max_n, double escape_radius = 4.0) -> std::vector<T> {
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
     if (max_n == 0)

@@ -53,7 +53,7 @@ inline auto colorize_discrete(unsigned n, unsigned max_n, STD::span<const Pixel>
 #if defined(__CUDACC__)
 __host__ __device__
 #endif 
-inline auto colorize_continuous(ComplexAdapter<float> z, unsigned n, unsigned max_n, STD::span<const Pixel> palette) -> Pixel
+inline auto colorize_continuous(Complex<float> z, unsigned n, unsigned max_n, STD::span<const Pixel> palette) -> Pixel
 {
     if (n == max_n)
         return palette.back();

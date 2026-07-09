@@ -59,7 +59,7 @@ void render_image(const wacfrac::ImageOptions& opts) {
 
     auto start = std::chrono::steady_clock::now();
     with_numeric_type(num_type, [&]<typename T>(NumericTypeTag<T>){
-        std::vector<std::pair<wacfrac::ComplexAdapter<float>, unsigned>> escaped_orbits;
+        std::vector<std::pair<wacfrac::Complex<float>, unsigned>> escaped_orbits;
         escaped_orbits.reserve(pixels.size());
 
         if (render_type == wacfrac::RenderType::Direct) {
@@ -104,7 +104,7 @@ void render_image(const wacfrac::ImageOptions& opts) {
                 for (auto dc : dcs) {
                     auto [z, n, _] = bla.escape_approximate(dc);
                     escaped_orbits.emplace_back(
-                        wacfrac::ComplexAdapter<float>{static_cast<float>(z.real()), static_cast<float>(z.imag())},
+                        wacfrac::Complex<float>{static_cast<float>(z.real()), static_cast<float>(z.imag())},
                         n);
                 }
             }
@@ -113,7 +113,7 @@ void render_image(const wacfrac::ImageOptions& opts) {
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
             pixel = opts.shared->discrete_coloring
                 ? wacfrac::colorize_discrete(std::get<1>(orbit), max_n, opts.shared->palette)
-                : wacfrac::colorize_continuous(wacfrac::ComplexAdapter<float>{std::get<0>(orbit).real(), std::get<0>(orbit).imag()}, std::get<1>(orbit), max_n, opts.shared->palette);
+                : wacfrac::colorize_continuous(wacfrac::Complex<float>{std::get<0>(orbit).real(), std::get<0>(orbit).imag()}, std::get<1>(orbit), max_n, opts.shared->palette);
         } 
     });
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(

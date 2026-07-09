@@ -20,8 +20,8 @@ using DoubleExp = FloatExp<double, int64_t>;
 using MultiFloat   = boost::multiprecision::mpfr_float;
 
 // Complex Types
-using SingleComplex = ComplexAdapter<float>;
-using DoubleComplex = ComplexAdapter<double>;
+using SingleComplex = Complex<float>;
+using DoubleComplex = Complex<double>;
 using MultiComplex  = boost::multiprecision::mpc_complex;
 using SingleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<SingleExp>>;
 using DoubleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<DoubleExp>>;
@@ -86,7 +86,7 @@ auto to_real(const Number& val) -> Real {
     }
 }
 
-template <Complex T>
+template <ComplexConcept T>
 auto to_complex(MultiComplex z) -> T {
     using CT = ComplexValueTypeT<T>;
     return T{

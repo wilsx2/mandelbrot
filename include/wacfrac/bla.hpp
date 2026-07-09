@@ -6,7 +6,7 @@
 
 namespace wacfrac {
 
-template <Complex T = SingleComplex>
+template <ComplexConcept T = SingleComplex>
 class BivariateLinearApproximator {
     public:
     BivariateLinearApproximator(ComplexValueTypeT<T> epsilon, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0, double escape_radius = 2.0);
