@@ -10,7 +10,7 @@ namespace wacfrac {
 
 namespace gpu {
 
-constexpr float ESCAPE_RADIUS = 4.0f;
+constexpr float ESCAPE_RADIUS = 16.0f;
 
 template <Complex T>
 __inline__ __device__

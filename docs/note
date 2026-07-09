@@ -1,4 +1,6 @@
-9: Types
+9:  Make color & orbit (-> escape) unified
+    Free FloatExp from Boost backend (w/ benchmark), unify
+    DoubleDouble
 10: BLA
 11: Bench, CLI
 12: Mirror improvements from device code in host code, Optimize

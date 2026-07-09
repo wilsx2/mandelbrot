@@ -110,8 +110,8 @@ void render_image(const wacfrac::ImageOptions& opts) {
 
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
             pixel = opts.shared->discrete_coloring
-                ? wacfrac::colorize_discrete(opts.shared->palette, max_n, std::get<1>(orbit))
-                : wacfrac::colorize_continuous(opts.shared->palette, max_n, static_cast<std::complex<float>>(std::get<0>(orbit)), std::get<1>(orbit));
+                ? wacfrac::colorize_discrete(std::get<1>(orbit), max_n, opts.shared->palette)
+                : wacfrac::colorize_continuous(static_cast<std::complex<float>>(std::get<0>(orbit)), std::get<1>(orbit), max_n, opts.shared->palette);
         } 
     });
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(

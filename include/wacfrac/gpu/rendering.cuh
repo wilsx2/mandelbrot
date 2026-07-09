@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include "wacfrac/color.hpp"
-#include "wacfrac/gpu/color.cuh"
 #include "wacfrac/gpu/orbit.cuh"
 #include "wacfrac/complex_concept.hpp"
 #include <cuda/__functional/call_or.h>
@@ -52,7 +51,7 @@ void render_direct(Config config,
                 start,
                 delta),
             max_iterations)};
-        pixels[tid] = colorize(z, n, max_iterations, palette);
+        pixels[tid] = colorize_discrete(n, max_iterations, palette);
     }
 }
 
@@ -79,7 +78,7 @@ void render_perturbed(Config config,
                 delta),
             reference,
             max_iterations)};
-        pixels[tid] = colorize(z, n, max_iterations, palette);
+        pixels[tid] = colorize_continuous(z, n, max_iterations, palette);
     }
 }
 

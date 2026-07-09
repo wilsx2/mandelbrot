@@ -19,7 +19,7 @@ auto sample_c_values(const Viewport& view, const Resolution& res, T center = 0.0
     auto start {to_complex<T>(view.sample(0, 0, res.width, res.height)) - T(center)};
     auto delta_real {to_real<CT>(view.dimensions.real() / MultiFloat(res.width))};
     auto delta_imag {to_real<CT>(view.dimensions.imag() / MultiFloat(res.height))};
-    return res.coordinates() | std::views::transform([&](auto coord){
+    return res.coordinates() | std::views::transform([start, delta_real, delta_imag](auto coord){
         auto [y, x] = coord;
         return start + T(
             static_cast<CT>(x) * delta_real,

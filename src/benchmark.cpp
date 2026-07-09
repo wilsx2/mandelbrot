@@ -199,7 +199,7 @@ static void render_phase_direct(benchmark::State& state) {
             return wacfrac::escape(c, max_iterations);
         })};
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
-            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+            pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
         }
     }
     state.SetComplexityN(res.area());
@@ -228,7 +228,7 @@ static void render_phase_perturbed(benchmark::State& state) {
             return wacfrac::escape_perturbed(ref, dc, max_iterations);
         })};
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
-            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+            pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
         }
     }
     state.SetComplexityN(res.area());
@@ -261,7 +261,7 @@ static void render_phase_bla(benchmark::State& state) {
             return bla.escape_approximate(dc);
         })};
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
-            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+            pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
         }
     }
     state.SetComplexityN(res.area());
@@ -288,7 +288,7 @@ static void e2e_direct(benchmark::State& state) {
             return wacfrac::escape(c, max_iterations);
         })};
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
-            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+            pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
         }
     }
     state.PauseTiming();
@@ -300,7 +300,7 @@ static void e2e_direct(benchmark::State& state) {
         return wacfrac::escape(c, max_iterations);
     })};
     for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
-        pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+        pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
     }
     state.counters["mismatch"] = static_cast<double>(count_mismatches(pixels, ref_pixels));
     write_output(std::format("e2e_direct_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
@@ -325,7 +325,7 @@ static void e2e_perturbed(benchmark::State& state) {
             return wacfrac::escape_perturbed(ref, dc, max_iterations);
         })};
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
-            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+            pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
         }
     }
     state.PauseTiming();
@@ -339,7 +339,7 @@ static void e2e_perturbed(benchmark::State& state) {
         return wacfrac::escape_perturbed(ref, dc, max_iterations);
     })};
     for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
-        pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+        pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
     }
     state.counters["mismatch"] = static_cast<double>(count_mismatches(pixels, ref_pixels));
     write_output(std::format("e2e_perturbed_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
@@ -369,7 +369,7 @@ static void e2e_bla(benchmark::State& state) {
             return bla.escape_approximate(dc);
         })};
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
-            pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+            pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
         }
     }
     state.PauseTiming();
@@ -383,7 +383,7 @@ static void e2e_bla(benchmark::State& state) {
         return wacfrac::escape_perturbed(ref, dc, max_iterations);
     })};
     for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
-        pixel = wacfrac::colorize_discrete(wacfrac::ULTRA, max_iterations, std::get<1>(orbit));
+        pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
     }
     state.counters["mismatch"] = static_cast<double>(count_mismatches(pixels, ref_pixels));
     write_output(std::format("e2e_bla_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);

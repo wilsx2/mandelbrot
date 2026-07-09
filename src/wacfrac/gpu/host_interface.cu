@@ -89,7 +89,7 @@ struct GpuRenderer::Impl {
         wacfrac::logging::debug("Finished with render");
         return pixels;
     }
-    void reserve_references(std::size_t n) { // TODO: Multiplex
+    void reserve_references(std::size_t n) {
         host_references.reserve(n);
         device_references.reserve(n);
     }
