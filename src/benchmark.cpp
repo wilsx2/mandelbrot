@@ -1,4 +1,5 @@
 #include "wacfrac/orbit.hpp"
+#include "wacfrac/complex_adapter.hpp"
 #include <wacfrac/wacfrac.hpp>
 #include <benchmark/benchmark.h>
 #include <filesystem>
@@ -309,6 +310,7 @@ static void e2e_direct(benchmark::State& state) {
     write_output(std::format("e2e_direct_{}_{}x{}_z{}", type_short_name<T>(), dim, dim, zoom_exp), pixels, res);
     state.ResumeTiming();
 }
+BENCHMARK_TEMPLATE(e2e_direct, wacfrac::ComplexAdapter<double>)->ArgsProduct({{0}, {32, 64}})->Unit(benchmark::kMillisecond);
 BENCHMARK_TEMPLATE(e2e_direct, std::complex<double>)->ArgsProduct({{0}, {32, 64}})->Unit(benchmark::kMillisecond);
 
 template <wacfrac::Complex T>

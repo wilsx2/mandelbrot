@@ -27,6 +27,8 @@ template <typename T>
 concept Complex = requires(T a, T b) {
     { a.real() };
     { a.imag() };
+    { norm(a) };
+    { abs(a) };
     T{0.0, 0.0};
     { a + b } -> std::convertible_to<T>;
     { a - b } -> std::convertible_to<T>;
