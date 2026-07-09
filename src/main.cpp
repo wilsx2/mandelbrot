@@ -24,10 +24,10 @@ struct NumericTypeTag { using type = T; };
 
 template <typename F>
 decltype(auto) with_numeric_type(const std::string& type, F&& f) {
+    if (type == "float")
+        return f(NumericTypeTag<std::complex<float>>{});
     if (type == "double")
         return f(NumericTypeTag<std::complex<double>>{});
-    if (type == "long-double")
-        return f(NumericTypeTag<std::complex<long double>>{});
     if (type == "dexp")
         return f(NumericTypeTag<wacfrac::DoubleExpComplex>{});
     wacfrac::logging::error("Unknown numeric type '{}'", type);

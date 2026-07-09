@@ -3,48 +3,56 @@
 #include "wacfrac/complex_concept.hpp"
 #include "wacfrac/floatexp.hpp"
 
+#include <boost/multiprecision/fwd.hpp>
 #include <boost/multiprecision/mpc.hpp>
 #include <boost/multiprecision/gmp.hpp>
 #include <boost/multiprecision/number.hpp>
+#include <boost/multiprecision/cpp_bin_float.hpp>
 #include <boost/multiprecision/complex_adaptor.hpp>
 
 namespace wacfrac
 {
 
+// Numeric Types
+using SingleExp = FloatExp<float,  int64_t>;
+using DoubleExp = FloatExp<double, int64_t>;
 using MultiFloat   = boost::multiprecision::mpfr_float;
-using MultiComplex = boost::multiprecision::mpc_complex;
+
+// Complex Types
+using SingleComplex = std::complex<float>;
+using DoubleComplex = std::complex<double>;
+using MultiComplex  = boost::multiprecision::mpc_complex;
+using SingleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<SingleExp>>;
 using DoubleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<DoubleExp>>;
-// using SingleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<SingleExp>>; Unused
-// using QuadExpComplex   = boost::multiprecision::complex_adaptor<QuadExp>; Unused
 
 struct ReferenceSet {
+    std::vector<std::complex<float>> float_ref;
     std::vector<std::complex<double>> double_ref;
-    std::vector<std::complex<long double>> long_double_ref;
     std::vector<DoubleExpComplex> dexp_ref;
 
     template <typename T>
     auto select() const -> const std::vector<T>& {
-        if constexpr (std::is_same_v<T, std::complex<double>>)
+        if constexpr (std::is_same_v<T, std::complex<float>>)
+            return float_ref;
+        else if constexpr (std::is_same_v<T, std::complex<double>>)
             return double_ref;
-        else if constexpr (std::is_same_v<T, std::complex<long double>>)
-            return long_double_ref;
         else
             return dexp_ref;
     }
 
     template <typename T>
     auto select() -> std::vector<T>& {
-        if constexpr (std::is_same_v<T, std::complex<double>>)
+        if constexpr (std::is_same_v<T, std::complex<float>>)
+            return float_ref;
+        else if constexpr (std::is_same_v<T, std::complex<double>>)
             return double_ref;
-        else if constexpr (std::is_same_v<T, std::complex<long double>>)
-            return long_double_ref;
         else
             return dexp_ref;
     }
 
     void reserve(std::size_t size) {
+        select<std::complex<float>>().reserve(size);
         select<std::complex<double>>().reserve(size);
-        select<std::complex<long double>>().reserve(size);
         select<DoubleExpComplex>().reserve(size);
     }
 };

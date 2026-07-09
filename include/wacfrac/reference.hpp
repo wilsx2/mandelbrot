@@ -94,21 +94,21 @@ inline auto compute_reference_set(MultiComplex c, std::size_t max_n, double esca
     if (max_n == 0)
         return refs;
 
+    refs.float_ref.resize(max_n);
     refs.double_ref.resize(max_n);
-    refs.long_double_ref.resize(max_n);
     refs.dexp_ref.resize(max_n);
+    refs.float_ref[0]       = std::complex<float>{0.0f, 0.0f};
     refs.double_ref[0]      = std::complex<double>{0.0, 0.0};
-    refs.long_double_ref[0] = std::complex<long double>{0.0, 0.0};
     refs.dexp_ref[0]        = to_complex<DoubleExpComplex>(MultiComplex{0.0, 0.0});
 
     auto count = compute_reference_iteration(c, max_n, escape_radius, [&](std::size_t n, const MultiFloat& r, const MultiFloat& i) {
+        refs.float_ref[n]       = std::complex<float>{to_real<float>(r), to_real<float>(i)};
         refs.double_ref[n]      = std::complex<double>{to_real<double>(r), to_real<double>(i)};
-        refs.long_double_ref[n] = std::complex<long double>{to_real<long double>(r), to_real<long double>(i)};
         refs.dexp_ref[n]        = DoubleExpComplex{to_real<DoubleExp>(r), to_real<DoubleExp>(i)};
     });
 
+    refs.float_ref.resize(count);
     refs.double_ref.resize(count);
-    refs.long_double_ref.resize(count);
     refs.dexp_ref.resize(count);
 
     logging::debug( "All references computed: {} points", count);

@@ -173,8 +173,8 @@ struct ImageOptions : argumentum::CommandOptions {
             return numeric_type;
         auto p {effective_precision()};
         if (p > 1000) return "dexp";
-        if (p > 230)  return "long-double";
-        return "double";
+        if (p > 53)   return "double";
+        return "float";
     }
 
     auto effective_precision() const -> std::size_t {
@@ -219,7 +219,7 @@ struct ImageOptions : argumentum::CommandOptions {
             .help("Decimal digits (0 = auto)");
         args.add_parameter(numeric_type, "--numeric-type", "-t")
             .nargs(1).absent("auto")
-            .help("Number type: auto, double, long-double, dexp");
+            .help("Number type: auto, float, double, dexp");
         args.add_parameter(render_type, "--render-type", "-R")
             .nargs(1).absent("auto")
             .help("Number type: auto, direct, perturbed, bla");

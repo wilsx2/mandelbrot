@@ -1,5 +1,4 @@
-9:  Make color & orbit (-> escape) unified
-    DoubleDouble (device & host)
+9:  Float
     Free FloatExp from Boost backend (w/ benchmark), unify
 10: Unified BLA (fix bugs introduced earlier)
 11: Integrate with Bench & CLI
@@ -13,7 +12,6 @@ July
         X Perturbed Escape
         - Generalize to many types
             - float
-            - Quad
             - FloatExp
         - BLA
     - Benchmark

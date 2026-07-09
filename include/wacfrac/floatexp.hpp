@@ -23,7 +23,7 @@ template<std::floating_point M, std::integral E>
 struct FloatExp {
     using signed_types = std::tuple<std::int8_t, std::int16_t, std::int32_t, std::int64_t, std::intmax_t>;
     using unsigned_types = std::tuple<std::uint8_t, std::uint16_t, std::uint32_t, std::uint64_t, std::uintmax_t>;
-    using float_types = std::tuple<float, double, long double>;
+    using float_types = std::tuple<float, double>;
     using exponent_type = E;
 
     M mantissa;
@@ -35,7 +35,6 @@ struct FloatExp {
 
     FloatExp(float a) : mantissa(0), exponent(0) { *this = a; }
     FloatExp(double a) : mantissa(0), exponent(0) { *this = a; }
-    FloatExp(long double a) : mantissa(0), exponent(0) { *this = a; }
     FloatExp(std::int8_t a) : mantissa(0), exponent(0) { *this = a; }
     FloatExp(std::int16_t a) : mantissa(0), exponent(0) { *this = a; }
     FloatExp(std::int32_t a) : mantissa(0), exponent(0) { *this = a; }
@@ -48,7 +47,6 @@ struct FloatExp {
 
     FloatExp& operator=(float a);
     FloatExp& operator=(double a);
-    FloatExp& operator=(long double a);
     FloatExp& operator=(std::int8_t a);
     FloatExp& operator=(std::int16_t a);
     FloatExp& operator=(std::int32_t a);
@@ -63,7 +61,6 @@ struct FloatExp {
 
     int compare(float a) const;
     int compare(double a) const;
-    int compare(long double a) const;
     int compare(std::int8_t a) const;
     int compare(std::int16_t a) const;
     int compare(std::int32_t a) const;
@@ -177,7 +174,6 @@ void normalize(FloatExp<M, E>& x) noexcept {
 #define APPLY_X_TO_TYPES \
     X(float) \
     X(double) \
-    X(long double) \
     X(std::int8_t) \
     X(std::int16_t) \
     X(std::int32_t) \
@@ -251,7 +247,7 @@ template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>&
 FloatExp<M, E>::operator=(const char* s) {
     char* end;
-    long double val = std::strtold(s, &end);
+    double val = std::strtod(s, &end);
     if (end == s) throw std::runtime_error("Invalid number string");
     *this = val;
     return *this;
@@ -267,13 +263,13 @@ inline void FloatExp<M, E>::swap(FloatExp& other) noexcept {
 
 template<std::floating_point M, std::integral E>
 inline std::string FloatExp<M, E>::str(std::streamsize ss, std::ios_base::fmtflags ff) const {
-    long double v = static_cast<long double>(mantissa);
+    double v = static_cast<double>(mantissa);
     if (exponent >= std::numeric_limits<int>::min() && exponent <= std::numeric_limits<int>::max())
         v = std::ldexp(v, static_cast<int>(exponent));
     else if (exponent > 0)
-        v = v * std::exp2(static_cast<long double>(exponent));
+        v = v * std::exp2(static_cast<double>(exponent));
     else
-        v = v / std::exp2(static_cast<long double>(-exponent));
+        v = v / std::exp2(static_cast<double>(-exponent));
 
     std::ostringstream oss;
     oss.flags(ff);
@@ -360,7 +356,7 @@ FloatExp<M, E>::operator/=(const FloatExp& o) {
 template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>&
 FloatExp<M, E>::operator++() noexcept {
-    *this += FloatExp(1.0L);
+    *this += FloatExp(1.0);
     return *this;
 }
 
@@ -375,7 +371,7 @@ FloatExp<M, E>::operator++(int) noexcept {
 template<std::floating_point M, std::integral E>
 inline FloatExp<M, E>&
 FloatExp<M, E>::operator--() noexcept {
-    *this -= FloatExp(1.0L);
+    *this -= FloatExp(1.0);
     return *this;
 }
 
@@ -433,12 +429,12 @@ inline void eval_divide(FloatExp<M, E>& result, const FloatExp<M, E>& a, const F
 
 template<std::floating_point M, std::integral E, std::floating_point T>
 inline void eval_convert_to(T* pa, const FloatExp<M, E>& cb) noexcept {
-    *pa = static_cast<T>(static_cast<long double>(cb.mantissa) * std::exp2(static_cast<long double>(cb.exponent)));
+    *pa = static_cast<T>(static_cast<double>(cb.mantissa) * std::exp2(static_cast<double>(cb.exponent)));
 }
 
 template<std::floating_point M, std::integral E, std::integral T>
 inline void eval_convert_to(T* pa, const FloatExp<M, E>& cb) noexcept {
-    long double tmp = static_cast<long double>(cb.mantissa) * std::exp2(static_cast<long double>(cb.exponent));
+    double tmp = static_cast<double>(cb.mantissa) * std::exp2(static_cast<double>(cb.exponent));
     *pa = static_cast<T>(tmp);
 }
 
@@ -490,14 +486,14 @@ inline void eval_ldexp(FloatExp<M, E>& b, const FloatExp<M, E>& cb, int i) noexc
 // Floor
 template<std::floating_point M, std::integral E>
 inline void eval_floor(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept {
-    long double v = static_cast<long double>(cb.mantissa) * std::exp2(static_cast<long double>(cb.exponent));
+    double v = static_cast<double>(cb.mantissa) * std::exp2(static_cast<double>(cb.exponent));
     b = std::floor(v);
 }
 
 // Ceil
 template<std::floating_point M, std::integral E>
 inline void eval_ceil(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept {
-    long double v = static_cast<long double>(cb.mantissa) * std::exp2(static_cast<long double>(cb.exponent));
+    double v = static_cast<double>(cb.mantissa) * std::exp2(static_cast<double>(cb.exponent));
     b = std::ceil(v);
 }
 
@@ -505,7 +501,7 @@ inline void eval_ceil(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept {
 template<std::floating_point M, std::integral E>
 inline void eval_sqrt(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept {
     b = cb;
-    b.mantissa *= static_cast<M>(1.0L + (b.exponent & 1));
+    b.mantissa *= static_cast<M>(1.0 + (b.exponent & 1));
     b.exponent -= b.exponent & 1;
     b.mantissa = std::sqrt(b.mantissa);
     b.exponent /= 2;
@@ -522,7 +518,7 @@ inline void eval_log10(FloatExp<M, E>& b, const FloatExp<M, E>& cb) noexcept {
         throw std::domain_error("log10 of negative number");
     }
     b.mantissa = static_cast<M>(std::log10(cb.mantissa)
-        + static_cast<long double>(cb.exponent) * std::log10(2.0L));
+        + static_cast<double>(cb.exponent) * std::log10(2.0));
     b.exponent = 0;
     detail::normalize(b);
 }
@@ -663,7 +659,7 @@ public:
     static constexpr number_type(max)()      noexcept { return number_type{std::numeric_limits<M>::max()}; }
     static constexpr number_type lowest()    noexcept { return number_type{-std::numeric_limits<M>::max()}; }
     static constexpr number_type epsilon()   noexcept { return number_type{std::numeric_limits<M>::epsilon()}; }
-    static constexpr number_type round_error() noexcept { return number_type{0.5L}; }
+    static constexpr number_type round_error() noexcept { return number_type{0.5}; }
     static constexpr number_type infinity()      noexcept { return number_type{0}; }
     static constexpr number_type quiet_NaN()     noexcept { return number_type{0}; }
     static constexpr number_type signaling_NaN() noexcept { return number_type{0}; }
@@ -671,13 +667,3 @@ public:
 };
 
 } // namespace std
-
-namespace wacfrac {
-
-// Aliases
-
-using SingleExp = FloatExp<float, int64_t>;
-using DoubleExp = FloatExp<double, int64_t>;
-// using quadexp   = FloatExp<long double, int64_t>; Unused
-
-} // namespace wacfrac

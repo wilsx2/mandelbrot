@@ -2,6 +2,6 @@
 #include "wacfrac/types.hpp"
 #include <wacfrac/bla.tpp>
 
+template class wacfrac::BivariateLinearApproximator<std::complex<float>>;
 template class wacfrac::BivariateLinearApproximator<std::complex<double>>;
-template class wacfrac::BivariateLinearApproximator<std::complex<long double>>;
 template class wacfrac::BivariateLinearApproximator<wacfrac::DoubleExpComplex>;
