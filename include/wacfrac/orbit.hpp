@@ -5,64 +5,119 @@
 #include <utility>
 #include <functional>
 #include <cstddef>
-#include <complex>
-#include <vector>
+
+#if defined(__CUDACC__)
+    #include <cuda/std/complex>
+    #include <cuda/std/span>
+    #define STD cuda::std
+#else 
+    #include <complex>
+    #include <span>
+    #define STD std
+#endif
 
 namespace wacfrac
 {
 
 template <Complex T>
-auto norm(const T& a) {
-    return a.real()*a.real() + a.imag()*a.imag();
+#if defined(__CUDACC__)
+__forceinline__ __host__ __device__
+#else
+inline
+#endif 
+void compute_next_orbit(T& z, std::size_t& n, const T& c) {
+    z = z*z + c;
+    ++n;
 }
 
-template <Complex T>
-auto abs(const T& a) {
-    using std::sqrt;
-    using boost::multiprecision::sqrt;
-    return sqrt(norm(a));
+template <Complex T = std::complex<double>>
+#if defined(__CUDACC__)
+__forceinline__ __host__ __device__
+#else
+inline
+#endif 
+void compute_next_perturbation(T& z, T& dz, std::size_t& n, const T& dc, STD::span<const T> ref, std::size_t& ref_n) {
+    dz = static_cast<ComplexValueTypeT<T>>(2.0) * dz * ref[ref_n] + dz * dz + dc;
+    ++ref_n;
+    ++n;
 }
 
-template <Complex T>
-auto escaped(const T& a, double escape_radius = 2.0) {
-    return norm(a) > escape_radius*escape_radius;
-}
-
-template <Complex T, std::invocable<T> F>
-auto escape_generic(T z, std::size_t n, std::size_t max_n, F&& next_z, double escape_radius = 2.0) -> std::pair<T, std::size_t> {
-    while (n < max_n && !escaped(z, escape_radius)) {
-        z = next_z(z);
-        ++n;
+template <Complex T = std::complex<double>>
+#if defined(__CUDACC__)
+__forceinline__ __host__ __device__
+#else
+inline
+#endif 
+void rebase_perturbation(T& z, T& dz, STD::span<const T> ref, std::size_t& ref_n) {
+    if (ref_n >= ref.size()) {
+        dz = z;
+        ref_n = 0;
+        return;
     }
-    return {z, n};
+
+    z = {ref[ref_n] + dz};
+
+    using std::norm;
+    if (norm(z) < norm(dz)) {
+        dz = z;
+        ref_n = 0;
+    }
 }
 
 template <Complex T>
-auto compute_next_z(const T& z, const T& c) -> T {
-    return z*z + c;
+#if defined(__CUDACC__)
+__forceinline__ __host__ __device__
+#else
+inline
+#endif 
+auto escaped(const T& z, double escape_radius) -> bool {
+    return norm(z) > escape_radius;
 }
 
-template<Complex T>
-auto escape(T c, std::size_t max_n, double escape_radius = 2.0) -> std::pair<T, std::size_t> {
-    return escape_generic(T{0.0,0.0}, 0, max_n, std::bind_back(compute_next_z<T>, c), escape_radius);
+template <Complex T, std::invocable<T&, std::size_t&> F>
+#if defined(__CUDACC__)
+__forceinline__ __host__ __device__
+#else
+inline
+#endif 
+auto escape_generic(T z, std::size_t max_n, double escape_radius, F&& next_orbit) -> STD::pair<STD::complex<float>, std::size_t> {
+    std::size_t n {0};
+    while (n < max_n && !escaped(z, escape_radius))
+        next_orbit(z, n);
+    return STD::make_pair(static_cast<STD::complex<float>>(z), n);
 }
 
-template <Complex T = std::complex<long double>>
-auto compute_next_perturbation(const std::vector<T>& ref, std::size_t ref_n, T dc, T dz) -> std::tuple<std::size_t, T, T>;
+template <Complex T>
+#if defined(__CUDACC__)
+__forceinline__ __host__ __device__
+#else
+inline
+#endif 
+auto escape(const T& c, std::size_t max_n, double escape_radius) -> STD::pair<STD::complex<float>, std::size_t> {
+    return escape_generic<T>(0.0, max_n, escape_radius,
+        [&c](T& z, std::size_t& n){
+            compute_next_orbit(z, n, c);
+        });
+}
 
-template <Complex T = std::complex<long double>>
-auto rebase_reference(const std::vector<T>& ref, std::size_t ref_n, T dz) -> std::tuple<std::size_t, T, T>;
+template <Complex T>
+#if defined(__CUDACC__)
+__forceinline__ __host__ __device__
+#else
+inline
+#endif 
+auto escape_perturbed(const T& dc, STD::span<const T> ref, std::size_t max_n, double escape_radius) -> STD::pair<STD::complex<float>, std::size_t> {
+    auto ref_n {0uz};
+    T dz {0.0};
+    T z {ref[ref_n] + dz};
 
-template <Complex T = std::complex<long double>>
-auto escape_perturbed(const std::vector<T>& ref, T dc, std::size_t max_n, double escape_radius = 2.0, T dz = {0.0, 0.0}, std::size_t n = 0) -> std::pair<T, std::size_t>;
-
-template <Complex T = std::complex<long double>>
-auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius = 2.0) -> std::vector<T>;
-
-template <Complex T = std::complex<long double>>
-auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radius = 2.0) -> std::vector<T>;
-
-
-auto compute_references_all(MultiComplex c, std::size_t max_n, double escape_radius = 2.0) -> ReferenceSet;
+    return escape_generic<T>(ref[ref_n] + dz, max_n, escape_radius,
+        [&](T& z, std::size_t& n){
+            compute_next_perturbation(z, dz, n, dc, ref, ref_n);
+            rebase_perturbation(z, dz, ref, ref_n);
+        });
+}
 
 }   // namespace wacfrac
+
+#undef STD

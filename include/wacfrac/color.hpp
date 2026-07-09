@@ -70,6 +70,7 @@ inline auto colorize_continuous(STD::complex<float> z, std::size_t n, std::size_
         static_cast<uint8_t>(color2.b * progress + color1.b * (1.0 - progress))
     };
 }
-#undef STD
 
 } // namespace wacfrac
+
+#undef STD

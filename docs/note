@@ -1,8 +1,8 @@
 9:  Make color & orbit (-> escape) unified
+    DoubleDouble (device & host)
     Free FloatExp from Boost backend (w/ benchmark), unify
-    DoubleDouble
-10: BLA
-11: Bench, CLI
+10: Unified BLA (fix bugs introduced earlier)
+11: Integrate with Bench & CLI
 12: Mirror improvements from device code in host code, Optimize
 
 July
@@ -30,7 +30,7 @@ July
 
 - Type traits for float -> complex conversion
 - Move most things to headers to allow for inlining optimizations
-- Float Overloads
+- Float in the reference set
 - Replace long double with a DoubleDouble type for both Windows and GPU compatability
 - Make as many functions/classes as possible compatible with CUDA and C++ code (DRY)
 - Switch to unsigned int for iterations, especially in GPU code

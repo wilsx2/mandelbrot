@@ -1,58 +1,16 @@
-#pragma once
-
+#include "wacfrac/complex_concept.hpp"
+#include "wacfrac/orbit.hpp"
 #include "wacfrac/types.hpp"
+#include "wacfrac/log.hpp"
+#include <complex>
+#include <vector>
 #include <barrier>
 #include <thread>
-#include <wacfrac/orbit.hpp>
-#include <wacfrac/log.hpp>
-#include <complex>
-#include <tuple>
-#include <utility>
-#include <vector>
 
-namespace wacfrac
-{
+namespace wacfrac {
 
-template <Complex T>
-auto rebase_reference(const std::vector<T>& ref, std::size_t ref_n, T dz) -> std::tuple<std::size_t, T, T> {
-    if (ref_n >= ref.size()) {
-        return {0uz, dz, dz};
-    }
-
-    auto z {ref[ref_n] + dz};
-
-    using std::norm;
-    if (norm(z) < norm(dz)) {
-        dz = z;
-        ref_n = 0;
-    }
-    return {ref_n, dz, z};
-}
-
-template <Complex T>
-auto compute_next_perturbation(const std::vector<T>& ref, std::size_t ref_n, T dc, T dz) -> std::tuple<std::size_t, T, T> {
-    static const T TWO{2.0, 0.0};
-    dz = TWO * dz * ref[ref_n] + dz * dz + dc;
-    ++ref_n;
-    return rebase_reference(ref, ref_n, dz);
-}
-
-template <Complex T>
-auto escape_perturbed(const std::vector<T>& ref, T dc, std::size_t max_n, double escape_radius, T dz, std::size_t n) -> std::pair<T, std::size_t> {
-    auto ref_n {n};
-    if (ref_n >= ref.size()) {
-        return {{}, 0};
-    }
-
-    T z0 {ref[ref_n] + dz};
-    return escape_generic(z0, n, max_n, [&](T z) {
-        std::tie(ref_n, dz, z) = compute_next_perturbation(ref, ref_n, dc, dz);
-        return z;
-    }, escape_radius);
-}
-
-template <Complex T>
-auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius) -> std::vector<T> {
+template <Complex T = std::complex<double>>
+auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius = 4.0) -> std::vector<T> {
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={}", c, max_n, escape_radius);
 
     std::vector<T> reference;
@@ -60,11 +18,30 @@ auto compute_reference(MultiComplex c, std::size_t max_n, double escape_radius) 
     reference.emplace_back(to_complex<T>(MultiComplex{0.0, 0.0}));
 
     MultiComplex z{0.0, 0.0};
-    for (auto n{0uz}; n < max_n - 1 && !escaped(z, escape_radius); ++n) {
-        z = z * z + c;
+    for (auto n{0uz}; n < max_n - 1 && !escaped(z, escape_radius);) {
+        compute_next_orbit(z, n, c);
         reference.emplace_back(to_complex<T>(z));
     }
 
+    logging::debug( "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
+    return reference;
+}
+
+template <Complex T = std::complex<double>>
+auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radius = 4.0) -> std::vector<T> {
+    logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
+    if (max_n == 0)
+        return {};
+
+    std::vector<T> reference (max_n);
+    reference[0] = T{0.0, 0.0};
+    using CT = ComplexValueTypeT<T>;
+
+    auto count = compute_reference_iteration(c, max_n, escape_radius, [&](std::size_t n, const MultiFloat& r, const MultiFloat& i) {
+        reference[n] = T{to_real<CT>(r), to_real<CT>(i)};
+    });
+
+    reference.resize(count);
     logging::debug( "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
     return reference;
 }
@@ -112,26 +89,7 @@ auto compute_reference_iteration(MultiComplex c, std::size_t max_n, double escap
     return n_1;
 }
 
-template <Complex T>
-auto compute_reference_mt(MultiComplex c, std::size_t max_n, double escape_radius) -> std::vector<T> {
-    logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
-    if (max_n == 0)
-        return {};
-
-    std::vector<T> reference (max_n);
-    reference[0] = T{0.0, 0.0};
-    using CT = ComplexValueTypeT<T>;
-
-    auto count = compute_reference_iteration(c, max_n, escape_radius, [&](std::size_t n, const MultiFloat& r, const MultiFloat& i) {
-        reference[n] = T{to_real<CT>(r), to_real<CT>(i)};
-    });
-
-    reference.resize(count);
-    logging::debug( "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
-    return reference;
-}
-
-auto compute_references_all(MultiComplex c, std::size_t max_n, double escape_radius) -> ReferenceSet {
+inline auto compute_reference_set(MultiComplex c, std::size_t max_n, double escape_radius = 4.0) -> ReferenceSet {
     ReferenceSet refs;
     if (max_n == 0)
         return refs;
@@ -157,4 +115,4 @@ auto compute_references_all(MultiComplex c, std::size_t max_n, double escape_rad
     return refs;
 }
 
-}   // namespace wacfrac
+} // namespace wacfrac

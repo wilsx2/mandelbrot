@@ -1,9 +1,8 @@
 #pragma once
 
-#include <cstddef>
-#include "wacfrac/color.hpp"
-#include "wacfrac/gpu/orbit.cuh"
 #include "wacfrac/complex_concept.hpp"
+#include "wacfrac/color.hpp"
+#include "wacfrac/orbit.hpp"
 #include <cuda/__functional/call_or.h>
 #include <cuda/buffer> 
 #include <cuda/devices>
@@ -13,10 +12,13 @@
 #include <cuda/std/complex>
 #include <cuda/stream>
 #include <cstdio>
+#include <cstddef>
 
 namespace wacfrac {
 
 namespace gpu {
+
+constexpr auto ESCAPE_RADIUS {4.0};
 
 template <Complex T>
 __inline__ __device__
@@ -44,13 +46,14 @@ void render_direct(Config config,
     auto tid {cuda::gpu_thread.rank(cuda::grid, config)};
     if (tid < pixels.size()) {
 
-        auto [z, n] {escape_direct(
+        auto [z, n] {escape(
             sample_c_value(
                 tid,
                 row_width,
                 start,
                 delta),
-            max_iterations)};
+            max_iterations,
+            ESCAPE_RADIUS)};
         pixels[tid] = colorize_discrete(n, max_iterations, palette);
     }
 }
@@ -77,7 +80,8 @@ void render_perturbed(Config config,
                 start,
                 delta),
             reference,
-            max_iterations)};
+            max_iterations,
+            ESCAPE_RADIUS)};
         pixels[tid] = colorize_continuous(z, n, max_iterations, palette);
     }
 }

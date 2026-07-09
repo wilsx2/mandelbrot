@@ -1,3 +1,4 @@
+#include "wacfrac/orbit.hpp"
 #include <wacfrac/wacfrac.hpp>
 #include <benchmark/benchmark.h>
 #include <filesystem>
@@ -15,8 +16,8 @@ constexpr auto type_short_name() -> std::string_view {
     return "unknown";
 }
 
-auto make_viewport(int64_t zoom_exp) {
-    auto zoom_factor {pow(wacfrac::MultiFloat(10.0), static_cast<unsigned>(zoom_exp))};
+auto make_viewport(unsigned zoom_exp) {
+    auto zoom_factor {pow(wacfrac::MultiFloat(10.0), zoom_exp)};
     auto prec {wacfrac::required_precision(zoom_factor)};
     wacfrac::MultiFloat::default_precision(static_cast<unsigned>(prec));
     wacfrac::MultiComplex::default_precision(static_cast<unsigned>(prec));
@@ -53,24 +54,29 @@ auto count_mismatches(std::span<const wacfrac::Pixel> test, std::span<const wacf
 // Operations
 
 template<wacfrac::Complex T>
-static void compute_next_z(benchmark::State& state) {
+static void compute_next_orbit(benchmark::State& state) {
     T z {0.0, 0.0};
+    auto n {0uz};
     T c {0.0, 0.0};
     for (auto _ : state) {
-        auto z_n {wacfrac::compute_next_z(z, c)};
-        benchmark::DoNotOptimize(z_n);
+        wacfrac::compute_next_orbit(z, n, c);
+        benchmark::DoNotOptimize(z);
+        benchmark::DoNotOptimize(n);
+        benchmark::DoNotOptimize(c);
     }
 }
-BENCHMARK_TEMPLATE(compute_next_z, std::complex<float>);
-BENCHMARK_TEMPLATE(compute_next_z, std::complex<double>);
-BENCHMARK_TEMPLATE(compute_next_z, std::complex<long double>);
-BENCHMARK_TEMPLATE(compute_next_z, wacfrac::DoubleExpComplex);
-BENCHMARK_TEMPLATE(compute_next_z, mpc_complex_100);
-BENCHMARK_TEMPLATE(compute_next_z, mpc_complex_1000);
+BENCHMARK_TEMPLATE(compute_next_orbit, std::complex<float>);
+BENCHMARK_TEMPLATE(compute_next_orbit, std::complex<double>);
+BENCHMARK_TEMPLATE(compute_next_orbit, std::complex<long double>);
+BENCHMARK_TEMPLATE(compute_next_orbit, wacfrac::DoubleExpComplex);
+#ifdef BOOST_MP_HAVE_MPC
+BENCHMARK_TEMPLATE(compute_next_orbit, boost::multiprecision::mpc_complex_100);
+BENCHMARK_TEMPLATE(compute_next_orbit, boost::multiprecision::mpc_complex_1000);
+#endif
 
 template<wacfrac::Complex T>
 static void compute_next_dz(benchmark::State& state) {
-    T z {0.0, 0.0};
+    T z  {0.0, 0.0};
     T dz {0.0, 0.0};
     T dc {0.0, 0.0};
     for (auto _ : state) {
@@ -136,7 +142,7 @@ constexpr unsigned long long get_fibonacci(size_t n) {
 }
 
 static void find_nucleus(benchmark::State& state) {
-    auto view {make_viewport(state.range(0))};
+    auto view {make_viewport(static_cast<unsigned>(state.range(0)))};
     for (auto _ : state) {
         auto nucleus {wacfrac::find_nucleus(view.center, state.range(1), 256)};
         benchmark::DoNotOptimize(nucleus);
@@ -154,14 +160,14 @@ BENCHMARK(find_nucleus)->ArgsProduct({
 
 template<typename T>
 static void compute_bla_coefficients(benchmark::State& state) {
-    auto view   {make_viewport(state.range(0))};
+    auto view   {make_viewport(static_cast<unsigned>(state.range(0)))};
     auto c_ref  {view.center};
     auto ref    {wacfrac::compute_reference<T>(c_ref, view.required_iterations())};
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
     auto probes {view.generate_probes<T>(state.range(1), state.range(1))};
     for (auto _ : state) {
         wacfrac::BivariateLinearApproximator<T> bla {
-            -256.0, 0.0, std::pow(10.0, -state.range(3)), probes, max_dc, ref, 0
+            -256.0, 0.0, std::pow(10.0, -state.range(2)), probes, max_dc, ref, 0
         };
         benchmark::DoNotOptimize(bla);
     }
@@ -186,7 +192,7 @@ BENCHMARK_TEMPLATE(compute_bla_coefficients, wacfrac::DoubleExpComplex)->ArgsPro
 
 template <wacfrac::Complex T>
 static void render_phase_direct(benchmark::State& state) {
-    auto zoom_exp {state.range(0)};
+    auto zoom_exp {static_cast<unsigned>(state.range(0))};
     auto dim {static_cast<std::size_t>(state.range(1))};
     wacfrac::Resolution res {dim, dim};
     auto view {make_viewport(zoom_exp)};
@@ -196,7 +202,7 @@ static void render_phase_direct(benchmark::State& state) {
     for (auto _ : state) {
         auto cs {wacfrac::sample_c_values<T>(view, res)};
         auto escaped_orbits {cs | std::views::transform([&](auto c){
-            return wacfrac::escape(c, max_iterations);
+            return wacfrac::escape(c, max_iterations, 2.0);
         })};
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
             pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
@@ -212,7 +218,7 @@ BENCHMARK_TEMPLATE(render_phase_direct, std::complex<long double>)->ArgsProduct(
 
 template <wacfrac::Complex T>
 static void render_phase_perturbed(benchmark::State& state) {
-    auto zoom_exp {state.range(0)};
+    auto zoom_exp {static_cast<unsigned>(state.range(0))};
     auto dim {static_cast<std::size_t>(state.range(1))};
     wacfrac::Resolution res{dim, dim};
     auto view {make_viewport(zoom_exp)};
@@ -225,7 +231,7 @@ static void render_phase_perturbed(benchmark::State& state) {
     for (auto _ : state) {
         auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
         auto escaped_orbits {dcs | std::views::transform([&](auto dc){
-            return wacfrac::escape_perturbed(ref, dc, max_iterations);
+            return wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_iterations, 2.0);
         })};
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
             pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
@@ -240,7 +246,7 @@ BENCHMARK_TEMPLATE(render_phase_perturbed, wacfrac::DoubleExpComplex)->ArgsProdu
 
 template <wacfrac::Complex T>
 static void render_phase_bla(benchmark::State& state) {
-    auto zoom_exp {state.range(0)};
+    auto zoom_exp {static_cast<unsigned>(state.range(0))};
     auto dim {static_cast<std::size_t>(state.range(1))};
     wacfrac::Resolution res{dim, dim};
     auto view {make_viewport(zoom_exp)};
@@ -275,7 +281,7 @@ BENCHMARK_TEMPLATE(render_phase_bla, wacfrac::DoubleExpComplex)->ArgsProduct({{0
 
 template <wacfrac::Complex T>
 static void e2e_direct(benchmark::State& state) {
-    auto zoom_exp {state.range(0)};
+    auto zoom_exp {static_cast<unsigned>(state.range(0))};
     auto dim {static_cast<std::size_t>(state.range(1))};
     wacfrac::Resolution res{dim, dim};
 
@@ -285,7 +291,7 @@ static void e2e_direct(benchmark::State& state) {
         auto max_iterations {view.required_iterations()};
         auto cs {wacfrac::sample_c_values<T>(view, res)};
         auto escaped_orbits {cs | std::views::transform([&](auto c){
-            return wacfrac::escape(c, max_iterations);
+            return wacfrac::escape(c, max_iterations, 2.0);
         })};
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
             pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
@@ -297,7 +303,7 @@ static void e2e_direct(benchmark::State& state) {
     std::vector<wacfrac::Pixel> ref_pixels(res.area());
     auto ref_cs {wacfrac::sample_c_values<T>(view, res)};
     auto ref_escaped_orbits {ref_cs | std::views::transform([&](auto c){
-        return wacfrac::escape(c, max_iterations);
+        return wacfrac::escape(c, max_iterations, 2.0);
     })};
     for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
         pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
@@ -310,7 +316,7 @@ BENCHMARK_TEMPLATE(e2e_direct, std::complex<double>)->ArgsProduct({{0}, {32, 64}
 
 template <wacfrac::Complex T>
 static void e2e_perturbed(benchmark::State& state) {
-    auto zoom_exp {state.range(0)};
+    auto zoom_exp {static_cast<unsigned>(state.range(0))};
     auto dim {static_cast<std::size_t>(state.range(1))};
     wacfrac::Resolution res{dim, dim};
 
@@ -322,7 +328,7 @@ static void e2e_perturbed(benchmark::State& state) {
         auto ref {compute_reference_dec(view, c_ref, max_iterations)};
         auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
         auto escaped_orbits {dcs | std::views::transform([&](auto dc){
-            return wacfrac::escape_perturbed(ref, dc, max_iterations);
+            return wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_iterations, 2.0);
         })};
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
             pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
@@ -336,7 +342,7 @@ static void e2e_perturbed(benchmark::State& state) {
     std::vector<wacfrac::Pixel> ref_pixels(res.area());
     auto ref_dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
     auto ref_escaped_orbits {ref_dcs | std::views::transform([&](auto dc){
-        return wacfrac::escape_perturbed(ref, dc, max_iterations);
+        return wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_iterations, 2.0);
     })};
     for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
         pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
@@ -349,7 +355,7 @@ BENCHMARK_TEMPLATE(e2e_perturbed, wacfrac::DoubleExpComplex)->ArgsProduct({{0, 2
 
 template <wacfrac::Complex T>
 static void e2e_bla(benchmark::State& state) {
-    auto zoom_exp {state.range(0)};
+    auto zoom_exp {static_cast<unsigned>(state.range(0))};
     auto dim {static_cast<std::size_t>(state.range(1))};
     wacfrac::Resolution res{dim, dim};
 
@@ -380,7 +386,7 @@ static void e2e_bla(benchmark::State& state) {
     std::vector<wacfrac::Pixel> ref_pixels(res.area());
     auto ref_dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
     auto ref_escaped_orbits {ref_dcs | std::views::transform([&](auto dc){
-        return wacfrac::escape_perturbed(ref, dc, max_iterations);
+        return wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_iterations, 2.0);
     })};
     for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
         pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);

@@ -59,7 +59,7 @@ void render_image(const wacfrac::ImageOptions& opts) {
 
     auto start = std::chrono::steady_clock::now();
     with_numeric_type(num_type, [&]<typename T>(NumericTypeTag<T>){
-        std::vector<std::pair<T, std::size_t>> escaped_orbits;
+        std::vector<std::pair<std::complex<float>, std::size_t>> escaped_orbits;
         escaped_orbits.reserve(pixels.size());
 
         if (render_type == wacfrac::RenderType::Direct) {
@@ -86,7 +86,7 @@ void render_image(const wacfrac::ImageOptions& opts) {
 
             if (render_type == wacfrac::RenderType::Perturbed) {
                 for (auto dc : dcs)
-                    escaped_orbits.push_back(wacfrac::escape_perturbed(ref, dc, max_n, opts.shared->escape_radius));
+                    escaped_orbits.push_back(wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_n, opts.shared->escape_radius));
             } else if (render_type == wacfrac::RenderType::BLA) {
                 using CT = wacfrac::ComplexValueTypeT<T>;
                 auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
@@ -139,7 +139,7 @@ void render_video(wacfrac::VideoOptions& opts) {
     wacfrac::MultiFloat::default_precision(static_cast<unsigned>(precision));
     wacfrac::MultiComplex::default_precision(static_cast<unsigned>(precision));
 
-    auto refs = wacfrac::compute_references_all(
+    auto refs = wacfrac::compute_reference_set(
         opts.shared->focus,
         max_iterations,
         std::numeric_limits<double>::infinity());

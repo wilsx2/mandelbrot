@@ -5,6 +5,7 @@
 #include <wacfrac/color.hpp>
 #include <wacfrac/viewport.hpp>
 #include <wacfrac/orbit.hpp>
+#include <wacfrac/reference.hpp>
 #include <wacfrac/rendering.hpp>
 #include <wacfrac/resolution.hpp>
 #include <wacfrac/io.hpp>

@@ -51,7 +51,7 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(
     std::vector<std::size_t> true_escape_times;
     true_escape_times.reserve(probes.size());
     std::ranges::transform(probes, std::back_inserter(true_escape_times),
-        [this, &ref](T p) -> std::size_t { return escape_perturbed<T>(ref, p, ref.size(), _escape_radius).second; });
+        [this, &ref](T p) -> std::size_t { return escape_perturbed<T>(p, ref, ref.size(), _escape_radius).second; });
 
     auto prev_avg_skipped {-1.0};
     BivariateLinearApproximator<T> prev_bla;
@@ -117,11 +117,10 @@ auto BivariateLinearApproximator<T>::escape_approximate(T dc) const -> std::tupl
             std::tie(dz, ref_n) = *approximation;
             skipped += ref_n - m;
             n += ref_n - m;
-            std::tie(ref_n, dz, z) = rebase_reference<T>(*_ref, ref_n, dz);
         } else {
-            std::tie(ref_n, dz, z) = compute_next_perturbation<T>(*_ref, ref_n, dc, dz);
-            ++n;
+            compute_next_perturbation<T>(z, dz, n, dc, _ref->get(), ref_n);
         }
+        rebase_perturbation<T>(z, dz, _ref->get(), ref_n);
     }
     return std::make_tuple(dz, n, skipped);
 }

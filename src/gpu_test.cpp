@@ -1,6 +1,7 @@
 #include "wacfrac/gpu/host_interface.hpp"
 #include "wacfrac/io.hpp"
 #include "wacfrac/orbit.hpp"
+#include "wacfrac/reference.hpp"
 #include "wacfrac/viewport.hpp"
 #include "wacfrac/resolution.hpp"
 #include "cuda/std/complex"
@@ -9,7 +10,7 @@
 auto main() -> int {
     wacfrac::logging::init(0);
     std::println("Generating references (n=256)");
-    auto ref_set {wacfrac::compute_references_all({-0.5, 0.0}, 256)}; // NOTE: enforcement of reference point fragile
+    auto ref_set {wacfrac::compute_reference_set({-0.5, 0.0}, 256)}; // NOTE: enforcement of reference point fragile
     std::println("Initializing renderer");
     wacfrac::Resolution res {1980, 1020};
     wacfrac::GpuRenderer renderer {0, res, wacfrac::ULTRA};
