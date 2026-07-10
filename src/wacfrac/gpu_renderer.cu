@@ -1,7 +1,7 @@
 #include <climits>
 #include <cstddef>
 #include <vector>
-#include "wacfrac/gpu/types.cuh"
+#include "wacfrac/device_reference.cuh"
 #include "wacfrac/gpu_renderer.hpp"
 #include "wacfrac/gpu/rendering.cuh"
 #include "wacfrac/complex_concept.hpp"
@@ -27,7 +27,7 @@ struct GpuRenderer::Impl {
     cuda::device_buffer<Pixel> palette;
     cuda::host_buffer<Pixel> pixels;
     ReferenceSet host_references;
-    gpu::ReferenceSet device_references;
+    DeviceReferenceSet device_references;
     Resolution resolution;
 
     Impl(int device_id, const Resolution& resolution, const std::vector<Pixel>& palette, std::size_t ref_capacity)

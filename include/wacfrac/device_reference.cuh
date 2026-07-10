@@ -10,15 +10,15 @@
 #include <cuda/buffer>
 #include <type_traits>
 
-namespace wacfrac::gpu {
+namespace wacfrac {
 
-struct ReferenceSet {
+struct DeviceReferenceSet {
     cuda::device_ref device;
     cuda::stream_ref stream;
     cuda::device_buffer<wacfrac::Complex<float>> float_ref;
     cuda::device_buffer<wacfrac::Complex<double>> double_ref;
 
-    ReferenceSet(cuda::device_ref device, cuda::stream_ref stream)
+    DeviceReferenceSet(cuda::device_ref device, cuda::stream_ref stream)
         : device(device)
         , stream(stream)
         , float_ref {stream, cuda::device_default_memory_pool(device)}
@@ -57,4 +57,4 @@ struct ReferenceSet {
     }
 };
 
-} // namespace wacfrac::gpu
+} // namespace wacfrac
