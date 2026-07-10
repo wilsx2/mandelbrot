@@ -62,13 +62,10 @@ template <typename Real>
 auto to_real(const MultiFloat& val) -> Real {
     using NumberDoubleExp = boost::multiprecision::number<DoubleExp>;
     if constexpr (std::is_same_v<Real, DoubleExp>) {
-        if (val.is_zero()) return DoubleExp{};
+        if (val.is_zero()) return DoubleExp(0);
         mpfr_exp_t e;
         double m = mpfr_get_d_2exp(&e, val.backend().data(), MPFR_RNDN);
-        DoubleExp result;
-        result.val = m;
-        result.exp = static_cast<int64_t>(e);
-        return result;
+        return DoubleExp(m, static_cast<int64_t>(e));
     } else if constexpr (std::is_same_v<Real, NumberDoubleExp>) {
         return NumberDoubleExp{to_real<DoubleExp>(val)};
     } else {
