@@ -8,10 +8,8 @@
 
 #if defined(__CUDACC__)
     #include <cuda/std/span>
-    #define STD cuda::std
 #else 
     #include <span>
-    #define STD std
 #endif
 
 namespace wacfrac
@@ -44,7 +42,7 @@ auto parse_color(std::string_view filename) -> Pixel;
 #if defined(__CUDACC__)
 __host__ __device__
 #endif 
-inline auto colorize_discrete(unsigned n, unsigned max_n, STD::span<const Pixel> palette) -> Pixel {
+inline auto colorize_discrete(unsigned n, unsigned max_n, WF_STD::span<const Pixel> palette) -> Pixel {
     if (n == max_n)
         return palette.back();
     return palette[n % palette.size()];
@@ -53,16 +51,16 @@ inline auto colorize_discrete(unsigned n, unsigned max_n, STD::span<const Pixel>
 #if defined(__CUDACC__)
 __host__ __device__
 #endif 
-inline auto colorize_continuous(Complex<float> z, unsigned n, unsigned max_n, STD::span<const Pixel> palette) -> Pixel
+inline auto colorize_continuous(Complex<float> z, unsigned n, unsigned max_n, WF_STD::span<const Pixel> palette) -> Pixel
 {
     if (n == max_n)
         return palette.back();
-    auto cont_n {n - STD::log(std::log(abs(z))) / STD::log(2.0)};
-    auto n1     {static_cast<unsigned>(STD::floor(cont_n))};
-    auto n2     {static_cast<unsigned>(STD::ceil(cont_n))};
+    auto cont_n {n - WF_STD::log(std::log(abs(z))) / WF_STD::log(2.0)};
+    auto n1     {static_cast<unsigned>(WF_STD::floor(cont_n))};
+    auto n2     {static_cast<unsigned>(WF_STD::ceil(cont_n))};
     auto color1 {palette[n1 % palette.size()]};
     auto color2 {palette[n2 % palette.size()]};
-    auto progress {STD::fmod(cont_n, 1.0)};
+    auto progress {WF_STD::fmod(cont_n, 1.0)};
     return {
         static_cast<uint8_t>(color2.r * progress + color1.r * (1.0 - progress)),
         static_cast<uint8_t>(color2.g * progress + color1.g * (1.0 - progress)),
@@ -71,5 +69,3 @@ inline auto colorize_continuous(Complex<float> z, unsigned n, unsigned max_n, ST
 }
 
 } // namespace wacfrac
-
-#undef STD

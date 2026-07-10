@@ -6,13 +6,6 @@
 #include <functional>
 #include <cstddef>
 
-#if defined(__CUDACC__)
-    #include <cuda/std/span>
-    #define STD cuda::std
-#else 
-    #include <span>
-    #define STD std
-#endif
 
 namespace wacfrac
 {
@@ -34,7 +27,7 @@ __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-void compute_next_perturbation(T& z, T& dz, unsigned& n, const T& dc, STD::span<const T> ref, unsigned& ref_n) {
+void compute_next_perturbation(T& z, T& dz, unsigned& n, const T& dc, WF_STD::span<const T> ref, unsigned& ref_n) {
     dz = static_cast<ComplexValueTypeT<T>>(2.0) * dz * ref[ref_n] + dz * dz + dc;
     ++ref_n;
     ++n;
@@ -46,7 +39,7 @@ __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-void rebase_perturbation(T& z, T& dz, STD::span<const T> ref, unsigned& ref_n) {
+void rebase_perturbation(T& z, T& dz, WF_STD::span<const T> ref, unsigned& ref_n) {
     if (ref_n >= ref.size()) {
         dz = z;
         ref_n = 0;
@@ -78,11 +71,11 @@ __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-auto escape_generic(T z, unsigned max_n, double escape_radius, F&& next_orbit) -> STD::pair<Complex<float>, unsigned> {
+auto escape_generic(T z, unsigned max_n, double escape_radius, F&& next_orbit) -> WF_STD::pair<Complex<float>, unsigned> {
     unsigned n {0u};
     while (n < max_n && !escaped(z, escape_radius))
         next_orbit(z, n);
-    return STD::make_pair(
+    return WF_STD::make_pair(
         SingleComplex{static_cast<float>(z.real()), static_cast<float>(z.imag())}, n);
 }
 
@@ -92,7 +85,7 @@ __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-auto escape(const T& c, unsigned max_n, double escape_radius) -> STD::pair<Complex<float>, unsigned> {
+auto escape(const T& c, unsigned max_n, double escape_radius) -> WF_STD::pair<Complex<float>, unsigned> {
     return escape_generic<T>(0.0, max_n, escape_radius,
         [&c](T& z, unsigned& n){
             compute_next_orbit(z, n, c);
@@ -105,7 +98,7 @@ __forceinline__ __host__ __device__
 #else
 inline
 #endif 
-auto escape_perturbed(const T& dc, STD::span<const T> ref, unsigned max_n, double escape_radius) -> STD::pair<Complex<float>, unsigned> {
+auto escape_perturbed(const T& dc, WF_STD::span<const T> ref, unsigned max_n, double escape_radius) -> WF_STD::pair<Complex<float>, unsigned> {
     unsigned ref_n {0u};
     T dz {0.0};
     T z {ref[ref_n] + dz};
@@ -118,5 +111,3 @@ auto escape_perturbed(const T& dc, STD::span<const T> ref, unsigned max_n, doubl
 }
 
 }   // namespace wacfrac
-
-#undef STD

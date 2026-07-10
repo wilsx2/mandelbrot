@@ -6,23 +6,65 @@
 
 namespace wacfrac {
 
-template<typename T>
-class Complex {
+template<std::floating_point M, std::integral E>
+struct FloatExp {
     public:
-    using value_type = T;
+    using mantissa_type = M;
+    using exponent_type = E;
 
     private:
-    T _real, _imag;
 
     public:
-    WF_HD Complex() : _real(0), _imag(0) {}
-    WF_HD Complex(const T& n) : _real(n), _imag(0) {}
-    WF_HD Complex(const T& r, const T& i) : _real(r), _imag(i) {}
-    Complex(const Complex& rhs) = default;
-    template<typename U>
-    WF_HD Complex(const Complex<U>& other)
-        : _real(static_cast<T>(other.real())), _imag(static_cast<T>(other.imag())) {}
-    Complex& operator=(const Complex&) = default;
+    M val;
+    E exp;
+
+    // POD type
+    FloatExp() = default;
+    FloatExp(const FloatExp& rhs) = default;
+    FloatExp(FloatExp&& rhs) = default;
+    FloatExp& operator=(const FloatExp&) = default;
+    FloatExp& operator=(FloatExp&&) = default;
+    ~FloatExp() = default;
+
+	static constexpr E        EXPONENT_MASK   = sizeof(M) == 8 ? 0x7FF0000000000000LL : 0x7F800000;
+	static constexpr E        EXPONENT_UNMASK = sizeof(M) == 8 ? 0x800FFFFFFFFFFFFFLL : 0x803FFFFF;
+	static constexpr E        EXPONENT_SET    = sizeof(M) == 8 ? 0x3FF0000000000000LL : 0x3F800000;
+	static constexpr int      EXPONENT_SHIFT  = sizeof(M) == 8 ?                   52 :         23;
+	static constexpr int      EXPONENT_BIAS   = sizeof(M) == 8 ?                 1023 :        127;
+
+	static constexpr E MAX_PREC = sizeof(M) == 8 ? 53 : 24;
+	// KF: MIN_EXPONENT is smaller than you might expect, this is to give headroom for
+	// avoiding overflow in + and other functions. it is the exponent for 0.0
+	static constexpr E EXP_MIN = sizeof(E) == 8 ? E(-0x800000000000000LL) : E(-0x8000000);
+	static constexpr E EXP_MAX = -EXP_MIN;
+
+    WF_HD
+    inline void align() noexcept {
+        E val_i;
+        WF_STD::memcpy(&val_i, &val, sizeof(val_i));
+        const E e = val_i & EXPONENT_MASK;
+
+        if (e == 0) [[unlikely]] {
+            val = 0;
+            exp = EXP_MIN;
+        } else {
+            exp += (e >> EXPONENT_SHIFT) - EXPONENT_BIAS;
+            val_i = (val_i & EXPONENT_UNMASK) | EXPONENT_SET;
+            WF_STD::memcpy(&val, &val_i, sizeof(val));
+        }
+    }
+
+    WF_HD
+    static inline M set_exp(M val, E exp) noexcept {
+        E val_i;
+        WF_STD::memcpy(&val_i, &val, sizeof(val_i));
+        val_i = (val_i & EXPONENT_UNMASK) | ((exp  + EXPONENT_BIAS) << EXPONENT_SHIFT);
+        WF_STD::memcpy(&val, &val_i, sizeof(val));
+        return val;
+    }
+
+    template<typename T>
+    FloatExp& operator=(const T& rhs) { *this = rhs; }
     WF_HD
     auto& operator=(const T& n) {
         _real = n;
@@ -88,6 +130,7 @@ class Complex {
     auto operator-() -> Complex {
         return {-_real, -_imag};
     }
+    // TODO: Spaceship
     WF_HD
     auto& real() {
         return _real;
