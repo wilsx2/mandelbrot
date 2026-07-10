@@ -3,7 +3,7 @@
 #include <vector>
 #include "wacfrac/device_reference.cuh"
 #include "wacfrac/gpu_renderer.hpp"
-#include "wacfrac/gpu/rendering.cuh"
+#include "wacfrac/rendering.cuh"
 #include "wacfrac/complex_concept.hpp"
 #include "wacfrac/log.hpp"
 #include "wacfrac/resolution.hpp"
