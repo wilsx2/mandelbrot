@@ -1,3 +1,5 @@
+#pragma once
+
 #include "wacfrac/complex_concept.hpp"
 #include "wacfrac/orbit.hpp"
 #include "wacfrac/types.hpp"

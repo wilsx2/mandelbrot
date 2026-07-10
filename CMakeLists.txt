@@ -63,9 +63,7 @@ add_library(libwacfrac STATIC
     src/wacfrac/analysis.cpp
     src/wacfrac/color.cpp
     src/wacfrac/viewport.cpp
-    src/wacfrac/rendering.cpp
     src/wacfrac/io.cpp
-    src/wacfrac/bla.cpp
     src/wacfrac/log.cpp
     src/wacfrac/gpu_renderer.cu
 )

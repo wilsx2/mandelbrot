@@ -1,7 +1,7 @@
 11: Test FloatExp on GPU
     Unified BLA (fix bugs introduced earlier)
 12: Integrate with Bench & CLI
-13: Mirror improvements from device code in host code, Optimize
+    Renderer interface
 
 July
 - GPU

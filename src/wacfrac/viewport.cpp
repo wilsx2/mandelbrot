@@ -1,6 +1,5 @@
 #include "wacfrac/viewport.hpp"
 #include "wacfrac/log.hpp"
-#include <wacfrac/viewport.tpp>
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/types.hpp"
 #include <cmath>
