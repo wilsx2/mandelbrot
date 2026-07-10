@@ -2,7 +2,9 @@
 
 #include "wacfrac/macros.hpp"
 #include <cmath>
+#include <concepts>
 #include <format>
+#include <type_traits>
 
 namespace wacfrac {
 
@@ -17,6 +19,9 @@ class Complex {
     public:
     WF_HD Complex() : _real(0), _imag(0) {}
     WF_HD Complex(const T& n) : _real(n), _imag(0) {}
+    template<typename U>
+        requires (std::is_arithmetic_v<U> && !std::same_as<std::remove_cvref_t<U>, T>)
+    WF_HD Complex(U n) : _real(static_cast<T>(n)), _imag(0) {}
     WF_HD Complex(const T& r, const T& i) : _real(r), _imag(i) {}
     Complex(const Complex& rhs) = default;
     template<typename U>

@@ -23,8 +23,8 @@ using MultiFloat   = boost::multiprecision::mpfr_float;
 using SingleComplex = Complex<float>;
 using DoubleComplex = Complex<double>;
 using MultiComplex  = boost::multiprecision::mpc_complex;
-using SingleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<SingleExp>>;
-using DoubleExpComplex = boost::multiprecision::number<boost::multiprecision::backends::complex_adaptor<DoubleExp>>;
+using SingleExpComplex = Complex<SingleExp>;
+using DoubleExpComplex = Complex<DoubleExp>;
 
 struct ReferenceSet {
     std::vector<SingleComplex> float_ref;
@@ -66,8 +66,8 @@ auto to_real(const MultiFloat& val) -> Real {
         mpfr_exp_t e;
         double m = mpfr_get_d_2exp(&e, val.backend().data(), MPFR_RNDN);
         DoubleExp result;
-        result.mantissa = m;
-        result.exponent = static_cast<int64_t>(e);
+        result.val = m;
+        result.exp = static_cast<int64_t>(e);
         return result;
     } else if constexpr (std::is_same_v<Real, NumberDoubleExp>) {
         return NumberDoubleExp{to_real<DoubleExp>(val)};

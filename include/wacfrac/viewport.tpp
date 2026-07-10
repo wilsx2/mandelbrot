@@ -13,24 +13,24 @@ auto Viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std:
     using CT = ComplexValueTypeT<T>;
     std::vector<T> probes;
     T dimensions_t {
-        static_cast<CT>(dimensions.real()),
-        static_cast<CT>(dimensions.imag())
+        to_real<CT>(dimensions.real()),
+        to_real<CT>(dimensions.imag())
     };
     T interval {
-        static_cast<CT>(dimensions_t.real()/cols),
-        static_cast<CT>(dimensions_t.imag()/rows)
+        dimensions_t.real() / CT(cols),
+        dimensions_t.imag() / CT(rows)
     };
-    if (interval.real() == 0.0 || interval.imag() == 0.0) {
-        probes.emplace_back(0.0, 0.0);
+    if (interval.real() == CT(0) || interval.imag() == CT(0)) {
+        probes.emplace_back(CT(0), CT(0));
         return probes;
     }
     T start {
-        static_cast<CT>(cols % 2 == 0 ? -dimensions_t.real()/2.0 : (-dimensions_t.real() + interval.real())/2.0),
-        static_cast<CT>(rows % 2 == 0 ? -dimensions_t.imag()/2.0 : (-dimensions_t.imag() + interval.imag())/2.0)
+        cols % 2 == 0 ? -dimensions_t.real() / CT(2) : (-dimensions_t.real() + interval.real()) / CT(2),
+        rows % 2 == 0 ? -dimensions_t.imag() / CT(2) : (-dimensions_t.imag() + interval.imag()) / CT(2)
     };
     T end {
-        static_cast<CT>(+dimensions_t.real() / 2.0),
-        static_cast<CT>(+dimensions_t.imag() / 2.0)
+        +dimensions_t.real() / CT(2),
+        +dimensions_t.imag() / CT(2)
     };
     for (CT dx = start.real(); dx <= end.real(); dx += interval.real()) {
         for (CT dy = start.imag(); dy <= end.imag(); dy += interval.imag()) {

@@ -47,7 +47,7 @@ inline void rebase_perturbation(T& z, T& dz, WF_STD::span<const T> ref, unsigned
 template <ComplexConcept T>
 WF_HD
 inline auto escaped(const T& z, double escape_radius) -> bool {
-    return norm(z) > escape_radius;
+    return norm(z) > ComplexValueTypeT<T>(escape_radius);
 }
 
 template <ComplexConcept T, std::invocable<T&, unsigned&> F>

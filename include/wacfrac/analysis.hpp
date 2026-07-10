@@ -10,10 +10,11 @@ auto find_nucleus(MultiComplex c, std::size_t period, unsigned max_iterations) -
 
 template<ComplexConcept T, typename F = double>
 auto is_reference_degenerate(const std::vector<T>& ref, F tolerance = 1e-3) -> bool {
+    using CT = ComplexValueTypeT<T>;
     return std::ranges::all_of(ref, [tolerance](auto z) {
         using std::abs;
         using boost::multiprecision::abs;
-        return abs(z) < tolerance;
+        return abs(z) < CT(tolerance);
     });
 }
 

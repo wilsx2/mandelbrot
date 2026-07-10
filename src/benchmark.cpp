@@ -1,6 +1,5 @@
 #include "wacfrac/orbit.hpp"
 #include "wacfrac/complex_adapter.hpp"
-#include "wacfrac/floatexp2.hpp"
 #include <wacfrac/wacfrac.hpp>
 #include <benchmark/benchmark.h>
 #include <filesystem>
