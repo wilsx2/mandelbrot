@@ -1,4 +1,4 @@
-#include "wacfrac/gpu/host_interface.hpp"
+#include "wacfrac/gpu_renderer.hpp"
 #include "wacfrac/io.hpp"
 #include "wacfrac/orbit.hpp"
 #include "wacfrac/reference.hpp"

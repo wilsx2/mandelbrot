@@ -1,4 +1,3 @@
-9:  Free FloatExp from Boost backend (w/ benchmark), unify
 11: Test FloatExp on GPU
     Unified BLA (fix bugs introduced earlier)
 12: Integrate with Bench & CLI

@@ -67,7 +67,7 @@ add_library(libwacfrac STATIC
     src/wacfrac/io.cpp
     src/wacfrac/bla.cpp
     src/wacfrac/log.cpp
-    src/wacfrac/gpu/host_interface.cu
+    src/wacfrac/gpu_renderer.cu
 )
 set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libwacfrac PUBLIC

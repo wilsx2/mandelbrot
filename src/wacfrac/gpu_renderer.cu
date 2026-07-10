@@ -2,7 +2,7 @@
 #include <cstddef>
 #include <vector>
 #include "wacfrac/gpu/types.cuh"
-#include "wacfrac/gpu/host_interface.hpp"
+#include "wacfrac/gpu_renderer.hpp"
 #include "wacfrac/gpu/rendering.cuh"
 #include "wacfrac/complex_concept.hpp"
 #include "wacfrac/log.hpp"
