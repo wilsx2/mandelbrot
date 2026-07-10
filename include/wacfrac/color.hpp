@@ -39,18 +39,14 @@ inline const std::vector<Pixel> ULTRA {
 
 auto parse_color(std::string_view filename) -> Pixel;
 
-#if defined(__CUDACC__)
-__host__ __device__
-#endif 
+WF_HD
 inline auto colorize_discrete(unsigned n, unsigned max_n, WF_STD::span<const Pixel> palette) -> Pixel {
     if (n == max_n)
         return palette.back();
     return palette[n % palette.size()];
 }
 
-#if defined(__CUDACC__)
-__host__ __device__
-#endif 
+WF_HD
 inline auto colorize_continuous(Complex<float> z, unsigned n, unsigned max_n, WF_STD::span<const Pixel> palette) -> Pixel
 {
     if (n == max_n)
