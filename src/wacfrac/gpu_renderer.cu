@@ -31,7 +31,7 @@ struct GpuRenderer::Impl {
     Resolution resolution;
 
     Impl(int device_id, const Resolution& resolution, const std::vector<Pixel>& palette, std::size_t ref_capacity)
-        : device{0}
+        : device{device_id}
         , stream{device}
         , palette{cuda::make_buffer<Pixel>(stream, cuda::device_default_memory_pool(device), palette.begin(), palette.end())}
         , pixels{cuda::make_buffer<Pixel>(stream, cuda::pinned_default_memory_pool(), resolution.area(), cuda::no_init)}

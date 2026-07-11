@@ -12,13 +12,17 @@
 
 namespace wacfrac {
 
+#if defined(__CUDACC__)
+namespace gpu {
+#endif
+
 template <ComplexConcept T = SingleComplex>
 class BivariateLinearApproximator {
     public:
     using CT = ComplexValueTypeT<T>;
     struct ApproximationParams {
         CT epsilon;
-        std::span<const T> ref;
+        WF_STD::span<const T> ref;
         T max_dc;
     };
     struct SearchParams {
@@ -27,9 +31,14 @@ class BivariateLinearApproximator {
         double tolerance;
         double convergence_radius = 1e-3;
     };
+
+#if defined(__CUDACC__)
+    BivariateLinearApproximator(int device_id, std::size_t max_n, std::size_t first_level); 
+#else
     BivariateLinearApproximator(std::size_t max_n, std::size_t first_level); 
-    auto compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> bool;
-    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, double escape_radius = 2.0) -> bool;
+#endif
+    auto compute_manual(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> bool;
+    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, WF_STD::span<const T> ref, double escape_radius = 2.0) -> bool;
 
     auto approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>>;
 
@@ -56,42 +65,67 @@ class BivariateLinearApproximator {
     std::size_t _max_ref_size;
     std::size_t _first_level;
     std::size_t _last_level;
-    std::vector<Approximation> _working_approximations;
-    std::vector<Approximation> _approximations;
-    std::vector<ColumnInfo> _columns;
+    
+    template<typename U>
+#if defined(__CUDACC__)
+    using ContainerType = cuda::defice_buffer<U>;
+    cuda::device_ref device;
+    cuda::stream stream;
+#else
+    using ContainerType = std::vector<U>;
+#endif
+    ContainerType<ColumnInfo> _columns;
+    ContainerType<Approximation> _working_approximations;
+    ContainerType<Approximation> _approximations;
 };
 
 template <ComplexConcept T>
+#if defined(__CUDACC__)
+BivariateLinearApproximator<T>::BivariateLinearApproximator(int device_id, std::size_t max_n, std::size_t first_level)
+#else
 BivariateLinearApproximator<T>::BivariateLinearApproximator(std::size_t max_n, std::size_t first_level)
+#endif
     : _max_ref_size(max_n + 1)
     , _first_level(first_level)
     , _last_level(max_n < 2 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(max_n + 1))))
+#if defined(__CUDACC__)
+    , device{device_id}
+    , stream{device}
+    , _columns{stream, cuda::device_default_memory_pool(device), max_n, cuda::no_init}
+    , _working_approximations{stream, cuda::device_default_memory_pool(device), max_n - 1, cuda::no_init}
+#else
+    , _columns(max_n)
     , _working_approximations(max_n - 1)
-    // TODO: Allocate approximations
-    // TODO: Allocate columns
-    
+#endif
 {
-    _columns.assign(max_n - 1, {0, 0});
+    _columns[max_n - 1] = {0, 0};
     auto i {0uz};
     for (auto m : std::views::iota(1uz, max_n)) {
         auto cz {static_cast<unsigned>(std::countr_zero(m - 1))};
         auto size {cz >= _first_level
             ? 1 + std::min(cz - _first_level, _last_level - _first_level)
             : 0uz};
-        _columns.at(m - 1) = {i, size};
+        _columns[m - 1] = {i, size};
         i += size;
     }
-    _approximations.resize(i); // TODO: Remove this allocation, see initializers
+#if defined(__CUDACC__)
+    _approximations = cuda::make_buffer<T>(stream, cuda::device_default_memory_pool(device), i, cuda::no_init);
+#else
+    _approximations.resize(i);
+#endif
 }
 
 template <ComplexConcept T>
-auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> bool {
+auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> bool {
     if (ref.size() > _max_ref_size) {
         logging::error("Reference size {} exceeds maximum reference size {} for this approximator", ref.size(), _max_ref_size);
         return false;
     }
 
     auto level_size {ref.size() - 2};
+#if defined(__CUDACC__)
+    // TODO: Launch kernel to compute initial values
+#else
     for (auto m : std::views::iota(1uz, ref.size() - 1)) {
         Approximation bla {{epsilon, ref, max_dc}, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
         _working_approximations.at(m - 1) = bla;
@@ -99,9 +133,12 @@ auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const 
             *approximation_at(m, 0) = bla;
         }
     }
-
+#endif
     for (auto i {1uz}; level_size >= 2; ++i) {
         auto even_size {level_size & ~1uz};
+    #if defined(__CUDACC__)
+        // TODO: Launch kernel to merge values
+    #else
         for (auto k : std::views::iota(0uz, even_size) | std::views::stride(2)) {
             auto bla {Approximation::merge(max_dc, _working_approximations.at(k), _working_approximations.at(k+1))};
             _working_approximations.at(k/2) = bla;
@@ -110,6 +147,7 @@ auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const 
                 *approximation_at(m, i) = bla;
             }
         }
+    #endif
         level_size /= 2;
     }
 
@@ -117,7 +155,7 @@ auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const 
 }
 
 template <ComplexConcept T>
-auto BivariateLinearApproximator<T>::compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, double escape_radius) -> bool
+auto BivariateLinearApproximator<T>::compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, WF_STD::span<const T> ref, double escape_radius) -> bool
 {
     if (ref.size() > _max_ref_size) {
         logging::error("Reference size {} exceeds maximum reference size {} for this approximator", ref.size(), _max_ref_size);
@@ -126,13 +164,17 @@ auto BivariateLinearApproximator<T>::compute_search(SearchParams params, const s
 
     logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
 
-    std::vector<unsigned> true_escape_times;
+#if defined(__CUDACC__)
+    // TODO: Launch kernel to calculate escape
+#else
+    std::vector<unsigned> true_escape_times; // TODO: Eliminate/reuse allocations
     true_escape_times.reserve(probes.size());
     std::ranges::transform(probes, std::back_inserter(true_escape_times),
         [&ref, &escape_radius](T p) -> unsigned { return escape_perturbed<T>(p, ref, static_cast<unsigned>(ref.size()), escape_radius).second; });
+#endif
 
     auto prev_avg_skipped {-1.0};
-    BivariateLinearApproximator<T> prev_bla {_max_ref_size, _first_level};
+    BivariateLinearApproximator<T> prev_bla {_max_ref_size, _first_level}; // TODO: Eliminate/reuse allocations
     auto lower_exp {params.lower_exp};
     auto upper_exp {params.upper_exp};
     constexpr auto UPPER_LIMIT {32uz};
@@ -150,7 +192,7 @@ auto BivariateLinearApproximator<T>::compute_search(SearchParams params, const s
         auto all_correct{true};
         auto total_skipped{0u};
         for (auto&& [i, probe] : probes | std::views::enumerate) {
-            auto [_, approx_escape_time, skipped] = escape_approximate(probe, std::span<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, *this);
+            auto [_, approx_escape_time, skipped] = escape_approximate(probe, WF_STD::span<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, *this);
 
             using std::abs;
             if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(true_escape_times.at(i)) - 1.0) > params.tolerance) {
@@ -257,7 +299,7 @@ auto BivariateLinearApproximator<T>::approximation_at(unsigned m, std::size_t le
 }
 
 template <ComplexConcept T>
-auto escape_approximate(const T& dc, std::span<const T> ref, unsigned max_n, double escape_radius, BivariateLinearApproximator<T> approximator) -> std::tuple<Complex<float>, unsigned, unsigned> {
+auto escape_approximate(const T& dc, WF_STD::span<const T> ref, unsigned max_n, double escape_radius, BivariateLinearApproximator<T> approximator) -> std::tuple<Complex<float>, unsigned, unsigned> {
     unsigned ref_n {0u};
     unsigned skipped {0u};
     T dz {0.0, 0.0};
@@ -277,5 +319,7 @@ auto escape_approximate(const T& dc, std::span<const T> ref, unsigned max_n, dou
     return {z, n, skipped};
 }
 
-
+#if defined(__CUDACC__)
+} // namespace gpu
+#endif
 } // namespace wacfrac
