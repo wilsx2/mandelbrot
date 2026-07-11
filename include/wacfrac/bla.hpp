@@ -56,6 +56,7 @@ class BivariateLinearApproximator {
     std::size_t _max_ref_size;
     std::size_t _first_level;
     std::size_t _last_level;
+    std::vector<Approximation> _working_approximations;
     std::vector<Approximation> _approximations;
     std::vector<ColumnInfo> _columns;
 };
@@ -65,6 +66,10 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(std::size_t max_n, s
     : _max_ref_size(max_n + 1)
     , _first_level(first_level)
     , _last_level(max_n < 2 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(max_n + 1))))
+    , _working_approximations(max_n - 1)
+    // TODO: Allocate approximations
+    // TODO: Allocate columns
+    
 {
     _columns.assign(max_n - 1, {0, 0});
     auto i {0uz};
@@ -76,7 +81,7 @@ BivariateLinearApproximator<T>::BivariateLinearApproximator(std::size_t max_n, s
         _columns.at(m - 1) = {i, size};
         i += size;
     }
-    _approximations.resize(i);
+    _approximations.resize(i); // TODO: Remove this allocation, see initializers
 }
 
 template <ComplexConcept T>
@@ -86,26 +91,26 @@ auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const 
         return false;
     }
 
-    std::vector<Approximation> current_level (ref.size() - 2);
+    auto level_size {ref.size() - 2};
     for (auto m : std::views::iota(1uz, ref.size() - 1)) {
         Approximation bla {{epsilon, ref, max_dc}, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
-        current_level.at(m - 1) = bla;
+        _working_approximations.at(m - 1) = bla;
         if (0 == _first_level) {
             *approximation_at(m, 0) = bla;
         }
     }
 
-    for (auto i {1uz}; current_level.size() >= 2; ++i) {
-        auto even_size {current_level.size() & ~1uz};
+    for (auto i {1uz}; level_size >= 2; ++i) {
+        auto even_size {level_size & ~1uz};
         for (auto k : std::views::iota(0uz, even_size) | std::views::stride(2)) {
-            auto bla {Approximation::merge(max_dc, current_level.at(k), current_level.at(k+1))};
-            current_level.at(k/2) = bla;
+            auto bla {Approximation::merge(max_dc, _working_approximations.at(k), _working_approximations.at(k+1))};
+            _working_approximations.at(k/2) = bla;
             if (i >= _first_level) {
                 auto m {1 + (k / 2) * (1uz << i)};
                 *approximation_at(m, i) = bla;
             }
         }
-        current_level.resize(current_level.size()/2);
+        level_size /= 2;
     }
 
     return true;
