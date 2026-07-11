@@ -27,12 +27,9 @@ class BivariateLinearApproximator {
         double tolerance;
         double convergence_radius = 1e-3;
     };
-    BivariateLinearApproximator(std::size_t first_level = 0); 
-    BivariateLinearApproximator(std::size_t first_level, std::size_t max_n); 
-    auto compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> void;
-    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, double escape_radius = 2.0) -> void;
-    auto resize(std::size_t max_n) -> void;
-    auto grow(std::size_t max_n) -> void;
+    BivariateLinearApproximator(std::size_t max_n, std::size_t first_level); 
+    auto compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> bool;
+    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, double escape_radius = 2.0) -> bool;
 
     auto approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>>;
 
@@ -56,6 +53,7 @@ class BivariateLinearApproximator {
     auto approximation_at(unsigned m, std::size_t level) const -> const Approximation*;
     auto approximation_at(unsigned m, std::size_t level) -> Approximation*;
 
+    std::size_t _max_ref_size;
     std::size_t _first_level;
     std::size_t _last_level;
     std::vector<Approximation> _approximations;
@@ -63,22 +61,11 @@ class BivariateLinearApproximator {
 };
 
 template <ComplexConcept T>
-BivariateLinearApproximator<T>::BivariateLinearApproximator(std::size_t first_level)
-    : _first_level(first_level)
-    , _last_level(0)
-{}
-
-template <ComplexConcept T>
-BivariateLinearApproximator<T>::BivariateLinearApproximator(std::size_t first_level, std::size_t max_n)
-    : _first_level(first_level)
+BivariateLinearApproximator<T>::BivariateLinearApproximator(std::size_t max_n, std::size_t first_level)
+    : _max_ref_size(max_n + 1)
+    , _first_level(first_level)
     , _last_level(max_n < 2 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(max_n + 1))))
 {
-    resize(max_n);
-}
-
-template <ComplexConcept T>
-auto BivariateLinearApproximator<T>::resize(std::size_t max_n) -> void {
-    _last_level = max_n < 2 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(max_n + 1)));
     _columns.assign(max_n - 1, {0, 0});
     auto i {0uz};
     for (auto m : std::views::iota(1uz, max_n)) {
@@ -93,15 +80,12 @@ auto BivariateLinearApproximator<T>::resize(std::size_t max_n) -> void {
 }
 
 template <ComplexConcept T>
-auto BivariateLinearApproximator<T>::grow(std::size_t max_n) -> void {
-    if (_columns.size() < max_n - 1) {
-        resize(max_n);
+auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> bool {
+    if (ref.size() > _max_ref_size) {
+        logging::error("Reference size {} exceeds maximum reference size {} for this approximator", ref.size(), _max_ref_size);
+        return false;
     }
-}
 
-template <ComplexConcept T>
-auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> void {
-    grow(ref.size() - 1);
     std::vector<Approximation> current_level (ref.size() - 2);
     for (auto m : std::views::iota(1uz, ref.size() - 1)) {
         Approximation bla {{epsilon, ref, max_dc}, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
@@ -123,11 +107,18 @@ auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const 
         }
         current_level.resize(current_level.size()/2);
     }
+
+    return true;
 }
 
 template <ComplexConcept T>
-auto BivariateLinearApproximator<T>::compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, double escape_radius) -> void
+auto BivariateLinearApproximator<T>::compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, double escape_radius) -> bool
 {
+    if (ref.size() > _max_ref_size) {
+        logging::error("Reference size {} exceeds maximum reference size {} for this approximator", ref.size(), _max_ref_size);
+        return false;
+    }
+
     logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
 
     std::vector<unsigned> true_escape_times;
@@ -136,7 +127,7 @@ auto BivariateLinearApproximator<T>::compute_search(SearchParams params, const s
         [&ref, &escape_radius](T p) -> unsigned { return escape_perturbed<T>(p, ref, static_cast<unsigned>(ref.size()), escape_radius).second; });
 
     auto prev_avg_skipped {-1.0};
-    BivariateLinearApproximator<T> prev_bla {_first_level};
+    BivariateLinearApproximator<T> prev_bla {_max_ref_size, _first_level};
     auto lower_exp {params.lower_exp};
     auto upper_exp {params.upper_exp};
     constexpr auto UPPER_LIMIT {32uz};
@@ -144,7 +135,7 @@ auto BivariateLinearApproximator<T>::compute_search(SearchParams params, const s
         auto middle {(upper_exp + lower_exp) / 2.0};
 
         auto epsilon = static_cast<ComplexValueTypeT<T>>(std::pow(10.0, middle));
-        compute_manual(epsilon, ref, max_dc);
+        (void) compute_manual(epsilon, ref, max_dc);
 
         if (upper_exp - lower_exp < params.convergence_radius) {
             logging::trace( "BLA search iter {}: epsilon=10^{} (converged)", iter, middle);
@@ -183,6 +174,8 @@ auto BivariateLinearApproximator<T>::compute_search(SearchParams params, const s
         }
     }
     logging::info( "BLA epsilon search complete");
+
+    return true;
 }
 
 template <ComplexConcept T>

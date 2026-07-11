@@ -90,7 +90,7 @@ void render_image(const wacfrac::ImageOptions& opts) {
             } else if (render_type == wacfrac::RenderType::BLA) {
                 using CT = wacfrac::ComplexValueTypeT<T>;
                 auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
-                wacfrac::BivariateLinearApproximator<T> bla {opts.shared->first_level};
+                wacfrac::BivariateLinearApproximator<T> bla {ref.size(), opts.shared->first_level};
                 if (opts.epsilon != 0.0) {
                     bla.compute_manual(static_cast<CT>(opts.epsilon), ref, max_dc);
                 } else {
