@@ -164,9 +164,8 @@ static void compute_bla_coefficients(benchmark::State& state) {
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
     auto probes {view.generate_probes<T>(state.range(1), state.range(1))};
     for (auto _ : state) {
-        wacfrac::BivariateLinearApproximator<T> bla {
-            -256.0, 0.0, std::pow(10.0, -state.range(2)), probes, max_dc, ref, 0
-        };
+        wacfrac::BivariateLinearApproximator<T> bla {0};
+        bla.compute_search(-256.0, 0.0, std::pow(10.0, -state.range(2)), probes, max_dc, ref, 0);
         benchmark::DoNotOptimize(bla);
     }
 }
@@ -256,16 +255,19 @@ static void render_phase_bla(benchmark::State& state) {
     auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
     auto probes {view.generate_probes<T>(3, 3)};
-    wacfrac::BivariateLinearApproximator<T> bla{-256.0, 0.0, 1e-8, probes, max_dc, ref, first_level};
+    wacfrac::BivariateLinearApproximator<T> bla{first_level};
+    bla.compute_search(-256.0, 0.0, 1e-8, probes, max_dc, ref, first_level);
 
     std::vector<wacfrac::Pixel> pixels(res.area());
     for (auto _ : state) {
         auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
-        auto escaped_orbits {dcs | std::views::transform([&](auto dc){
-            return bla.escape_approximate(dc);
-        })};
+        std::vector<std::tuple<wacfrac::Complex<float>, unsigned, unsigned>> escaped_orbits;
+        for (auto dc : dcs) {
+            escaped_orbits.push_back(wacfrac::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), 2.0, bla));
+        }
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
-            pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
+            auto [z, n, skipped] = orbit;
+            pixel = wacfrac::colorize_discrete(n, max_iterations, wacfrac::ULTRA);
         }
     }
     state.SetComplexityN(res.area());
@@ -367,13 +369,16 @@ static void e2e_bla(benchmark::State& state) {
         auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
         auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
         auto probes {view.generate_probes<T>(3, 3)};
-        wacfrac::BivariateLinearApproximator<T> bla {-256.0, 0.0, 1e-8, probes, max_dc, ref, first_level};
+        wacfrac::BivariateLinearApproximator<T> bla{first_level};
+        bla.compute_search(-256.0, 0.0, 1e-8, probes, max_dc, ref, first_level);
         auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
-        auto escaped_orbits {dcs | std::views::transform([&](auto dc){
-            return bla.escape_approximate(dc);
-        })};
+        std::vector<std::tuple<wacfrac::Complex<float>, unsigned, unsigned>> escaped_orbits;
+        for (auto dc : dcs) {
+            escaped_orbits.push_back(wacfrac::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), 2.0, bla));
+        }
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
-            pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
+            auto [z, n, skipped] = orbit;
+            pixel = wacfrac::colorize_discrete(n, max_iterations, wacfrac::ULTRA);
         }
     }
     state.PauseTiming();
@@ -383,9 +388,10 @@ static void e2e_bla(benchmark::State& state) {
     auto ref {compute_reference_dec(view, c_ref, max_iterations)};
     std::vector<wacfrac::Pixel> ref_pixels(res.area());
     auto ref_dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
-    auto ref_escaped_orbits {ref_dcs | std::views::transform([&](auto dc){
-        return wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_iterations, 2.0);
-    })};
+    std::vector<std::pair<wacfrac::Complex<float>, unsigned>> ref_escaped_orbits;
+    for (auto dc : ref_dcs) {
+        ref_escaped_orbits.push_back(wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_iterations, 2.0));
+    }
     for (auto&& [pixel, orbit] : std::views::zip(ref_pixels, ref_escaped_orbits)) {
         pixel = wacfrac::colorize_discrete(std::get<1>(orbit), max_iterations, wacfrac::ULTRA);
     }

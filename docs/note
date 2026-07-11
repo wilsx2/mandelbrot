@@ -1,6 +1,4 @@
-11: Test FloatExp on GPU
-    Clean up BLA code
-    Fix BLA bugs
+11: Fix BLA bugs
     Unify BLA
 12: Integrate with Bench & CLI
     Renderer interface
@@ -29,6 +27,7 @@ July
 - Cloud (Amazon EC2, g4dn?)
 
 - Experiment with using Local Machine Epsilon instead of BLA search
+- Do away with z param for escape_generic and derivatives
 - Type traits for float type -> complex conversion
 - Move most things to headers to allow for inlining optimizations
 - Make as many functions/classes as possible compatible with CUDA and C++ code (DRY)

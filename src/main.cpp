@@ -90,22 +90,18 @@ void render_image(const wacfrac::ImageOptions& opts) {
             } else if (render_type == wacfrac::RenderType::BLA) {
                 using CT = wacfrac::ComplexValueTypeT<T>;
                 auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
-                wacfrac::BivariateLinearApproximator<T> bla {
-                    opts.epsilon != 0.0
-                    ? wacfrac::BivariateLinearApproximator<T>{
-                        static_cast<CT>(opts.epsilon), max_dc,
-                        ref, opts.shared->first_level, opts.shared->escape_radius}
-                    : wacfrac::BivariateLinearApproximator<T>{
+                wacfrac::BivariateLinearApproximator<T> bla {opts.shared->first_level};
+                if (opts.epsilon != 0.0) {
+                    bla.compute_manual(static_cast<CT>(opts.epsilon), ref, max_dc);
+                } else {
+                    bla.compute_search(
                         opts.shared->lower_exp, opts.shared->upper_exp, opts.shared->tolerance,
                         view.generate_probes<T>(opts.shared->probe_grid.first, opts.shared->probe_grid.second),
-                        max_dc, ref, opts.shared->first_level, opts.shared->escape_radius
-                    }
-                };
+                        max_dc, ref, opts.shared->first_level, opts.shared->escape_radius);
+                }
                 for (auto dc : dcs) {
-                    auto [z, n, _] = bla.escape_approximate(dc);
-                    escaped_orbits.emplace_back(
-                        wacfrac::Complex<float>{static_cast<float>(z.real()), static_cast<float>(z.imag())},
-                        n);
+                    auto [z, n, _] = wacfrac::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), opts.shared->escape_radius, bla);
+                    escaped_orbits.emplace_back(z, n);
                 }
             }
         }
