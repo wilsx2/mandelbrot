@@ -20,7 +20,7 @@ struct DeviceReferenceSet {
     cuda::device_buffer<DoubleComplex> double_ref;
     cuda::device_buffer<DoubleExpComplex> dexp_ref;
 
-    DeviceReferenceSet(cuda::device_ref device, cuda::stream_ref stream)
+    DeviceReferenceSet(cuda::device_ref device, cuda::stream_ref stream) // TODO: Copy from ReferenceSet
         : device(device)
         , stream(stream)
         , float_ref {stream, cuda::device_default_memory_pool(device)}

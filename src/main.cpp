@@ -95,9 +95,9 @@ void render_image(const wacfrac::ImageOptions& opts) {
                     bla.compute_manual(static_cast<CT>(opts.epsilon), ref, max_dc);
                 } else {
                     bla.compute_search(
-                        opts.shared->lower_exp, opts.shared->upper_exp, opts.shared->tolerance,
+                        {.lower_exp = opts.shared->lower_exp, .upper_exp = opts.shared->upper_exp, .tolerance = opts.shared->tolerance},
                         view.generate_probes<T>(opts.shared->probe_grid.first, opts.shared->probe_grid.second),
-                        max_dc, ref, opts.shared->first_level, opts.shared->escape_radius);
+                        max_dc, ref, opts.shared->escape_radius);
                 }
                 for (auto dc : dcs) {
                     auto [z, n, _] = wacfrac::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), opts.shared->escape_radius, bla);

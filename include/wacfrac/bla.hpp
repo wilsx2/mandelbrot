@@ -16,15 +16,21 @@ template <ComplexConcept T = SingleComplex>
 class BivariateLinearApproximator {
     public:
     using CT = ComplexValueTypeT<T>;
-    struct Foo {
+    struct ApproximationParams {
         CT epsilon;
         std::span<const T> ref;
         T max_dc;
     };
+    struct SearchParams {
+        double lower_exp;
+        double upper_exp;
+        double tolerance;
+        double convergence_radius = 1e-3;
+    };
     BivariateLinearApproximator(std::size_t first_level = 0); 
     BivariateLinearApproximator(std::size_t first_level, std::size_t max_n); 
     auto compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> void;
-    auto compute_search(double lower_exp, double upper_exp, double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0, double escape_radius = 2.0) -> void;
+    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, double escape_radius = 2.0) -> void;
     auto resize(std::size_t max_n) -> void;
 
     auto approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>>;
@@ -35,7 +41,7 @@ class BivariateLinearApproximator {
         CT r;
         Approximation() = default;
         Approximation(T a, T b, CT r) : a(a), b(b), r(r) {}
-        Approximation(const Foo& foo, unsigned m, unsigned n);
+        Approximation(const ApproximationParams& params, unsigned m, unsigned n);
         auto is_valid(T dzm) const -> bool;
         auto approximate_dzn(T dzm, T dc) const -> T;
         static auto merge(const T& max_dc, const Approximation& x, const Approximation& y) -> Approximation;
@@ -112,10 +118,9 @@ auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const 
 }
 
 template <ComplexConcept T>
-auto BivariateLinearApproximator<T>::compute_search(double lower_exp, double upper_exp, double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level, double escape_radius) -> void
+auto BivariateLinearApproximator<T>::compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, double escape_radius) -> void
 {
-    _first_level = first_level;
-    logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", tolerance, probes.size(), lower_exp, upper_exp);
+    logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
 
     std::vector<unsigned> true_escape_times;
     true_escape_times.reserve(probes.size());
@@ -124,6 +129,8 @@ auto BivariateLinearApproximator<T>::compute_search(double lower_exp, double upp
 
     auto prev_avg_skipped {-1.0};
     BivariateLinearApproximator<T> prev_bla {_first_level};
+    auto lower_exp {params.lower_exp};
+    auto upper_exp {params.upper_exp};
     constexpr auto UPPER_LIMIT {32uz};
     for (auto iter : std::views::iota(0uz, UPPER_LIMIT)) {
         auto middle {(upper_exp + lower_exp) / 2.0};
@@ -131,7 +138,7 @@ auto BivariateLinearApproximator<T>::compute_search(double lower_exp, double upp
         auto epsilon = static_cast<ComplexValueTypeT<T>>(std::pow(10.0, middle));
         compute_manual(epsilon, ref, max_dc);
 
-        if (upper_exp - lower_exp < 1e-3) { // TODO: Replace magic number with convergence radius
+        if (upper_exp - lower_exp < params.convergence_radius) {
             logging::trace( "BLA search iter {}: epsilon=10^{} (converged)", iter, middle);
             break;
         }
@@ -142,7 +149,7 @@ auto BivariateLinearApproximator<T>::compute_search(double lower_exp, double upp
             auto [_, approx_escape_time, skipped] = escape_approximate(probe, std::span<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, *this);
 
             using std::abs;
-            if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(true_escape_times.at(i)) - 1.0) > tolerance) {
+            if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(true_escape_times.at(i)) - 1.0) > params.tolerance) {
                 all_correct = false;
                 break;
             }
@@ -190,15 +197,15 @@ auto BivariateLinearApproximator<T>::approximate_dzn(T dzm, unsigned m, T dc) co
 }
 
 template <ComplexConcept T>
-BivariateLinearApproximator<T>::Approximation::Approximation(const Foo& foo, unsigned m, unsigned n) {
+BivariateLinearApproximator<T>::Approximation::Approximation(const ApproximationParams& params, unsigned m, unsigned n) {
     using std::abs;
     auto l {n - m};
-    a = T{2.0, 0.0} * foo.ref[m] * static_cast<CT>(l);
+    a = T{2.0, 0.0} * params.ref[m] * static_cast<CT>(l);
     b = T{static_cast<CT>(l), 0.0};
     auto denom = abs(a);
     r = denom > CT{}
-        ? (foo.epsilon * abs(foo.ref[n]) - abs(b) * abs(foo.max_dc)) / denom
-        : -abs(foo.max_dc);
+        ? (params.epsilon * abs(params.ref[n]) - abs(b) * abs(params.max_dc)) / denom
+        : -abs(params.max_dc);
 }
 
 template <ComplexConcept T>

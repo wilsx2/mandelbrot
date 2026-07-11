@@ -12,6 +12,8 @@ July
             X float
             X FloatExp
         - BLA
+            - Escape
+            - Search
     - Benchmark
     - CLI
 - Distribute / Parallel

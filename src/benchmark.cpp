@@ -165,7 +165,7 @@ static void compute_bla_coefficients(benchmark::State& state) {
     auto probes {view.generate_probes<T>(state.range(1), state.range(1))};
     for (auto _ : state) {
         wacfrac::BivariateLinearApproximator<T> bla {0};
-        bla.compute_search(-256.0, 0.0, std::pow(10.0, -state.range(2)), probes, max_dc, ref, 0);
+        bla.compute_search({.lower_exp = -256.0, .upper_exp = 0.0, .tolerance = std::pow(10.0, -state.range(2))}, probes, max_dc, ref);
         benchmark::DoNotOptimize(bla);
     }
 }
@@ -256,7 +256,7 @@ static void render_phase_bla(benchmark::State& state) {
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
     auto probes {view.generate_probes<T>(3, 3)};
     wacfrac::BivariateLinearApproximator<T> bla{first_level};
-    bla.compute_search(-256.0, 0.0, 1e-8, probes, max_dc, ref, first_level);
+        bla.compute_search({.lower_exp = -256.0, .upper_exp = 0.0, .tolerance = 1e-8}, probes, max_dc, ref);
 
     std::vector<wacfrac::Pixel> pixels(res.area());
     for (auto _ : state) {
@@ -370,7 +370,7 @@ static void e2e_bla(benchmark::State& state) {
         auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
         auto probes {view.generate_probes<T>(3, 3)};
         wacfrac::BivariateLinearApproximator<T> bla{first_level};
-        bla.compute_search(-256.0, 0.0, 1e-8, probes, max_dc, ref, first_level);
+    bla.compute_search({.lower_exp = -256.0, .upper_exp = 0.0, .tolerance = 1e-8}, probes, max_dc, ref);
         auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
         std::vector<std::tuple<wacfrac::Complex<float>, unsigned, unsigned>> escaped_orbits;
         for (auto dc : dcs) {
