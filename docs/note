@@ -1,4 +1,5 @@
-11: Unify BLA
+11: Make BLA size defined when itialized
+    Unify BLA
 12: Integrate with Bench & CLI
     Renderer interface
 

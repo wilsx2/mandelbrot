@@ -32,6 +32,7 @@ class BivariateLinearApproximator {
     auto compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> void;
     auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, double escape_radius = 2.0) -> void;
     auto resize(std::size_t max_n) -> void;
+    auto grow(std::size_t max_n) -> void;
 
     auto approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>>;
 
@@ -92,8 +93,15 @@ auto BivariateLinearApproximator<T>::resize(std::size_t max_n) -> void {
 }
 
 template <ComplexConcept T>
+auto BivariateLinearApproximator<T>::grow(std::size_t max_n) -> void {
+    if (_columns.size() < max_n - 1) {
+        resize(max_n);
+    }
+}
+
+template <ComplexConcept T>
 auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> void {
-    resize(ref.size() - 1);
+    grow(ref.size() - 1);
     std::vector<Approximation> current_level (ref.size() - 2);
     for (auto m : std::views::iota(1uz, ref.size() - 1)) {
         Approximation bla {{epsilon, ref, max_dc}, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
