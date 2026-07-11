@@ -1,5 +1,4 @@
-11: Fix BLA bugs
-    Unify BLA
+11: Unify BLA
 12: Integrate with Bench & CLI
     Renderer interface
 
@@ -9,9 +8,9 @@ July
         X Coloring
         X Direct Escape
         X Perturbed Escape
-        - Generalize to many types
+        X Generalize to many types
             X float
-            - FloatExp
+            X FloatExp
         - BLA
     - Benchmark
     - CLI
@@ -26,7 +25,6 @@ July
 - Local Machines
 - Cloud (Amazon EC2, g4dn?)
 
-- Experiment with using Local Machine Epsilon instead of BLA search
 - Do away with z param for escape_generic and derivatives
 - Type traits for float type -> complex conversion
 - Move most things to headers to allow for inlining optimizations
