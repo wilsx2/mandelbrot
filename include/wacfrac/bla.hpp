@@ -24,7 +24,6 @@ class BivariateLinearApproximator {
     BivariateLinearApproximator(std::size_t first_level = 0); 
     BivariateLinearApproximator(std::size_t first_level, std::size_t max_n); 
     auto compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> void;
-    auto compute_local(std::span<const T> ref, T max_dc) -> void; 
     auto compute_search(double lower_exp, double upper_exp, double tolerance, const std::vector<T>& probes, T max_dc, const std::vector<T>& ref, std::size_t first_level = 0, double escape_radius = 2.0) -> void;
     auto resize(std::size_t max_n) -> void;
 
@@ -110,14 +109,6 @@ auto BivariateLinearApproximator<T>::compute_manual(CT epsilon, std::span<const 
         }
         current_level.resize(current_level.size()/2);
     }
-}
-
-template <ComplexConcept T>
-auto BivariateLinearApproximator<T>::compute_local(std::span<const T> ref, T max_dc) -> void {
-    auto local_epsilon {T{}}; // TODO: Implement
-    (void)local_epsilon;
-    (void)ref;
-    (void)max_dc;
 }
 
 template <ComplexConcept T>

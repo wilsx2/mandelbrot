@@ -415,6 +415,19 @@ inline T pow(T x, uint64_t n) noexcept {
     }
 }
 
+template<std::floating_point M, std::integral E>
+WF_HD
+inline FloatExp<M, E> nextafter(FloatExp<M, E> a, FloatExp<M, E> b) noexcept {
+    using std::nextafter;
+    if (a == b) return b;
+    if (a < b) {
+        a.val = nextafter(a.val, M(1) / M(0));
+    } else {
+        a.val = nextafter(a.val, -M(1) / M(0));
+    }
+    return FloatExp(a.val, a.exp);
+}
+
 } // namespace wacfrac
 
 #if !defined(__CUDACC__) && defined(__cpp_lib_format)
