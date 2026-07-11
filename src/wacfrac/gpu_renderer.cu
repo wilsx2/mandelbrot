@@ -50,11 +50,11 @@ struct GpuRenderer::Impl {
             static_cast<CT>(start_mc.imag())
         };
         T delta {
-            static_cast<CT>(view.dimensions.real()) / static_cast<CT>(resolution.width),
-            static_cast<CT>(view.dimensions.imag()) / static_cast<CT>(resolution.height)
+            to_real<CT>(view.dimensions.real()) / static_cast<CT>(resolution.width),
+            to_real<CT>(view.dimensions.imag()) / static_cast<CT>(resolution.height)
         };
-        wacfrac::logging::debug("Pixel delta: {} + i{}", delta.real(), delta.imag());
-        
+        wacfrac::logging::debug("Pixel delta: {} + i{}", static_cast<double>(delta.real()), static_cast<double>(delta.imag()));
+
         constexpr auto threads_per_block {256};
         auto config {cuda::distribute<threads_per_block>(resolution.area())};
         wacfrac::logging::debug("Launching direct render kernel");
@@ -73,11 +73,11 @@ struct GpuRenderer::Impl {
         MultiComplex corner_mc {view.center - view.dimensions / 2.0};
         T start {to_complex<T>(corner_mc) - ref_c};
         T delta {
-            static_cast<CT>(view.dimensions.real()) / static_cast<CT>(resolution.width),
-            static_cast<CT>(view.dimensions.imag()) / static_cast<CT>(resolution.height)
+            to_real<CT>(view.dimensions.real()) / static_cast<CT>(resolution.width),
+            to_real<CT>(view.dimensions.imag()) / static_cast<CT>(resolution.height)
         };
-        wacfrac::logging::debug("Pixel delta: {} + i{}", delta.real(), delta.imag());
-        
+        wacfrac::logging::debug("Pixel delta: {} + i{}", static_cast<double>(delta.real()), static_cast<double>(delta.imag()));
+
         constexpr auto threads_per_block {256};
         auto config {cuda::distribute<threads_per_block>(resolution.area())};
         wacfrac::logging::debug("Launching perturbed render kernel");
@@ -98,13 +98,15 @@ struct GpuRenderer::Impl {
         auto& host_ref {host_references.select<T>()};
         auto& device_ref {device_references.select<T>()};
         host_ref.insert(host_ref.end(), reference.begin(), reference.end());
-        device_ref = cuda::make_buffer<wacfrac::Complex<double>>(
+        device_ref = cuda::make_buffer<T>(
             stream, cuda::device_default_memory_pool(device),
             host_ref.begin(), host_ref.end());
     }
 
     inline void copy_references(const ReferenceSet& references) {
+        copy_reference<SingleComplex>(references.select<SingleComplex>());
         copy_reference<DoubleComplex>(references.select<DoubleComplex>());
+        copy_reference<DoubleExpComplex>(references.select<DoubleExpComplex>());
     }
 };
 
@@ -125,6 +127,8 @@ auto GpuRenderer::render_perturbed(const Viewport& view, unsigned max_n) -> std:
 }
 template
 auto GpuRenderer::render_perturbed<DoubleComplex>(const Viewport& view, unsigned max_n) -> std::span<Pixel>;
+template
+auto GpuRenderer::render_perturbed<DoubleExpComplex>(const Viewport& view, unsigned max_n) -> std::span<Pixel>;
 
 void GpuRenderer::copy_references(const ReferenceSet& references) {
     _pimpl->copy_references(references);

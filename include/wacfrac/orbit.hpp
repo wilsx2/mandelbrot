@@ -6,6 +6,7 @@
 #include <utility>
 #include <functional>
 #include <cstddef>
+#include <span>
 
 
 namespace wacfrac

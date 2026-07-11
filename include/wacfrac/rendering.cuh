@@ -25,8 +25,9 @@ auto sample_c_value(std::size_t idx,
                     std::size_t row_width,
                     T start,
                     T delta) -> T {
-    auto x {idx % row_width};
-    auto y {idx / row_width};
+    using CT = ComplexValueTypeT<T>;
+    CT x {static_cast<CT>(idx % row_width)};
+    CT y {static_cast<CT>(idx / row_width)};
     return T{
         start.real() + delta.real() * x,
         start.imag() + delta.imag() * y

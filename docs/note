@@ -1,5 +1,7 @@
 11: Test FloatExp on GPU
-    Unified BLA (fix bugs introduced earlier)
+    Clean up BLA code
+    Fix BLA bugs
+    Unify BLA
 12: Integrate with Bench & CLI
     Renderer interface
 
@@ -16,6 +18,7 @@ July
     - Benchmark
     - CLI
 - Distribute / Parallel
+    - Docker Container
     - Features 
         - Shared filesystem (Amazon EFS/S3, MinIO)
         - MPI

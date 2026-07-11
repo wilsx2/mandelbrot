@@ -87,7 +87,7 @@ struct FloatExp {
     template<std::floating_point F>
     WF_HD
     FloatExp(F a) noexcept {
-        using WF_STD::frexp;
+        using std::frexp;
         auto e {0};
         a = frexp(a, &e);
         val = a;
@@ -106,9 +106,11 @@ struct FloatExp {
     template<std::floating_point M2, std::integral E2>
     WF_HD
     FloatExp(const FloatExp<M2, E2>& a) noexcept {
+        using std::max;
+        using std::min;
         E clamped = static_cast<E>(a.exp);
-        clamped = WF_STD::max(clamped, E(EXP_MIN));
-        clamped = WF_STD::min(clamped, E(EXP_MAX));
+        clamped = max(clamped, E(EXP_MIN));
+        clamped = min(clamped, E(EXP_MAX));
         val = static_cast<M>(a.val);
         exp = clamped;
         align();
@@ -218,7 +220,7 @@ struct FloatExp {
         return *this;
     }
 
-    __attribute__((warn_unused_result))
+    [[nodiscard]]
     WF_HD
     inline FloatExp mul2() const noexcept {
         FloatExp r;
@@ -246,7 +248,8 @@ struct FloatExp {
     public:
     WF_HD
     inline bool operator ==(const FloatExp& a) const noexcept {
-        if (val != 0 && !WF_STD::isinf(val) && exp != a.exp)
+        using std::isinf;
+        if (val != 0 && !isinf(val) && exp != a.exp)
             return false;
         return val == a.val;
     }
@@ -270,7 +273,8 @@ struct FloatExp {
 
 #if defined(__cpp_impl_three_way_comparison) && __has_include(<compare>)
     inline std::partial_ordering operator <=>(const FloatExp& a) const noexcept {
-        if (WF_STD::isnan(val) || WF_STD::isnan(a.val))
+        using std::isnan;
+        if (isnan(val) || isnan(a.val))
             return std::partial_ordering::unordered;
         int cmp = compare(a);
         if (cmp > 0) return std::partial_ordering::greater;
@@ -281,7 +285,7 @@ struct FloatExp {
 
     WF_HD
     inline operator float() const noexcept {
-        using WF_STD::ldexp;
+        using std::ldexp;
         if (exp > E(INT_MAX))
             return float(val) / 0.0f;
         if (exp < E(INT_MIN))
@@ -291,7 +295,7 @@ struct FloatExp {
 
     WF_HD
     inline operator double() const noexcept {
-        using WF_STD::ldexp;
+        using std::ldexp;
         if (exp > E(INT_MAX))
             return double(val) / 0.0;
         if (exp < E(INT_MIN))
@@ -301,12 +305,10 @@ struct FloatExp {
 
 #if !defined(__CUDACC__)
     inline std::string toString(int digits = 0) const noexcept {
-        using WF_STD::log10;
-        using WF_STD::abs;
-        using WF_STD::floor;
-        using WF_STD::pow;
-        if (WF_STD::isnan(val)) return "nan";
-        if (WF_STD::isinf(val)) return val > 0 ? "+inf" : "-inf";
+        using namespace std;
+        using std::abs;
+        if (isnan(val)) return "nan";
+        if (isinf(val)) return val > 0 ? "+inf" : "-inf";
         M lf = log10(abs(val)) + M(exp) * log10(M(2));
         E e10 = E(floor(lf));
         M d10 = pow(M(10), lf - e10) * M((val > 0) - (val < 0));
@@ -375,8 +377,9 @@ inline FloatExp<M, E> abs(FloatExp<M, E> a) noexcept {
 template<std::floating_point M, std::integral E>
 WF_HD
 inline FloatExp<M, E> sqrt(FloatExp<M, E> a) noexcept {
+    using std::sqrt;
     return FloatExp<M, E>(
-        WF_STD::sqrt((a.exp & 1) ? M(2) * a.val : a.val),
+        sqrt((a.exp & 1) ? M(2) * a.val : a.val),
         (a.exp & 1) ? (a.exp - 1) / 2 : a.exp / 2
     );
 }
@@ -410,108 +413,6 @@ inline T pow(T x, uint64_t n) noexcept {
             return x * y;
         }
     }
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline bool isnan(const FloatExp<M, E>& a) noexcept {
-    return WF_STD::isnan(a.val);
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline bool isinf(const FloatExp<M, E>& a) noexcept {
-    return WF_STD::isinf(a.val);
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline FloatExp<M, E> infnan_to_zero(const FloatExp<M, E>& a) noexcept {
-    using WF_STD::copysign;
-    return WF_STD::isinf(a.val) ? FloatExp<M, E>(copysign(M(1e30), a.val))
-         : WF_STD::isnan(a.val) ? FloatExp<M, E>(M(0))
-         : a;
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline FloatExp<M, E> exp(FloatExp<M, E> a) noexcept {
-    using WF_STD::exp;
-    using WF_STD::ldexp;
-    constexpr E SMALL = sizeof(M) == 8 ? -53 : -24;
-    constexpr E LARGE = sizeof(M) == 8 ?   8 :   4;
-    constexpr E OVERFLOW = sizeof(M) == 8 ?  61 :  30;
-    if (SMALL <= a.exp && a.exp <= LARGE)
-        return FloatExp<M, E>(exp(ldexp(a.val, int(a.exp))));
-    if (a.exp >= OVERFLOW)
-        return FloatExp<M, E>(a.val > M(0) ? M(1) / M(0) : M(0));
-    if (a.exp < SMALL)
-        return FloatExp<M, E>(M(1));
-    return pow(FloatExp<M, E>(exp(a.val)), uint64_t(1) << a.exp);
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline FloatExp<M, E> expm1(FloatExp<M, E> a) noexcept {
-    using WF_STD::expm1;
-    using WF_STD::ldexp;
-    if (a.exp <= -120) return a;
-    if (a.exp >= 8) return exp(a) - FloatExp<M, E>(1);
-    return FloatExp<M, E>(expm1(ldexp(a.val, int(a.exp))));
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline FloatExp<M, E> sin(FloatExp<M, E> a) noexcept {
-    using WF_STD::sin;
-    using WF_STD::ldexp;
-    if (a.exp <= -120) return a;
-    return FloatExp<M, E>(sin(ldexp(a.val, int(a.exp))));
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline FloatExp<M, E> cos(FloatExp<M, E> a) noexcept {
-    using WF_STD::cos;
-    using WF_STD::ldexp;
-    if (a.exp <= -120) return FloatExp<M, E>(M(1));
-    return FloatExp<M, E>(cos(ldexp(a.val, int(a.exp))));
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline FloatExp<M, E> log(FloatExp<M, E> a) noexcept {
-    using WF_STD::log;
-    return FloatExp<M, E>(log(a.val) + log(M(2)) * E(a.exp));
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline FloatExp<M, E> log2(FloatExp<M, E> a) noexcept {
-    using WF_STD::log2;
-    return FloatExp<M, E>(log2(a.val) + a.exp);
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline FloatExp<M, E> log1p(FloatExp<M, E> a) noexcept {
-    using WF_STD::log1p;
-    constexpr E THRESHOLD = sizeof(M) == 8 ? 53 : 24;
-    if (a.exp < -THRESHOLD)
-        return a;
-    else if (a.exp > THRESHOLD)
-        return log(FloatExp<M, E>(1) + a);
-    else
-        return FloatExp<M, E>(log1p(M(a)));
-}
-
-template<std::floating_point M, std::integral E>
-WF_HD
-inline FloatExp<M, E> diffabs(const FloatExp<M, E>& c, const FloatExp<M, E>& d) noexcept {
-    const FloatExp<M, E> cd = c + d;
-    const FloatExp<M, E> c2d = c.mul2() + d;
-    return c.val >= M(0) ? cd.val >= M(0) ? d : -c2d
-                        : cd.val >  M(0) ? c2d : -d;
 }
 
 } // namespace wacfrac
