@@ -1,5 +1,3 @@
-    Make BLA size defined when initialized
-    Eliminate BLA allocations
     Unify BLA
     Integrate with Bench & CLI
     Renderer interface

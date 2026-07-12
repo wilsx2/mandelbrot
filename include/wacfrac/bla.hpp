@@ -18,66 +18,240 @@ struct ColumnInfo {
     std::size_t count;
 };
 
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-class GenericBivariateLinearApproximator {
-    public:
+template<template<typename>typename View, ComplexConcept T>
+struct BivariateLinearApproximator {
     using CT = ComplexValueTypeT<T>;
     struct ApproximationParams {
         CT epsilon;
-        NonOwningView<const T> ref;
+        View<const T> ref;
         T max_dc;
     };
+    struct Approximation {
+        T a, b;
+        CT r;
+        Approximation() = default;
+        WF_HD
+        Approximation(T a, T b, CT r) : a(a), b(b), r(r) {}
+        WF_HD
+        Approximation(const ApproximationParams& params, unsigned m, unsigned n) {
+            using std::abs;
+            auto l {n - m};
+            a = T{2.0, 0.0} * params.ref[m] * static_cast<CT>(l);
+            b = T{static_cast<CT>(l), 0.0};
+            auto denom = abs(a);
+            r = denom > CT{}
+                ? (params.epsilon * abs(params.ref[n]) - abs(b) * abs(params.max_dc)) / denom
+                : -abs(params.max_dc);
+        }
+        WF_HD
+        auto is_valid(T dzm) const -> bool {
+            using std::norm;
+            return r > CT{} && norm(dzm) < r*r;
+        }
+        WF_HD
+        auto approximate_dzn(T dzm, T dc) const -> T {
+            return a*dzm + b*dc;
+        }
+        WF_HD
+        static auto merge(const T& max_dc, const Approximation& x, const Approximation& y) -> Approximation {
+            using std::abs;
+            auto a {x.a * y.a};
+            auto b {y.a * x.b + y.b};
+            auto denom = abs(a);
+            auto r = denom > CT{}
+                ? std::min(x.r, (y.r - abs(b) * abs(max_dc)) / denom)
+                : std::min(x.r, y.r - abs(b) * abs(max_dc));
+            return {a, b, r};
+        }
+    };
+
+    std::size_t first_level;
+    std::size_t last_level;
+    View<const ColumnInfo> columns;
+    View<const Approximation> approximations;
+
+    WF_HD
+    auto approximation_exists(unsigned m, std::size_t level) const -> bool {
+        return level >= first_level && m > 0 && m - 1 < columns.size() && level - first_level < columns[m - 1].count;
+    }
+    WF_HD
+    auto approximation_at(unsigned m, std::size_t level) const -> const Approximation* {
+        if (approximation_exists(m, level))
+            return &approximations[columns[m - 1].first + level - first_level];
+        return nullptr;
+    }
+    WF_HD
+    auto approximation_at(unsigned m, std::size_t level) -> Approximation* {
+        if (approximation_exists(m, level))
+            return &approximations[columns[m - 1].first + level - first_level];
+        return nullptr;
+    }
+    WF_HD
+    auto approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>> {
+        auto bla {approximation_at(m, first_level)};
+        if (!bla || !bla->is_valid(dzm))
+            return std::nullopt;
+
+        auto n = m + 1;
+        for (auto level : std::views::iota(first_level, last_level + 1) | std::views::reverse) {
+            auto next_bla = approximation_at(m, level);
+            if (next_bla && next_bla->is_valid(dzm)) {
+                bla = next_bla;
+                n = m + (1u << level);
+                break;
+            }
+        }
+
+        return {{bla->approximate_dzn(dzm, dc), n}};
+    }
+};
+
+template <typename Derived, template<typename>typename View, ComplexConcept T>
+class GenericBlaCalculator {
+    public:
+    using BLA = BivariateLinearApproximator<View, T>;
+    using Approximation = typename BLA::Approximation;
+    using CT = ComplexValueTypeT<T>;
     struct SearchParams {
         double lower_exp;
         double upper_exp;
         double tolerance;
         double convergence_radius = 1e-3;
     };
+    GenericBlaCalculator(std::size_t first_level)
+        : _max_ref_size(0)
+        , _first_level(first_level)
+        , _last_level(0)
+    {}
+    auto resize_for_ref(std::size_t ref_size) -> void {
+        _max_ref_size = ref_size;
+        _last_level = ref_size < 3 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(ref_size)));
+        auto max_n {ref_size - 1};
+        resize_columns(max_n);
+        get_columns()[max_n - 1] = {0, 0};
+        auto i {0uz};
+        for (auto m : std::views::iota(1uz, max_n)) {
+            auto cz {static_cast<unsigned>(std::countr_zero(m - 1))};
+            auto size {cz >= _first_level
+                ? 1 + std::min(cz - _first_level, _last_level - _first_level)
+                : 0uz};
+            get_columns()[m - 1] = {i, size};
+            i += size;
+        }
+        resize_approximations(i);
+    }
+    auto compute_manual(CT epsilon, View<const T> ref, T max_dc) -> BLA {
+        if (ref.size() > _max_ref_size) {
+            resize_for_ref(ref.size());
+        }
 
-    GenericBivariateLinearApproximator(std::size_t max_n, std::size_t first_level);
-    auto initialize() -> void;
-    auto compute_manual(CT epsilon, NonOwningView<const T> ref, T max_dc) -> bool;
-    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, NonOwningView<const T> ref, double escape_radius = 2.0) -> bool;
+        auto level_size {ref.size() - 2};
+        compute_initial_approximations({epsilon, ref, max_dc});
+        for (auto i {1uz}; level_size >= 2; ++i) {
+            auto even_size {level_size & ~1uz};
+            merge_approximations(i, even_size, max_dc);
+            level_size /= 2;
+        }
 
-    auto approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>>;
-    auto resize(unsigned max_n) -> void {
-        static_cast<Derived*>(this)->resize(max_n);
+        return {};
+    }
+    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, View<const T> ref, double escape_radius = 2.0) -> bool {
+        logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
+
+        auto true_escape_times {compute_probe_escape_time(probes, ref, escape_radius)};
+        auto prev_avg_skipped {-1.0};
+        CT prev_exp;
+        auto lower_exp {params.lower_exp};
+        auto upper_exp {params.upper_exp};
+        constexpr auto UPPER_LIMIT {32uz};
+        for (auto iter : std::views::iota(0uz, UPPER_LIMIT)) {
+            auto middle {(upper_exp + lower_exp) / 2.0};
+
+            auto epsilon = static_cast<ComplexValueTypeT<T>>(std::pow(10.0, middle));
+            (void) compute_manual(epsilon, ref, max_dc);
+
+            if (upper_exp - lower_exp < params.convergence_radius) {
+                logging::trace( "BLA search iter {}: epsilon=10^{} (converged)", iter, middle);
+                break;
+            }
+
+            auto all_correct{true};
+            auto total_skipped{0u};
+            for (auto&& [i, probe] : probes | std::views::enumerate) {
+                auto [_, approx_escape_time, skipped] = escape_approximate(probe, View<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, get_approximator());
+
+                using std::abs;
+                if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(true_escape_times[i]) - 1.0) > params.tolerance) {
+                    all_correct = false;
+                    break;
+                }
+                total_skipped += skipped;
+            }
+
+            if (!all_correct) {
+                logging::trace( "BLA search iter {}: epsilon=10^{} too high", iter, middle);
+                upper_exp = middle;
+                continue;
+            }
+
+            auto avg_skipped = total_skipped / static_cast<double>(probes.size());
+            if (avg_skipped >= prev_avg_skipped) {
+                logging::trace( "BLA search iter {}: epsilon=10^{} avg_skipped={} (improving)", iter, middle, avg_skipped);
+                prev_exp = epsilon;
+                lower_exp = middle; 
+            } else {
+                logging::trace( "BLA search iter {}: epsilon=10^{} avg_skipped={} (found max)", iter, middle, avg_skipped);
+                compute_manual(prev_exp, ref, max_dc);
+                break;
+            }
+        }
+        logging::info( "BLA epsilon search complete");
+        return true;
     }
 
-    protected:
-    struct Approximation {
-        T a, b;
-        CT r;
-        Approximation() = default;
-        Approximation(T a, T b, CT r) : a(a), b(b), r(r) {}
-        Approximation(const ApproximationParams& params, unsigned m, unsigned n);
-        auto is_valid(T dzm) const -> bool;
-        auto approximate_dzn(T dzm, T dc) const -> T;
-        static auto merge(const T& max_dc, const Approximation& x, const Approximation& y) -> Approximation;
-    };
+    auto get_approximator() const -> BLA {
+        return {_first_level, _last_level, get_columns(), get_approximations()};
+    }
 
-    auto approximation_exists(unsigned m, std::size_t level) const -> bool;
-    auto approximation_at(unsigned m, std::size_t level) const -> const Approximation*;
-    auto approximation_at(unsigned m, std::size_t level) -> Approximation*;
-    auto compute_initial_approximations(const ApproximationParams& params) -> void {
+    auto resize_approximations(unsigned size) -> void {
+        static_cast<Derived*>(this)->resize_approximations(size);
+    }
+    auto resize_columns(unsigned size) -> void {
+        static_cast<Derived*>(this)->resize_columns(size);
+    }
+    auto approximation_exists(unsigned m, std::size_t level) const -> bool {
+        return level >= _first_level && m > 0 && m - 1 < get_columns().size() && level - _first_level < get_columns()[m - 1].count;
+    }
+    auto approximation_at(unsigned m, std::size_t level) const -> const Approximation* {
+        if (approximation_exists(m, level))
+            return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
+        return nullptr;
+    }
+    auto approximation_at(unsigned m, std::size_t level) -> Approximation* {
+        if (approximation_exists(m, level))
+            return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
+        return nullptr;
+    }
+    protected:
+    auto compute_initial_approximations(const BLA::ApproximationParams& params) -> void {
         static_cast<Derived*>(this)->compute_initial_approximations(params);
     }
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
         static_cast<Derived*>(this)->merge_approximations(current_level, level_size, max_dc);
     }
-    auto compute_probe_escape_time(NonOwningView<const T> probes, NonOwningView<const T> ref, double escape_radius) -> NonOwningView<const unsigned> { // TODO: replace return w/ get func
+    auto compute_probe_escape_time(View<const T> probes, View<const T> ref, double escape_radius) -> View<const unsigned> {
         return static_cast<Derived*>(this)->compute_probe_escape_time(probes, ref, escape_radius);
     }
-    auto get_columns() -> NonOwningView<ColumnInfo> {
+    auto get_columns() -> View<ColumnInfo> {
         return static_cast<Derived*>(this)->get_columns();
     }
-    auto get_columns() const -> NonOwningView<const ColumnInfo> {
+    auto get_columns() const -> View<const ColumnInfo> {
         return static_cast<const Derived*>(this)->get_columns();
     }
-    auto get_approximations() -> NonOwningView<Approximation> {
+    auto get_approximations() -> View<Approximation> {
         return static_cast<Derived*>(this)->get_approximations();
     }
-    auto get_approximations() const -> NonOwningView<const Approximation> {
+    auto get_approximations() const -> View<const Approximation> {
         return static_cast<const Derived*>(this)->get_approximations();
     }
 
@@ -86,185 +260,10 @@ class GenericBivariateLinearApproximator {
     std::size_t _last_level;
 };
 
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-GenericBivariateLinearApproximator<Derived, NonOwningView, T>::GenericBivariateLinearApproximator(std::size_t max_n, std::size_t first_level)
-    : _max_ref_size(max_n + 1)
-    , _first_level(first_level)
-    , _last_level(max_n < 2 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(max_n + 1))))
-{
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::initialize() -> void {
-    auto max_n {_max_ref_size - 1};
-    get_columns()[max_n - 1] = {0, 0};
-    auto i {0uz};
-    for (auto m : std::views::iota(1uz, max_n)) {
-        auto cz {static_cast<unsigned>(std::countr_zero(m - 1))};
-        auto size {cz >= _first_level
-            ? 1 + std::min(cz - _first_level, _last_level - _first_level)
-            : 0uz};
-        get_columns()[m - 1] = {i, size};
-        i += size;
-    }
-    resize(i);
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::compute_manual(CT epsilon, NonOwningView<const T> ref, T max_dc) -> bool {
-    if (ref.size() > _max_ref_size) {
-        logging::error("Reference size {} exceeds maximum reference size {} for this approximator", ref.size(), _max_ref_size);
-        return false;
-    }
-
-    auto level_size {ref.size() - 2};
-    compute_initial_approximations({epsilon, ref, max_dc});
-    for (auto i {1uz}; level_size >= 2; ++i) {
-        auto even_size {level_size & ~1uz};
-        merge_approximations(i, even_size, max_dc);
-        level_size /= 2;
-    }
-
-    return true;
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, NonOwningView<const T> ref, double escape_radius) -> bool
-{
-    if (ref.size() > _max_ref_size) {
-        logging::error("Reference size {} exceeds maximum reference size {} for this approximator", ref.size(), _max_ref_size);
-        return false;
-    }
-    logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
-
-    auto true_escape_times {compute_probe_escape_time(probes, ref, escape_radius)};
-    auto prev_avg_skipped {-1.0};
-    CT prev_exp;
-    auto lower_exp {params.lower_exp};
-    auto upper_exp {params.upper_exp};
-    constexpr auto UPPER_LIMIT {32uz};
-    for (auto iter : std::views::iota(0uz, UPPER_LIMIT)) {
-        auto middle {(upper_exp + lower_exp) / 2.0};
-
-        auto epsilon = static_cast<ComplexValueTypeT<T>>(std::pow(10.0, middle));
-        (void) compute_manual(epsilon, ref, max_dc);
-
-        if (upper_exp - lower_exp < params.convergence_radius) {
-            logging::trace( "BLA search iter {}: epsilon=10^{} (converged)", iter, middle);
-            break;
-        }
-
-        auto all_correct{true};
-        auto total_skipped{0u};
-        for (auto&& [i, probe] : probes | std::views::enumerate) {
-            auto [_, approx_escape_time, skipped] = escape_approximate(probe, NonOwningView<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, *this);
-
-            using std::abs;
-            if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(true_escape_times[i]) - 1.0) > params.tolerance) {
-                all_correct = false;
-                break;
-            }
-            total_skipped += skipped;
-        }
-
-        if (!all_correct) {
-            logging::trace( "BLA search iter {}: epsilon=10^{} too high", iter, middle);
-            upper_exp = middle;
-            continue;
-        }
-
-        auto avg_skipped = total_skipped / static_cast<double>(probes.size());
-        if (avg_skipped >= prev_avg_skipped) {
-            logging::trace( "BLA search iter {}: epsilon=10^{} avg_skipped={} (improving)", iter, middle, avg_skipped);
-            prev_exp = epsilon;
-            lower_exp = middle; 
-        } else {
-            logging::trace( "BLA search iter {}: epsilon=10^{} avg_skipped={} (found max)", iter, middle, avg_skipped);
-            compute_manual(prev_exp, ref, max_dc);
-            break;
-        }
-    }
-    logging::info( "BLA epsilon search complete");
-
-    return true;
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>> {
-    auto bla {approximation_at(m, _first_level)};
-    if (!bla || !bla->is_valid(dzm))
-        return std::nullopt;
-
-    auto n = m + 1;
-    for (auto level : std::views::iota(_first_level, _last_level + 1) | std::views::reverse) {
-        auto next_bla = approximation_at(m, level);
-        if (next_bla && next_bla->is_valid(dzm)) {
-            bla = next_bla;
-            n = m + (1u << level);
-            break;
-        }
-    }
-
-    return {{bla->approximate_dzn(dzm, dc), n}};
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-GenericBivariateLinearApproximator<Derived, NonOwningView, T>::Approximation::Approximation(const ApproximationParams& params, unsigned m, unsigned n) {
-    using std::abs;
-    auto l {n - m};
-    a = T{2.0, 0.0} * params.ref[m] * static_cast<CT>(l);
-    b = T{static_cast<CT>(l), 0.0};
-    auto denom = abs(a);
-    r = denom > CT{}
-        ? (params.epsilon * abs(params.ref[n]) - abs(b) * abs(params.max_dc)) / denom
-        : -abs(params.max_dc);
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::Approximation::is_valid(T dzm) const -> bool {
-    using std::norm;
-    return r > CT{} && norm(dzm) < r*r;
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::Approximation::approximate_dzn(T dzm, T dc) const -> T {
-    return a*dzm + b*dc;
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::Approximation::merge(const T& max_dc, const Approximation& x, const Approximation& y) -> Approximation {
-    using std::abs;
-    auto a {x.a * y.a};
-    auto b {y.a * x.b + y.b};
-    auto denom = abs(a);
-    auto r = denom > CT{}
-        ? std::min(x.r, (y.r - abs(b) * abs(max_dc)) / denom)
-        : std::min(x.r, y.r - abs(b) * abs(max_dc));
-    return {a, b, r};
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::approximation_exists(unsigned m, std::size_t level) const -> bool {
-    return level >= _first_level && m > 0 && m - 1 < get_columns().size() && level - _first_level < get_columns()[m - 1].count;
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::approximation_at(unsigned m, std::size_t level) const -> const Approximation* {
-    if (approximation_exists(m, level))
-        return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
-    return nullptr;
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::approximation_at(unsigned m, std::size_t level) -> Approximation* {
-    if (approximation_exists(m, level))
-        return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
-    return nullptr;
-}
-
-template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
-auto escape_approximate(const T& dc, typename Derived::template NonOwningView<const T> ref, unsigned max_n, double escape_radius,
-                        const GenericBivariateLinearApproximator<Derived, NonOwningView, T>& approximator)
+WF_HD
+template <template<typename>typename View, ComplexConcept T>
+auto escape_approximate(const T& dc, View<const T> ref, unsigned max_n, double escape_radius,
+                        const BivariateLinearApproximator<View, T>& approximator)
                         -> std::tuple<Complex<float>, unsigned, unsigned> {
     unsigned ref_n {0u};
     unsigned skipped {0u};
@@ -286,33 +285,34 @@ auto escape_approximate(const T& dc, typename Derived::template NonOwningView<co
 }
 
 template <typename T>
-class HostBivariateLinearApproximator;
+class HostBlaCalculator;
 template <typename T>
-class HostBivariateLinearApproximator : public GenericBivariateLinearApproximator<HostBivariateLinearApproximator<T>, std::span, T> {
+class HostBlaCalculator : public GenericBlaCalculator<HostBlaCalculator<T>, std::span, T> {
     public: 
-    using Base = GenericBivariateLinearApproximator<HostBivariateLinearApproximator<T>, std::span, T>;
+    using Base = GenericBlaCalculator<HostBlaCalculator<T>, std::span, T>;
     using CT = Base::CT;
     using Approximation = Base::Approximation;
-    using ApproximationParams = Base::ApproximationParams;
+    using ApproximationParams = typename Base::BLA::ApproximationParams;
     template <typename U>
-    using NonOwningView = std::span<U>;
+    using View = std::span<U>;
 
     protected:
-    std::vector<ColumnInfo> _columns;
-    std::vector<Approximation> _working_approximations;
-    std::vector<Approximation> _approximations;
-    std::vector<unsigned> _true_escape_times;
+    std::vector<ColumnInfo>     _columns;
+    std::vector<Approximation>  _working_approximations;
+    std::vector<Approximation>  _approximations;
+    std::vector<unsigned>       _true_escape_times;
 
     public:
-    HostBivariateLinearApproximator(std::size_t max_n, std::size_t first_level)
-        : Base(max_n, first_level)
-        , _columns(max_n)
-        , _working_approximations(max_n - 1)
+    HostBlaCalculator( std::size_t first_level)
+        : Base(first_level)
     {
-        Base::initialize();
     };
-    auto resize(unsigned max_n) -> void {
-        _approximations.resize(max_n);
+    auto resize_columns(unsigned size) -> void {
+        _columns.resize(size);
+        _working_approximations.resize(size); // Needs to be the same size
+    }
+    auto resize_approximations(unsigned size) -> void {
+        _approximations.resize(size);
     }
     auto compute_initial_approximations(const ApproximationParams& params) -> void {
         for (auto m : std::views::iota(1uz, params.ref.size() - 1)) {
@@ -333,29 +333,28 @@ class HostBivariateLinearApproximator : public GenericBivariateLinearApproximato
             }
         }
     }
-    auto compute_probe_escape_time(NonOwningView<const T> probes, NonOwningView<const T> ref, double escape_radius) -> NonOwningView<const unsigned> {
-        // TODO: Reduce redundant alloc
-        _true_escape_times.resize(0);
+    auto compute_probe_escape_time(View<const T> probes, View<const T> ref, double escape_radius) -> View<const unsigned> {
+        _true_escape_times.clear();
         _true_escape_times.reserve(probes.size());
         std::ranges::transform(probes, std::back_inserter(_true_escape_times),
             [&ref, &escape_radius](T p) -> unsigned { return escape_perturbed<T>(p, ref, static_cast<unsigned>(ref.size()), escape_radius).second; });
         return _true_escape_times;
     }
-    auto get_columns() -> NonOwningView<ColumnInfo> {
+    auto get_columns() -> View<ColumnInfo> {
         return _columns;
     }
-    auto get_columns() const -> NonOwningView<const ColumnInfo> {
+    auto get_columns() const -> View<const ColumnInfo> {
         return _columns;
     }
-    auto get_approximations() -> NonOwningView<Approximation> {
+    auto get_approximations() -> View<Approximation> {
         return _approximations;
     }
-    auto get_approximations() const -> NonOwningView<const Approximation> {
+    auto get_approximations() const -> View<const Approximation> {
         return _approximations;
     }
 };
 
 template<typename T>
-using BivariateLinearApproximator = HostBivariateLinearApproximator<T>;
+using BlaCalculator = HostBlaCalculator<T>;
 
 } // namespace wacfrac
