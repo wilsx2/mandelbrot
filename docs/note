@@ -1,6 +1,8 @@
-11: Make BLA size defined when initialized
+12: BLA CRTP
+    Make BLA size defined when initialized
+    Eliminate BLA allocations
     Unify BLA
-12: Integrate with Bench & CLI
+    Integrate with Bench & CLI
     Renderer interface
 
 July
