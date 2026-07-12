@@ -1,4 +1,3 @@
-12: BLA CRTP
     Make BLA size defined when initialized
     Eliminate BLA allocations
     Unify BLA

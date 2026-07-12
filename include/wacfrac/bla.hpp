@@ -18,14 +18,13 @@ struct ColumnInfo {
     std::size_t count;
 };
 
-template <typename Derived, ComplexConcept T = SingleComplex>
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
 class GenericBivariateLinearApproximator {
     public:
-    // TODO: replace WF_STD span with Derived::NonOwningView
     using CT = ComplexValueTypeT<T>;
     struct ApproximationParams {
         CT epsilon;
-        WF_STD::span<const T> ref;
+        NonOwningView<const T> ref;
         T max_dc;
     };
     struct SearchParams {
@@ -37,8 +36,8 @@ class GenericBivariateLinearApproximator {
 
     GenericBivariateLinearApproximator(std::size_t max_n, std::size_t first_level);
     auto initialize() -> void;
-    auto compute_manual(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> bool;
-    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, WF_STD::span<const T> ref, double escape_radius = 2.0) -> bool;
+    auto compute_manual(CT epsilon, NonOwningView<const T> ref, T max_dc) -> bool;
+    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, NonOwningView<const T> ref, double escape_radius = 2.0) -> bool;
 
     auto approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>>;
     auto resize(unsigned max_n) -> void {
@@ -66,19 +65,19 @@ class GenericBivariateLinearApproximator {
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
         static_cast<Derived*>(this)->merge_approximations(current_level, level_size, max_dc);
     }
-    auto compute_probe_escape_time(WF_STD::span<const T> probes, WF_STD::span<const T> ref, double escape_radius) -> WF_STD::span<const unsigned> { // TODO: replace return w/ get func
+    auto compute_probe_escape_time(NonOwningView<const T> probes, NonOwningView<const T> ref, double escape_radius) -> NonOwningView<const unsigned> { // TODO: replace return w/ get func
         return static_cast<Derived*>(this)->compute_probe_escape_time(probes, ref, escape_radius);
     }
-    auto get_columns() -> WF_STD::span<ColumnInfo> {
+    auto get_columns() -> NonOwningView<ColumnInfo> {
         return static_cast<Derived*>(this)->get_columns();
     }
-    auto get_columns() const -> WF_STD::span<const ColumnInfo> {
+    auto get_columns() const -> NonOwningView<const ColumnInfo> {
         return static_cast<const Derived*>(this)->get_columns();
     }
-    auto get_approximations() -> WF_STD::span<Approximation> {
+    auto get_approximations() -> NonOwningView<Approximation> {
         return static_cast<Derived*>(this)->get_approximations();
     }
-    auto get_approximations() const -> WF_STD::span<const Approximation> {
+    auto get_approximations() const -> NonOwningView<const Approximation> {
         return static_cast<const Derived*>(this)->get_approximations();
     }
 
@@ -87,16 +86,16 @@ class GenericBivariateLinearApproximator {
     std::size_t _last_level;
 };
 
-template <typename Derived, ComplexConcept T>
-GenericBivariateLinearApproximator<Derived, T>::GenericBivariateLinearApproximator(std::size_t max_n, std::size_t first_level)
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+GenericBivariateLinearApproximator<Derived, NonOwningView, T>::GenericBivariateLinearApproximator(std::size_t max_n, std::size_t first_level)
     : _max_ref_size(max_n + 1)
     , _first_level(first_level)
     , _last_level(max_n < 2 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(max_n + 1))))
 {
 }
 
-template <typename Derived, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, T>::initialize() -> void {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::initialize() -> void {
     auto max_n {_max_ref_size - 1};
     get_columns()[max_n - 1] = {0, 0};
     auto i {0uz};
@@ -111,8 +110,8 @@ auto GenericBivariateLinearApproximator<Derived, T>::initialize() -> void {
     resize(i);
 }
 
-template <typename Derived, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, T>::compute_manual(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> bool {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::compute_manual(CT epsilon, NonOwningView<const T> ref, T max_dc) -> bool {
     if (ref.size() > _max_ref_size) {
         logging::error("Reference size {} exceeds maximum reference size {} for this approximator", ref.size(), _max_ref_size);
         return false;
@@ -129,8 +128,8 @@ auto GenericBivariateLinearApproximator<Derived, T>::compute_manual(CT epsilon, 
     return true;
 }
 
-template <typename Derived, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, T>::compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, WF_STD::span<const T> ref, double escape_radius) -> bool
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, NonOwningView<const T> ref, double escape_radius) -> bool
 {
     if (ref.size() > _max_ref_size) {
         logging::error("Reference size {} exceeds maximum reference size {} for this approximator", ref.size(), _max_ref_size);
@@ -158,7 +157,7 @@ auto GenericBivariateLinearApproximator<Derived, T>::compute_search(SearchParams
         auto all_correct{true};
         auto total_skipped{0u};
         for (auto&& [i, probe] : probes | std::views::enumerate) {
-            auto [_, approx_escape_time, skipped] = escape_approximate(probe, WF_STD::span<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, *this);
+            auto [_, approx_escape_time, skipped] = escape_approximate(probe, NonOwningView<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, *this);
 
             using std::abs;
             if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(true_escape_times[i]) - 1.0) > params.tolerance) {
@@ -190,8 +189,8 @@ auto GenericBivariateLinearApproximator<Derived, T>::compute_search(SearchParams
     return true;
 }
 
-template <typename Derived, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, T>::approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>> {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>> {
     auto bla {approximation_at(m, _first_level)};
     if (!bla || !bla->is_valid(dzm))
         return std::nullopt;
@@ -209,8 +208,8 @@ auto GenericBivariateLinearApproximator<Derived, T>::approximate_dzn(T dzm, unsi
     return {{bla->approximate_dzn(dzm, dc), n}};
 }
 
-template <typename Derived, ComplexConcept T>
-GenericBivariateLinearApproximator<Derived, T>::Approximation::Approximation(const ApproximationParams& params, unsigned m, unsigned n) {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+GenericBivariateLinearApproximator<Derived, NonOwningView, T>::Approximation::Approximation(const ApproximationParams& params, unsigned m, unsigned n) {
     using std::abs;
     auto l {n - m};
     a = T{2.0, 0.0} * params.ref[m] * static_cast<CT>(l);
@@ -221,19 +220,19 @@ GenericBivariateLinearApproximator<Derived, T>::Approximation::Approximation(con
         : -abs(params.max_dc);
 }
 
-template <typename Derived, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, T>::Approximation::is_valid(T dzm) const -> bool {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::Approximation::is_valid(T dzm) const -> bool {
     using std::norm;
     return r > CT{} && norm(dzm) < r*r;
 }
 
-template <typename Derived, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, T>::Approximation::approximate_dzn(T dzm, T dc) const -> T {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::Approximation::approximate_dzn(T dzm, T dc) const -> T {
     return a*dzm + b*dc;
 }
 
-template <typename Derived, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, T>::Approximation::merge(const T& max_dc, const Approximation& x, const Approximation& y) -> Approximation {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::Approximation::merge(const T& max_dc, const Approximation& x, const Approximation& y) -> Approximation {
     using std::abs;
     auto a {x.a * y.a};
     auto b {y.a * x.b + y.b};
@@ -244,27 +243,29 @@ auto GenericBivariateLinearApproximator<Derived, T>::Approximation::merge(const 
     return {a, b, r};
 }
 
-template <typename Derived, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, T>::approximation_exists(unsigned m, std::size_t level) const -> bool {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::approximation_exists(unsigned m, std::size_t level) const -> bool {
     return level >= _first_level && m > 0 && m - 1 < get_columns().size() && level - _first_level < get_columns()[m - 1].count;
 }
 
-template <typename Derived, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, T>::approximation_at(unsigned m, std::size_t level) const -> const Approximation* {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::approximation_at(unsigned m, std::size_t level) const -> const Approximation* {
     if (approximation_exists(m, level))
         return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
     return nullptr;
 }
 
-template <typename Derived, ComplexConcept T>
-auto GenericBivariateLinearApproximator<Derived, T>::approximation_at(unsigned m, std::size_t level) -> Approximation* {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto GenericBivariateLinearApproximator<Derived, NonOwningView, T>::approximation_at(unsigned m, std::size_t level) -> Approximation* {
     if (approximation_exists(m, level))
         return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
     return nullptr;
 }
 
-template <typename Derived, ComplexConcept T>
-auto escape_approximate(const T& dc, WF_STD::span<const T> ref, unsigned max_n, double escape_radius, const GenericBivariateLinearApproximator<Derived, T>& approximator) -> std::tuple<Complex<float>, unsigned, unsigned> {
+template <typename Derived, template<typename>typename NonOwningView, ComplexConcept T>
+auto escape_approximate(const T& dc, typename Derived::template NonOwningView<const T> ref, unsigned max_n, double escape_radius,
+                        const GenericBivariateLinearApproximator<Derived, NonOwningView, T>& approximator)
+                        -> std::tuple<Complex<float>, unsigned, unsigned> {
     unsigned ref_n {0u};
     unsigned skipped {0u};
     T dz {0.0, 0.0};
@@ -285,15 +286,24 @@ auto escape_approximate(const T& dc, WF_STD::span<const T> ref, unsigned max_n, 
 }
 
 template <typename T>
-struct HostBivariateLinearApproximator;
+class HostBivariateLinearApproximator;
 template <typename T>
-class HostBivariateLinearApproximator : public GenericBivariateLinearApproximator<HostBivariateLinearApproximator<T>, T> {
+class HostBivariateLinearApproximator : public GenericBivariateLinearApproximator<HostBivariateLinearApproximator<T>, std::span, T> {
     public: 
-    using Base = GenericBivariateLinearApproximator<HostBivariateLinearApproximator<T>, T>;
+    using Base = GenericBivariateLinearApproximator<HostBivariateLinearApproximator<T>, std::span, T>;
+    using CT = Base::CT;
     using Approximation = Base::Approximation;
     using ApproximationParams = Base::ApproximationParams;
-    using CT = Base::CT;
+    template <typename U>
+    using NonOwningView = std::span<U>;
 
+    protected:
+    std::vector<ColumnInfo> _columns;
+    std::vector<Approximation> _working_approximations;
+    std::vector<Approximation> _approximations;
+    std::vector<unsigned> _true_escape_times;
+
+    public:
     HostBivariateLinearApproximator(std::size_t max_n, std::size_t first_level)
         : Base(max_n, first_level)
         , _columns(max_n)
@@ -323,7 +333,7 @@ class HostBivariateLinearApproximator : public GenericBivariateLinearApproximato
             }
         }
     }
-    auto compute_probe_escape_time(WF_STD::span<const T> probes, WF_STD::span<const T> ref, double escape_radius) -> WF_STD::span<const unsigned> {
+    auto compute_probe_escape_time(NonOwningView<const T> probes, NonOwningView<const T> ref, double escape_radius) -> NonOwningView<const unsigned> {
         // TODO: Reduce redundant alloc
         _true_escape_times.resize(0);
         _true_escape_times.reserve(probes.size());
@@ -331,25 +341,20 @@ class HostBivariateLinearApproximator : public GenericBivariateLinearApproximato
             [&ref, &escape_radius](T p) -> unsigned { return escape_perturbed<T>(p, ref, static_cast<unsigned>(ref.size()), escape_radius).second; });
         return _true_escape_times;
     }
-    auto get_columns() -> WF_STD::span<ColumnInfo> {
+    auto get_columns() -> NonOwningView<ColumnInfo> {
         return _columns;
     }
-    auto get_columns() const -> WF_STD::span<const ColumnInfo> {
+    auto get_columns() const -> NonOwningView<const ColumnInfo> {
         return _columns;
     }
-    auto get_approximations() -> WF_STD::span<Approximation> {
+    auto get_approximations() -> NonOwningView<Approximation> {
         return _approximations;
     }
-    auto get_approximations() const -> WF_STD::span<const Approximation> {
+    auto get_approximations() const -> NonOwningView<const Approximation> {
         return _approximations;
     }
-
-    protected:
-    std::vector<ColumnInfo> _columns;
-    std::vector<Approximation> _working_approximations;
-    std::vector<Approximation> _approximations;
-    std::vector<unsigned> _true_escape_times;
 };
+
 template<typename T>
 using BivariateLinearApproximator = HostBivariateLinearApproximator<T>;
 
