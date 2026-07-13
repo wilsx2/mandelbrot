@@ -155,7 +155,7 @@ class GenericCalculator {
     auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, View<const T> ref, double escape_radius = 2.0) -> bool {
         logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
 
-        auto true_escape_times {compute_probe_escape_time(probes, ref, escape_radius)};
+        compute_probe_escape_time(probes, ref, escape_radius);
         auto prev_avg_skipped {-1.0};
         CT prev_exp;
         auto lower_exp {params.lower_exp};
@@ -173,26 +173,15 @@ class GenericCalculator {
             }
 
             auto all_correct{true};
-            auto total_skipped{0u};
-            // TODO: CRTP
-            for (auto&& [i, probe] : probes | std::views::enumerate) {
-                auto [_, approx_escape_time, skipped] = escape_approximate(probe, View<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, get_approximator());
+            auto total_skipped {compute_skipped_iterations(probes, ref, escape_radius, params.tolerance)};
 
-                using std::abs;
-                if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(true_escape_times[i]) - 1.0) > params.tolerance) {
-                    all_correct = false;
-                    break;
-                }
-                total_skipped += skipped;
-            }
-
-            if (!all_correct) {
+            if (!total_skipped) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} too high", iter, middle);
                 upper_exp = middle;
                 continue;
             }
 
-            auto avg_skipped = total_skipped / static_cast<double>(probes.size());
+            auto avg_skipped = *total_skipped / static_cast<double>(probes.size());
             if (avg_skipped >= prev_avg_skipped) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} avg_skipped={} (improving)", iter, middle, avg_skipped);
                 prev_exp = epsilon;
@@ -209,6 +198,7 @@ class GenericCalculator {
     auto get_approximator() const -> Approximator<View, T> {
         return {_first_level, _last_level, get_columns(), get_approximations()};
     }
+    // TODO: REMOVE; VIOLATES DRY
     WF_HD
     auto approximation_exists(unsigned m, std::size_t level) const -> bool {
         return level >= _first_level && m > 0 && m - 1 < get_columns().size() && level - _first_level < get_columns()[m - 1].count;
@@ -225,6 +215,7 @@ class GenericCalculator {
             return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
         return nullptr;
     }
+    // TODO: end
     auto resize_approximations(unsigned size) -> void {
         static_cast<Derived*>(this)->resize_approximations(size);
     }
@@ -238,8 +229,11 @@ class GenericCalculator {
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
         static_cast<Derived*>(this)->merge_approximations(current_level, level_size, max_dc);
     }
-    auto compute_probe_escape_time(View<const T> probes, View<const T> ref, double escape_radius) -> View<const unsigned> {
-        return static_cast<Derived*>(this)->compute_probe_escape_time(probes, ref, escape_radius);
+    auto compute_probe_escape_time(View<const T> probes, View<const T> ref, double escape_radius) -> void {
+        static_cast<Derived*>(this)->compute_probe_escape_time(probes, ref, escape_radius);
+    }
+    auto compute_skipped_iterations(View<const T> probes, View<const T> ref, double escape_radius, double tolerance) -> std::optional<unsigned> {
+        return static_cast<Derived*>(this)->compute_skipped_iterations(probes, ref, escape_radius, tolerance);
     }
     auto get_columns() -> View<ColumnInfo> {
         return static_cast<Derived*>(this)->get_columns();
@@ -314,7 +308,7 @@ class HostCalculator : public GenericCalculator<HostCalculator<T>, std::span, T>
         for (auto m : std::views::iota(1uz, ref.size() - 1)) {
             Bla<T> bla {epsilon, ref, max_dc, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
             _working_approximations.at(m - 1) = bla;
-            if (0 == Base::_first_level) {
+            if (0 == this->_first_level) {
                 auto* ptr {this->approximation_at(m, 0)};
                 if (ptr) { *ptr = bla; }
             }
@@ -324,19 +318,32 @@ class HostCalculator : public GenericCalculator<HostCalculator<T>, std::span, T>
         for (auto k : std::views::iota(0uz, level_size) | std::views::stride(2)) {
             auto bla {Bla<T>::merge(max_dc, _working_approximations.at(k), _working_approximations.at(k+1))};
             _working_approximations.at(k/2) = bla;
-            if (current_level >= Base::_first_level) {
+            if (current_level >= this->_first_level) {
                 auto m {1 + (k / 2) * (1uz << current_level)};
                 auto* ptr {this->approximation_at(m, current_level)};
                 if (ptr) { *ptr = bla; }
             }
         }
     }
-    auto compute_probe_escape_time(View<const T> probes, View<const T> ref, double escape_radius) -> View<const unsigned> {
+    auto compute_probe_escape_time(View<const T> probes, View<const T> ref, double escape_radius) -> void {
         _true_escape_times.clear();
         _true_escape_times.reserve(probes.size());
         std::ranges::transform(probes, std::back_inserter(_true_escape_times),
             [&ref, &escape_radius](T p) -> unsigned { return escape_perturbed<T>(p, ref, static_cast<unsigned>(ref.size()), escape_radius).second; });
-        return _true_escape_times;
+    }
+    auto compute_skipped_iterations(View<const T> probes, View<const T> ref, double escape_radius, double tolerance) -> std::optional<unsigned> {
+        auto total_skipped {0u};
+        for (auto&& [i, probe] : probes | std::views::enumerate) {
+            auto [_, approx_escape_time, skipped] = escape_approximate(probe, View<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, this->get_approximator());
+
+            using std::abs;
+            if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(_true_escape_times[i]) - 1.0) > tolerance) {
+                return std::nullopt;
+                break;
+            }
+            total_skipped += skipped;
+        }
+        return total_skipped;
     }
     auto get_columns() -> View<ColumnInfo> {
         return _columns;
