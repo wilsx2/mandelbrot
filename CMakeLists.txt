@@ -45,7 +45,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
 add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-diag-suppress=20014>) # Boost host-only warnings in CUDA compilation
 if(MSVC)
-    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>)
+    add_compile_options($<$<COMPILE_LANGUAGEcma:CUDA>:-Xcompiler=/Zc:preprocessor>)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>)
     add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:alignedNew->)
     set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "Embedded")
@@ -112,3 +112,18 @@ endif()
 target_link_libraries(gpu_test PRIVATE
     libwacfrac
 )
+
+#[[ BLA Test
+add_executable(bla_test src/bla_test.cu)
+if(MSVC)
+    set_source_files_properties(src/bla_test.cu PROPERTIES
+        COMPILE_DEFINITIONS "NOMINMAX"
+    )
+endif()
+if (MSVC)
+    target_compile_definitions(bla_test PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:CCCL_IGNORE_MSVC_TRADITIONAL_PREPROCESSOR_WARNING>)
+endif()
+target_link_libraries(bla_test PRIVATE
+    libwacfrac
+)
+]]

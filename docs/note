@@ -1,6 +1,7 @@
     Unify BLA
-    Integrate with Bench & CLI
+    Move BLA search params into member variable
     Renderer interface
+    Integrate with Bench & CLI
 
 July
 - GPU

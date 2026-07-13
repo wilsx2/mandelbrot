@@ -10,6 +10,7 @@
 #include <ranges>
 #include <cmath>
 #include <cstddef>
+#include <execution>
 
 namespace wacfrac::bla {
 
@@ -33,9 +34,9 @@ struct Bla {
     Bla() = default;
     WF_HD
     Bla(T a, T b, CT r) : a(a), b(b), r(r) {}
-    template<template<typename>typename View>
+    template<typename ViewType>
     WF_HD
-    Bla(CT epsilon, View<const T> ref, T max_dc, unsigned m, unsigned n) {
+    Bla(CT epsilon, ViewType ref, T max_dc, unsigned m, unsigned n) {
         using std::abs;
         auto l {n - m};
         a = T{2.0, 0.0} * ref[m] * static_cast<CT>(l);
@@ -80,13 +81,7 @@ struct Approximator {
         return level >= first_level && m > 0 && m - 1 < columns.size() && level - first_level < columns[m - 1].count;
     }
     WF_HD
-    auto approximation_at(unsigned m, std::size_t level) const -> const Bla<T>* {
-        if (approximation_exists(m, level))
-            return &approximations[columns[m - 1].first + level - first_level];
-        return nullptr;
-    }
-    WF_HD
-    auto approximation_at(unsigned m, std::size_t level) -> Bla<T>* {
+    auto approximation_at(unsigned m, std::size_t level) const -> Bla<T>* {
         if (approximation_exists(m, level))
             return &approximations[columns[m - 1].first + level - first_level];
         return nullptr;
@@ -98,8 +93,8 @@ struct Approximator {
             return std::nullopt;
 
         auto n = m + 1;
-        for (auto level : std::views::iota(first_level, last_level + 1) | std::views::reverse) {
-            auto next_bla = approximation_at(m, level);
+        for (auto level = static_cast<std::ptrdiff_t>(last_level); level >= static_cast<std::ptrdiff_t>(first_level); --level) {
+            auto next_bla = approximation_at(m, static_cast<std::size_t>(level));
             if (next_bla && next_bla->is_valid(dzm)) {
                 bla = next_bla;
                 n = m + (1u << level);
@@ -111,10 +106,12 @@ struct Approximator {
     }
 };
 
-template <typename Derived, template<typename>typename View, ComplexConcept T>
+template <template<typename>typename Storage, typename Executor, ComplexConcept T>
 class GenericCalculator {
     public:
     using CT = ComplexValueTypeT<T>;
+    template<typename U>
+    using View = typename Storage<U>::View;
     GenericCalculator(std::size_t first_level)
         : _max_ref_size(0)
         , _first_level(first_level)
@@ -124,35 +121,36 @@ class GenericCalculator {
         _max_ref_size = ref_size;
         _last_level = ref_size < 3 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(ref_size)));
         auto max_n {ref_size - 1};
-        resize_columns(max_n);
-        get_columns()[max_n - 1] = {0, 0};
-        auto i {0uz};
-        for (auto m : std::views::iota(1uz, max_n)) {
+        _columns.resize(max_n);
+        _working_approximations.resize(max_n - 1);
+        // TODO: Move to Executor
+        _columns[max_n - 1] = {0, 0};
+        auto i {0ull};
+        for (auto m : std::views::iota(1ull, max_n)) { // 
             auto cz {static_cast<unsigned>(std::countr_zero(m - 1))};
             auto size {cz >= _first_level
                 ? 1 + std::min(cz - _first_level, _last_level - _first_level)
-                : 0uz};
-            get_columns()[m - 1] = {i, size};
+                : 0ull};
+            _columns[m - 1] = {i, size};
             i += size;
         }
-        resize_approximations(i);
+        //
+        _approximations.resize(i);
     }
-    auto compute_manual(CT epsilon, View<const T> ref, T max_dc) -> Approximator<View, T> {
+    auto compute_manual(CT epsilon, View<const T> ref, T max_dc) -> void {
         if (ref.size() > _max_ref_size) {
             resize_for_ref(ref.size());
         }
 
         auto level_size {ref.size() - 2};
         compute_initial_approximations(epsilon, ref, max_dc);
-        for (auto i {1uz}; level_size >= 2; ++i) {
-            auto even_size {level_size & ~1uz};
+        for (auto i {1ull}; level_size >= 2; ++i) {
+            auto even_size {level_size & ~1ull};
             merge_approximations(i, even_size, max_dc);
             level_size /= 2;
         }
-
-        return get_approximator();
     }
-    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, View<const T> ref, double escape_radius = 2.0) -> bool {
+    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, View<const T> ref, double escape_radius = 2.0) -> void {
         logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
 
         compute_probe_escape_time(probes, ref, escape_radius);
@@ -160,8 +158,8 @@ class GenericCalculator {
         CT prev_exp;
         auto lower_exp {params.lower_exp};
         auto upper_exp {params.upper_exp};
-        constexpr auto UPPER_LIMIT {32uz};
-        for (auto iter : std::views::iota(0uz, UPPER_LIMIT)) {
+        constexpr auto UPPER_LIMIT {32ull};
+        for (auto iter : std::views::iota(0ull, UPPER_LIMIT)) {
             auto middle {(upper_exp + lower_exp) / 2.0};
 
             auto epsilon = static_cast<ComplexValueTypeT<T>>(std::pow(10.0, middle));
@@ -190,55 +188,116 @@ class GenericCalculator {
             }
         }
         logging::info( "BLA epsilon search complete");
-        return true;
     }
     auto get_approximator() const -> Approximator<View, T> {
-        return {_first_level, _last_level, get_columns(), get_approximations()};
+        return {_first_level, _last_level, _columns.get_view(), _approximations.get_view()};
     }
     auto get_approximator() -> Approximator<View, T> {
-        return {_first_level, _last_level, get_columns(), get_approximations()};
-    }
-    auto resize_approximations(unsigned size) -> void {
-        static_cast<Derived*>(this)->resize_approximations(size);
-    }
-    auto resize_columns(unsigned size) -> void {
-        static_cast<Derived*>(this)->resize_columns(size);
+        return {_first_level, _last_level, _columns.get_view(), _approximations.get_view()};
     }
     protected:
     auto compute_initial_approximations(CT epsilon, View<const T> ref, T max_dc) -> void {
-        static_cast<Derived*>(this)->compute_initial_approximations(epsilon, ref, max_dc);
+        _executor(ref.size() - 2,
+            [epsilon, ref, max_dc,
+             first_level = _first_level,
+             approximator = get_approximator(),
+             working = _working_approximations.get_view()]
+            WF_HD (auto tid){
+                if (tid + 2 >= ref.size())
+                    return;
+                auto m {tid + 1};
+                Bla<T> bla {epsilon, ref, max_dc, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
+                working[m - 1] = bla;
+                if (0 == first_level) {
+                    auto* ptr {approximator.approximation_at(m, 0)};
+                    if (ptr) { *ptr = bla; }
+                }
+            });
     }
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
-        static_cast<Derived*>(this)->merge_approximations(current_level, level_size, max_dc);
+        _executor(level_size / 2,
+            [current_level, max_dc,
+             first_level = _first_level,
+             approximator = get_approximator(),
+             working = _working_approximations.get_view()]
+            WF_HD (auto tid){
+                auto k {tid * 2};
+                if (k >= working.size())
+                    return;
+
+                auto bla {Bla<T>::merge(max_dc, working[k], working[k+1])};
+                working[k/2] = bla; // NOTE: This breaks if parallel
+                if (current_level >= first_level) { // NOTE: Can precompute this
+                    auto m {1 + (k / 2) * (1ull << current_level)};
+                    auto* ptr {approximator.approximation_at(m, current_level)};
+                    if (ptr) { *ptr = bla; }
+                }
+            });
     }
     auto compute_probe_escape_time(View<const T> probes, View<const T> ref, double escape_radius) -> void {
-        static_cast<Derived*>(this)->compute_probe_escape_time(probes, ref, escape_radius);
+        if (probes.size() > _true_escape_times.size()) {
+            _true_escape_times.resize(probes.size());
+        }
+
+        _executor(probes.size(),
+            [probes, ref, escape_radius,
+             escape_times = _true_escape_times.get_view()]
+            WF_HD (auto tid){
+                if (tid >= probes.size())
+                    return;
+                escape_times[tid] = escape_perturbed<T>(
+                    probes[tid], ref, 
+                    static_cast<unsigned>(ref.size()), 
+                    escape_radius).second;
+            });
     }
     auto compute_skipped_iterations(View<const T> probes, View<const T> ref, double escape_radius, double tolerance) -> std::optional<unsigned> {
-        return static_cast<Derived*>(this)->compute_skipped_iterations(probes, ref, escape_radius, tolerance);
-    }
-    auto get_columns() -> View<ColumnInfo> {
-        return static_cast<Derived*>(this)->get_columns();
-    }
-    auto get_columns() const -> View<const ColumnInfo> {
-        return static_cast<const Derived*>(this)->get_columns();
-    }
-    auto get_approximations() -> View<Bla<T>> {
-        return static_cast<Derived*>(this)->get_approximations();
-    }
-    auto get_approximations() const -> View<const Bla<T>> {
-        return static_cast<const Derived*>(this)->get_approximations();
+        auto total_skipped {0u}; // NOTE: Does not work in parallel; use atomics
+        auto tolerance_failed {false};
+        _executor(probes.size(),
+            [probes, ref, escape_radius, tolerance,
+             escape_times = _true_escape_times.get_view(),
+             tolerance_failed = &tolerance_failed,
+             total_skipped = &total_skipped,
+             approximator = get_approximator()]
+            WF_HD (auto tid){
+                if (tid >= probes.size())
+                    return;
+                auto [_, approx_escape_time, skipped] =
+                    escape_approximate(
+                        probes[tid], 
+                        View<const T>(ref), 
+                        static_cast<unsigned>(ref.size()),
+                        escape_radius,
+                        approximator);
+
+                using std::abs;
+                if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(escape_times[tid]) - 1.0) > tolerance) {
+                    *tolerance_failed = true;
+                    return;
+                }
+                *total_skipped += skipped;
+            });
+
+        if (tolerance_failed)
+            return std::nullopt;
+        return total_skipped;
     }
 
     std::size_t _max_ref_size;
     std::size_t _first_level;
     std::size_t _last_level;
+    Storage<ColumnInfo> _columns;
+    Storage<Bla<T>>     _working_approximations;
+    Storage<Bla<T>>     _approximations;
+    Storage<unsigned>   _true_escape_times;
+    Executor            _executor;
 };
 
+template <ComplexConcept T, typename Ref, typename Approx>
 WF_HD
-template <template<typename>typename View, ComplexConcept T>
-auto escape_approximate(const T& dc, View<const T> ref, unsigned max_n, double escape_radius,
-                        const Approximator<View, T>& approximator)
+auto escape_approximate(const T& dc, Ref ref, unsigned max_n, double escape_radius,
+                        const Approx& approximator)
                         -> std::tuple<Complex<float>, unsigned, unsigned> {
     unsigned ref_n {0u};
     unsigned skipped {0u};
@@ -260,86 +319,49 @@ auto escape_approximate(const T& dc, View<const T> ref, unsigned max_n, double e
 }
 
 template <typename T>
-class HostCalculator;
-template <typename T>
-class HostCalculator : public GenericCalculator<HostCalculator<T>, std::span, T> {
-    public: 
-    using Base = GenericCalculator<HostCalculator<T>, std::span, T>;
-    using CT = Base::CT;
-    template <typename U>
-    using View = std::span<U>;
+struct HostStorage {
+    using stored_type = std::remove_cvref_t<T>;
+    using View = std::span<T>;
+    using ConstView = std::span<const stored_type>;
+    std::vector<stored_type> value;
 
-    protected:
-    std::vector<ColumnInfo>     _columns;
-    std::vector<Bla<T>>         _working_approximations;
-    std::vector<Bla<T>>         _approximations;
-    std::vector<unsigned>       _true_escape_times;
-
-    public:
-    HostCalculator( std::size_t first_level)
-        : Base(first_level)
-    {};
-    auto resize_columns(unsigned size) -> void {
-        _columns.resize(size);
-        _working_approximations.resize(size); // Needs to be the same size
+    auto size() const -> std::size_t {
+        return value.size();
     }
-    auto resize_approximations(unsigned size) -> void {
-        _approximations.resize(size);
+    auto resize(std::size_t new_size) -> void {
+        value.resize(new_size);
     }
-    auto compute_initial_approximations(CT epsilon, View<const T> ref, T max_dc) -> void {
-        for (auto m : std::views::iota(1uz, ref.size() - 1)) {
-            Bla<T> bla {epsilon, ref, max_dc, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
-            _working_approximations.at(m - 1) = bla;
-            if (0 == this->_first_level) {
-                auto* ptr {this->get_approximator().approximation_at(m, 0)};
-                if (ptr) { *ptr = bla; }
-            }
-        }
+    T& operator[](std::size_t i) {
+        return value[i];
     }
-    auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
-        for (auto k : std::views::iota(0uz, level_size) | std::views::stride(2)) {
-            auto bla {Bla<T>::merge(max_dc, _working_approximations.at(k), _working_approximations.at(k+1))};
-            _working_approximations.at(k/2) = bla;
-            if (current_level >= this->_first_level) {
-                auto m {1 + (k / 2) * (1uz << current_level)};
-                auto* ptr {this->get_approximator().approximation_at(m, current_level)};
-                if (ptr) { *ptr = bla; }
-            }
-        }
+    const T& operator[](std::size_t i) const {
+        return value[i];
     }
-    auto compute_probe_escape_time(View<const T> probes, View<const T> ref, double escape_radius) -> void {
-        _true_escape_times.clear();
-        _true_escape_times.reserve(probes.size());
-        std::ranges::transform(probes, std::back_inserter(_true_escape_times),
-            [&ref, &escape_radius](T p) -> unsigned { return escape_perturbed<T>(p, ref, static_cast<unsigned>(ref.size()), escape_radius).second; });
+    View as_view() {
+        return std::span(value);
     }
-    auto compute_skipped_iterations(View<const T> probes, View<const T> ref, double escape_radius, double tolerance) -> std::optional<unsigned> {
-        auto total_skipped {0u};
-        for (auto&& [i, probe] : probes | std::views::enumerate) {
-            auto [_, approx_escape_time, skipped] = escape_approximate(probe, View<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, this->get_approximator());
-
-            using std::abs;
-            if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(_true_escape_times[i]) - 1.0) > tolerance) {
-                return std::nullopt;
-            }
-            total_skipped += skipped;
-        }
-        return total_skipped;
+    ConstView as_view() const {
+        return std::span(value);
     }
-    auto get_columns() -> View<ColumnInfo> {
-        return _columns;
+    View get_view() {
+        return std::span(value);
     }
-    auto get_columns() const -> View<const ColumnInfo> {
-        return _columns;
-    }
-    auto get_approximations() -> View<Bla<T>> {
-        return _approximations;
-    }
-    auto get_approximations() const -> View<const Bla<T>> {
-        return _approximations;
+    ConstView get_view() const {
+        return std::span(value);
     }
 };
 
+struct SequentialExecutor {
+    template<typename F>
+    void operator()(std::size_t count, F&& func) const {
+        for (std::size_t i = 0; i < count; ++i) {
+            func(i);
+        }
+    }
+};
+
+template <typename T>
+using HostCalculator = GenericCalculator<HostStorage, SequentialExecutor, T>;
 template<typename T>
 using Calculator = HostCalculator<T>;
 
