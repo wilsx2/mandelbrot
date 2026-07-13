@@ -168,8 +168,7 @@ class GenericCalculator {
             level_size /= 2;
         }
     }
-    // TODO: Change to a View of probes so it is truly generic
-    auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, View<const T> ref, double escape_radius = 2.0) -> void {
+    auto compute_search(SearchParams params, View<const T> probes, T max_dc, View<const T> ref, double escape_radius = 2.0) -> void {
         logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
 
         compute_probe_escape_time(probes, ref, escape_radius);

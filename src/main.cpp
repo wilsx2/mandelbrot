@@ -94,10 +94,10 @@ void render_image(const wacfrac::ImageOptions& opts) {
                 if (opts.epsilon != 0.0) {
                     calculator.compute_manual(static_cast<CT>(opts.epsilon), ref, max_dc);
                 } else {
+                    auto probes {view.generate_probes<T>(opts.shared->probe_grid.first, opts.shared->probe_grid.second)};
                     calculator.compute_search(
                         {.lower_exp = opts.shared->lower_exp, .upper_exp = opts.shared->upper_exp, .tolerance = opts.shared->tolerance},
-                        view.generate_probes<T>(opts.shared->probe_grid.first, opts.shared->probe_grid.second),
-                        max_dc, ref, opts.shared->escape_radius);
+                        std::span(probes), max_dc, ref, opts.shared->escape_radius);
                 }
                 auto bla = calculator.get_approximator();
                 for (auto dc : dcs) {
