@@ -2,6 +2,7 @@
 
 #include "wacfrac/macros.hpp"
 #include "wacfrac/buffer.hpp"
+#include "wacfrac/executor.hpp"
 #include "wacfrac/complex_concept.hpp"
 #include <wacfrac/orbit.hpp>
 #include <wacfrac/types.hpp>
@@ -11,7 +12,6 @@
 #include <ranges>
 #include <cmath>
 #include <cstddef>
-#include <execution>
 
 namespace wacfrac::bla {
 
@@ -107,7 +107,7 @@ struct Approximator {
     }
 };
 
-template <template<typename>typename Buffer, typename Executor, ComplexConcept T>
+template <template<typename>typename Buffer, ExecutorLike Executor, ComplexConcept T>
 requires BufferLike<Buffer>
 class GenericCalculator {
     public:
@@ -326,27 +326,6 @@ auto escape_approximate(const T& dc, Ref ref, unsigned max_n, double escape_radi
         });
     return {z, n, skipped};
 }
-
-struct SequentialExecutor {
-    template<typename F>
-    void operator()(std::size_t count, F&& func) const {
-        for (std::size_t i = 0; i < count; ++i) {
-            func(i);
-        }
-    }
-};
-
-struct ParallelExecutor {
-    template<typename F>
-    void operator()(std::size_t count, F&& func) const {
-        auto range {std::ranges::iota_view(0uz, count)};
-        std::for_each(
-            std::execution::par_unseq,
-            range.begin(),
-            range.end(),
-            func);
-    }
-};
 
 template <typename T>
 using HostCalculator = GenericCalculator<HostBuffer, ParallelExecutor, T>;
