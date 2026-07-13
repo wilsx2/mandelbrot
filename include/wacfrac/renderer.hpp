@@ -40,12 +40,12 @@ struct VideoConfig {
     double zoom_per_second {2.0};
 };
 
-template<typename Derived>
+template<template<typename>typename Storage, typename Executor>
 class Renderer {
     Resolution resolution;
     MultiComplex focus;
     double escape_radius;
-    /* CRTP storage: palette */
+    Storage palette;
     bool discrete_coloring;
     std::tuple<double, double, double> iteration_parameters;
     bla::SearchParams search_params;
@@ -56,7 +56,7 @@ class Renderer {
         : resolution(conf.resolution)
         , focus(conf.focus)
         , escape_radius(conf.escape_radius)
-        // "palette" is initialized in derived storage
+        // TODO: init palette
         , discrete_coloring(conf.discrete_coloring)
         , iteration_parameters(conf.iteration_parameters)
         , search_params(conf.search_params)

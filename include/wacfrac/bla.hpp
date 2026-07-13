@@ -1,6 +1,7 @@
 #pragma once
 
 #include "wacfrac/macros.hpp"
+#include "wacfrac/buffer.hpp"
 #include "wacfrac/complex_concept.hpp"
 #include <wacfrac/orbit.hpp>
 #include <wacfrac/types.hpp>
@@ -106,12 +107,13 @@ struct Approximator {
     }
 };
 
-template <template<typename>typename Storage, typename Executor, ComplexConcept T>
+template <template<typename>typename Buffer, typename Executor, ComplexConcept T>
+requires BufferLike<Buffer>
 class GenericCalculator {
     public:
     using CT = ComplexValueTypeT<T>;
     template<typename U>
-    using View = typename Storage<U>::View;
+    using View = typename Buffer<U>::View;
     GenericCalculator(std::size_t first_level)
         : _max_ref_size(0)
         , _first_level(first_level)
@@ -122,13 +124,14 @@ class GenericCalculator {
         _last_level = ref_size < 3 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(ref_size)));
         auto max_n {ref_size - 1};
         _columns.resize(max_n);
-        _working_approximations.resize(max_n - 1);
+        _current_working.resize(max_n - 1);
+        _next_working.resize(_current_working.size() / 2);
         // TODO: Move to Executor
         _columns[max_n - 1] = {0, 0};
         auto i {0ull};
         for (auto m : std::views::iota(1ull, max_n)) { // 
             auto cz {static_cast<unsigned>(std::countr_zero(m - 1))};
-            auto size {cz >= _first_level
+            auto size {(cz >= _first_level && _first_level <= _last_level)
                 ? 1 + std::min(cz - _first_level, _last_level - _first_level)
                 : 0ull};
             _columns[m - 1] = {i, size};
@@ -138,6 +141,8 @@ class GenericCalculator {
         _approximations.resize(i);
     }
     auto compute_manual(CT epsilon, View<const T> ref, T max_dc) -> void {
+        if (ref.size() < 3)
+            return;
         if (ref.size() > _max_ref_size) {
             resize_for_ref(ref.size());
         }
@@ -147,9 +152,11 @@ class GenericCalculator {
         for (auto i {1ull}; level_size >= 2; ++i) {
             auto even_size {level_size & ~1ull};
             merge_approximations(i, even_size, max_dc);
+            _current_working.swap(_next_working);
             level_size /= 2;
         }
     }
+    // TODO: Change to a View of probes so it is truly generic
     auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, View<const T> ref, double escape_radius = 2.0) -> void {
         logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
 
@@ -201,7 +208,7 @@ class GenericCalculator {
             [epsilon, ref, max_dc,
              first_level = _first_level,
              approximator = get_approximator(),
-             working = _working_approximations.get_view()]
+             working = _current_working.get_view()]
             WF_HD (auto tid){
                 if (tid + 2 >= ref.size())
                     return;
@@ -219,14 +226,15 @@ class GenericCalculator {
             [current_level, max_dc,
              first_level = _first_level,
              approximator = get_approximator(),
-             working = _working_approximations.get_view()]
+             working = _current_working.get_view(),
+             next_working = _next_working.get_view()]
             WF_HD (auto tid){
                 auto k {tid * 2};
                 if (k >= working.size())
                     return;
 
                 auto bla {Bla<T>::merge(max_dc, working[k], working[k+1])};
-                working[k/2] = bla; // NOTE: This breaks if parallel
+                next_working[k/2] = bla;
                 if (current_level >= first_level) { // NOTE: Can precompute this
                     auto m {1 + (k / 2) * (1ull << current_level)};
                     auto* ptr {approximator.approximation_at(m, current_level)};
@@ -252,8 +260,8 @@ class GenericCalculator {
             });
     }
     auto compute_skipped_iterations(View<const T> probes, View<const T> ref, double escape_radius, double tolerance) -> std::optional<unsigned> {
-        auto total_skipped {0u}; // NOTE: Does not work in parallel; use atomics
-        auto tolerance_failed {false};
+        std::atomic total_skipped {0u}; // NOTE: Does not work on GPU. Use storage and WF_STD::atomic. Allocate as member
+        std::atomic tolerance_failed {false};
         _executor(probes.size(),
             [probes, ref, escape_radius, tolerance,
              escape_times = _true_escape_times.get_view(),
@@ -273,10 +281,10 @@ class GenericCalculator {
 
                 using std::abs;
                 if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(escape_times[tid]) - 1.0) > tolerance) {
-                    *tolerance_failed = true;
+                    *tolerance_failed = true; // TODO: Use explicit method calls
                     return;
                 }
-                *total_skipped += skipped;
+                *total_skipped += skipped; // TODO: Above
             });
 
         if (tolerance_failed)
@@ -287,10 +295,11 @@ class GenericCalculator {
     std::size_t _max_ref_size;
     std::size_t _first_level;
     std::size_t _last_level;
-    Storage<ColumnInfo> _columns;
-    Storage<Bla<T>>     _working_approximations;
-    Storage<Bla<T>>     _approximations;
-    Storage<unsigned>   _true_escape_times;
+    Buffer<ColumnInfo> _columns;
+    Buffer<Bla<T>>     _current_working;
+    Buffer<Bla<T>>     _next_working;
+    Buffer<Bla<T>>     _approximations;
+    Buffer<unsigned>   _true_escape_times;
     Executor            _executor;
 };
 
@@ -318,39 +327,6 @@ auto escape_approximate(const T& dc, Ref ref, unsigned max_n, double escape_radi
     return {z, n, skipped};
 }
 
-template <typename T>
-struct HostStorage {
-    using stored_type = std::remove_cvref_t<T>;
-    using View = std::span<T>;
-    using ConstView = std::span<const stored_type>;
-    std::vector<stored_type> value;
-
-    auto size() const -> std::size_t {
-        return value.size();
-    }
-    auto resize(std::size_t new_size) -> void {
-        value.resize(new_size);
-    }
-    T& operator[](std::size_t i) {
-        return value[i];
-    }
-    const T& operator[](std::size_t i) const {
-        return value[i];
-    }
-    View as_view() {
-        return std::span(value);
-    }
-    ConstView as_view() const {
-        return std::span(value);
-    }
-    View get_view() {
-        return std::span(value);
-    }
-    ConstView get_view() const {
-        return std::span(value);
-    }
-};
-
 struct SequentialExecutor {
     template<typename F>
     void operator()(std::size_t count, F&& func) const {
@@ -360,8 +336,20 @@ struct SequentialExecutor {
     }
 };
 
+struct ParallelExecutor {
+    template<typename F>
+    void operator()(std::size_t count, F&& func) const {
+        auto range {std::ranges::iota_view(0uz, count)};
+        std::for_each(
+            std::execution::par_unseq,
+            range.begin(),
+            range.end(),
+            func);
+    }
+};
+
 template <typename T>
-using HostCalculator = GenericCalculator<HostStorage, SequentialExecutor, T>;
+using HostCalculator = GenericCalculator<HostBuffer, ParallelExecutor, T>;
 template<typename T>
 using Calculator = HostCalculator<T>;
 
