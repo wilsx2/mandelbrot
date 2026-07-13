@@ -27,7 +27,7 @@ class DeviceCalculator : public GenericCalculator<DeviceCalculator<T>, cuda::std
     cuda::device_buffer<ColumnInfo>     _columns;
     cuda::device_buffer<Bla<T>>         _working_approximations;
     cuda::device_buffer<Bla<T>>         _approximations;
-    cuda::host_buffer<unsigned>         _true_escape_times;
+    cuda::device_buffer<unsigned>       _true_escape_times;
 
     public:
     DeviceCalculator(unsigned device_id, std::size_t first_level) : Base(first_level) {
@@ -47,7 +47,7 @@ class DeviceCalculator : public GenericCalculator<DeviceCalculator<T>, cuda::std
             Bla<T> bla {epsilon, ref, max_dc, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
             _working_approximations.at(m - 1) = bla;
             if (0 == Base::_first_level) {
-                *(Base::approximation_at(m, 0)) = bla;
+                *(Base::get_approximator().approximation_at(m, 0)) = bla;
             }
         }
     }
@@ -58,7 +58,7 @@ class DeviceCalculator : public GenericCalculator<DeviceCalculator<T>, cuda::std
             _working_approximations.at(k/2) = bla;
             if (current_level >= Base::_first_level) {
                 auto m {1 + (k / 2) * (1uz << current_level)};
-                *(Base::approximation_at(m, current_level)) = bla;
+                *(Base::get_approximator().approximation_at(m, current_level)) = bla;
             }
         }
     }

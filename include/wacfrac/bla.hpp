@@ -73,7 +73,7 @@ struct Approximator {
     std::size_t first_level;
     std::size_t last_level;
     View<const ColumnInfo> columns;
-    View<const Bla<T>> approximations;
+    View<Bla<T>> approximations;
 
     WF_HD
     auto approximation_exists(unsigned m, std::size_t level) const -> bool {
@@ -166,15 +166,12 @@ class GenericCalculator {
 
             auto epsilon = static_cast<ComplexValueTypeT<T>>(std::pow(10.0, middle));
             compute_manual(epsilon, ref, max_dc);
-
             if (upper_exp - lower_exp < params.convergence_radius) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} (converged)", iter, middle);
                 break;
             }
 
-            auto all_correct{true};
             auto total_skipped {compute_skipped_iterations(probes, ref, escape_radius, params.tolerance)};
-
             if (!total_skipped) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} too high", iter, middle);
                 upper_exp = middle;
@@ -198,24 +195,9 @@ class GenericCalculator {
     auto get_approximator() const -> Approximator<View, T> {
         return {_first_level, _last_level, get_columns(), get_approximations()};
     }
-    // TODO: REMOVE; VIOLATES DRY
-    WF_HD
-    auto approximation_exists(unsigned m, std::size_t level) const -> bool {
-        return level >= _first_level && m > 0 && m - 1 < get_columns().size() && level - _first_level < get_columns()[m - 1].count;
+    auto get_approximator() -> Approximator<View, T> {
+        return {_first_level, _last_level, get_columns(), get_approximations()};
     }
-    WF_HD
-    auto approximation_at(unsigned m, std::size_t level) const -> const Bla<T>* {
-        if (approximation_exists(m, level))
-            return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
-        return nullptr;
-    }
-    WF_HD
-    auto approximation_at(unsigned m, std::size_t level) -> Bla<T>* {
-        if (approximation_exists(m, level))
-            return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
-        return nullptr;
-    }
-    // TODO: end
     auto resize_approximations(unsigned size) -> void {
         static_cast<Derived*>(this)->resize_approximations(size);
     }
@@ -309,7 +291,7 @@ class HostCalculator : public GenericCalculator<HostCalculator<T>, std::span, T>
             Bla<T> bla {epsilon, ref, max_dc, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
             _working_approximations.at(m - 1) = bla;
             if (0 == this->_first_level) {
-                auto* ptr {this->approximation_at(m, 0)};
+                auto* ptr {this->get_approximator().approximation_at(m, 0)};
                 if (ptr) { *ptr = bla; }
             }
         }
@@ -320,7 +302,7 @@ class HostCalculator : public GenericCalculator<HostCalculator<T>, std::span, T>
             _working_approximations.at(k/2) = bla;
             if (current_level >= this->_first_level) {
                 auto m {1 + (k / 2) * (1uz << current_level)};
-                auto* ptr {this->approximation_at(m, current_level)};
+                auto* ptr {this->get_approximator().approximation_at(m, current_level)};
                 if (ptr) { *ptr = bla; }
             }
         }
@@ -339,7 +321,6 @@ class HostCalculator : public GenericCalculator<HostCalculator<T>, std::span, T>
             using std::abs;
             if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(_true_escape_times[i]) - 1.0) > tolerance) {
                 return std::nullopt;
-                break;
             }
             total_skipped += skipped;
         }
