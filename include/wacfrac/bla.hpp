@@ -107,11 +107,12 @@ struct Approximator {
     }
 };
 
-template <template<typename>typename Buffer, ExecutorLike Executor, ComplexConcept T>
-requires BufferLike<Buffer>
+template <ExecutorLike Executor, ComplexConcept T>
 class GenericCalculator {
     public:
     using CT = ComplexValueTypeT<T>;
+    template<typename U>
+    using Buffer = Executor::template Buffer<U>;
     template<typename U>
     using View = typename Buffer<U>::View;
     GenericCalculator(std::size_t first_level)
@@ -328,7 +329,7 @@ auto escape_approximate(const T& dc, Ref ref, unsigned max_n, double escape_radi
 }
 
 template <typename T>
-using HostCalculator = GenericCalculator<HostBuffer, ParallelExecutor, T>;
+using HostCalculator = GenericCalculator<ParallelExecutor, T>;
 template<typename T>
 using Calculator = HostCalculator<T>;
 
