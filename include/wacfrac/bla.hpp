@@ -4,6 +4,7 @@
 #include "wacfrac/buffer.hpp"
 #include "wacfrac/executor.hpp"
 #include "wacfrac/complex_concept.hpp"
+#include <chrono>
 #include <wacfrac/orbit.hpp>
 #include <wacfrac/types.hpp>
 #include <wacfrac/log.hpp>
@@ -16,8 +17,29 @@
 namespace wacfrac::bla {
 
 struct ColumnInfo {
-    std::size_t first;
+    std::size_t start;
     std::size_t count;
+
+    WF_HD
+    static auto compute_start(unsigned m, std::size_t first_level, std::size_t last_level) -> std::size_t {
+        auto start {0ull};
+        if (m > 1u && first_level <= last_level) {
+            auto n {m - 2};
+            start = last_level - first_level + 1; 
+            for (auto l {first_level}; l <= last_level; ++l) {
+                start += (n >> l);
+            }
+        }
+        return start;
+    }
+    WF_HD
+    static auto compute_count(std::size_t m, std::size_t first_level, std::size_t last_level) -> std::size_t {
+        auto cz {static_cast<unsigned>(std::countr_zero(m - 1))};
+        auto count {(cz >= first_level && first_level <= last_level)
+            ? 1 + std::min(cz - first_level, last_level - first_level)
+            : 0ull};
+        return count;
+    }
 };
 
 struct SearchParams {
@@ -84,7 +106,7 @@ struct Approximator {
     WF_HD
     auto approximation_at(unsigned m, std::size_t level) const -> Bla<T>* {
         if (approximation_exists(m, level))
-            return &approximations[columns[m - 1].first + level - first_level];
+            return &approximations[columns[m - 1].start + level - first_level];
         return nullptr;
     }
     WF_HD
@@ -127,19 +149,8 @@ class GenericCalculator {
         _columns.resize(max_n);
         _current_working.resize(max_n - 1);
         _next_working.resize(_current_working.size() / 2);
-        // TODO: Move to Executor
-        _columns[max_n - 1] = {0, 0};
-        auto i {0ull};
-        for (auto m : std::views::iota(1ull, max_n)) { // 
-            auto cz {static_cast<unsigned>(std::countr_zero(m - 1))};
-            auto size {(cz >= _first_level && _first_level <= _last_level)
-                ? 1 + std::min(cz - _first_level, _last_level - _first_level)
-                : 0ull};
-            _columns[m - 1] = {i, size};
-            i += size;
-        }
-        //
-        _approximations.resize(i);
+        initialize_columns(max_n);
+        _approximations.resize(ColumnInfo::compute_start(max_n, _first_level, _last_level));
     }
     auto compute_manual(CT epsilon, View<const T> ref, T max_dc) -> void {
         if (ref.size() < 3)
@@ -203,7 +214,24 @@ class GenericCalculator {
     auto get_approximator() -> Approximator<View, T> {
         return {_first_level, _last_level, _columns.get_view(), _approximations.get_view()};
     }
-    protected:
+    private:
+    auto initialize_columns(std::size_t max_n) -> void {
+        _executor(max_n - 1,
+            [max_n,
+             first_level = _first_level,
+             last_level = _last_level,
+             columns = _columns.get_view()]
+            WF_HD (auto tid){
+                auto m {tid + 1};
+                if (m >= max_n)
+                    return;
+                  
+                columns[m - 1] = {
+                    ColumnInfo::compute_start(m, first_level, last_level),
+                    ColumnInfo::compute_count(m, first_level, last_level)
+                };
+            });
+    }
     auto compute_initial_approximations(CT epsilon, View<const T> ref, T max_dc) -> void {
         _executor(ref.size() - 2,
             [epsilon, ref, max_dc,
