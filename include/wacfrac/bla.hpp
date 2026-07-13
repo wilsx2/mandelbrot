@@ -11,77 +11,82 @@
 #include <cmath>
 #include <cstddef>
 
-namespace wacfrac {
+namespace wacfrac::bla {
 
 struct ColumnInfo {
     std::size_t first;
     std::size_t count;
 };
 
-template<template<typename>typename View, ComplexConcept T>
-struct BivariateLinearApproximator {
-    using CT = ComplexValueTypeT<T>;
-    struct ApproximationParams {
-        CT epsilon;
-        View<const T> ref;
-        T max_dc;
-    };
-    struct Approximation {
-        T a, b;
-        CT r;
-        Approximation() = default;
-        WF_HD
-        Approximation(T a, T b, CT r) : a(a), b(b), r(r) {}
-        WF_HD
-        Approximation(const ApproximationParams& params, unsigned m, unsigned n) {
-            using std::abs;
-            auto l {n - m};
-            a = T{2.0, 0.0} * params.ref[m] * static_cast<CT>(l);
-            b = T{static_cast<CT>(l), 0.0};
-            auto denom = abs(a);
-            r = denom > CT{}
-                ? (params.epsilon * abs(params.ref[n]) - abs(b) * abs(params.max_dc)) / denom
-                : -abs(params.max_dc);
-        }
-        WF_HD
-        auto is_valid(T dzm) const -> bool {
-            using std::norm;
-            return r > CT{} && norm(dzm) < r*r;
-        }
-        WF_HD
-        auto approximate_dzn(T dzm, T dc) const -> T {
-            return a*dzm + b*dc;
-        }
-        WF_HD
-        static auto merge(const T& max_dc, const Approximation& x, const Approximation& y) -> Approximation {
-            using std::abs;
-            auto a {x.a * y.a};
-            auto b {y.a * x.b + y.b};
-            auto denom = abs(a);
-            auto r = denom > CT{}
-                ? std::min(x.r, (y.r - abs(b) * abs(max_dc)) / denom)
-                : std::min(x.r, y.r - abs(b) * abs(max_dc));
-            return {a, b, r};
-        }
-    };
+struct SearchParams {
+    double lower_exp;
+    double upper_exp;
+    double tolerance;
+    double convergence_radius = 1e-3;
+};
 
+template<ComplexConcept T>
+struct Bla {
+    using CT = ComplexValueTypeT<T>;
+    T a, b;
+    CT r;
+    Bla() = default;
+    WF_HD
+    Bla(T a, T b, CT r) : a(a), b(b), r(r) {}
+    template<template<typename>typename View>
+    WF_HD
+    Bla(CT epsilon, View<const T> ref, T max_dc, unsigned m, unsigned n) {
+        using std::abs;
+        auto l {n - m};
+        a = T{2.0, 0.0} * ref[m] * static_cast<CT>(l);
+        b = T{static_cast<CT>(l), 0.0};
+        auto denom = abs(a);
+        r = denom > CT{}
+            ? (epsilon * abs(ref[n]) - abs(b) * abs(max_dc)) / denom
+            : -abs(max_dc);
+    }
+    WF_HD
+    auto is_valid(T dzm) const -> bool {
+        using std::norm;
+        return r > CT{} && norm(dzm) < r*r;
+    }
+    WF_HD
+    auto approximate_dzn(T dzm, T dc) const -> T {
+        return a*dzm + b*dc;
+    }
+    WF_HD
+    static auto merge(const T& max_dc, const Bla& x, const Bla& y) -> Bla {
+        using std::abs;
+        auto a {x.a * y.a};
+        auto b {y.a * x.b + y.b};
+        auto denom = abs(a);
+        auto r = denom > CT{}
+            ? std::min(x.r, (y.r - abs(b) * abs(max_dc)) / denom)
+            : std::min(x.r, y.r - abs(b) * abs(max_dc));
+        return {a, b, r};
+    }
+};
+
+template<template<typename>typename View, ComplexConcept T>
+struct Approximator {
+    using CT = ComplexValueTypeT<T>;
     std::size_t first_level;
     std::size_t last_level;
     View<const ColumnInfo> columns;
-    View<const Approximation> approximations;
+    View<const Bla<T>> approximations;
 
     WF_HD
     auto approximation_exists(unsigned m, std::size_t level) const -> bool {
         return level >= first_level && m > 0 && m - 1 < columns.size() && level - first_level < columns[m - 1].count;
     }
     WF_HD
-    auto approximation_at(unsigned m, std::size_t level) const -> const Approximation* {
+    auto approximation_at(unsigned m, std::size_t level) const -> const Bla<T>* {
         if (approximation_exists(m, level))
             return &approximations[columns[m - 1].first + level - first_level];
         return nullptr;
     }
     WF_HD
-    auto approximation_at(unsigned m, std::size_t level) -> Approximation* {
+    auto approximation_at(unsigned m, std::size_t level) -> Bla<T>* {
         if (approximation_exists(m, level))
             return &approximations[columns[m - 1].first + level - first_level];
         return nullptr;
@@ -107,18 +112,10 @@ struct BivariateLinearApproximator {
 };
 
 template <typename Derived, template<typename>typename View, ComplexConcept T>
-class GenericBlaCalculator {
+class GenericCalculator {
     public:
-    using BLA = BivariateLinearApproximator<View, T>;
-    using Approximation = typename BLA::Approximation;
     using CT = ComplexValueTypeT<T>;
-    struct SearchParams {
-        double lower_exp;
-        double upper_exp;
-        double tolerance;
-        double convergence_radius = 1e-3;
-    };
-    GenericBlaCalculator(std::size_t first_level)
+    GenericCalculator(std::size_t first_level)
         : _max_ref_size(0)
         , _first_level(first_level)
         , _last_level(0)
@@ -140,20 +137,20 @@ class GenericBlaCalculator {
         }
         resize_approximations(i);
     }
-    auto compute_manual(CT epsilon, View<const T> ref, T max_dc) -> BLA {
+    auto compute_manual(CT epsilon, View<const T> ref, T max_dc) -> Approximator<View, T> {
         if (ref.size() > _max_ref_size) {
             resize_for_ref(ref.size());
         }
 
         auto level_size {ref.size() - 2};
-        compute_initial_approximations({epsilon, ref, max_dc});
+        compute_initial_approximations(epsilon, ref, max_dc);
         for (auto i {1uz}; level_size >= 2; ++i) {
             auto even_size {level_size & ~1uz};
             merge_approximations(i, even_size, max_dc);
             level_size /= 2;
         }
 
-        return {};
+        return get_approximator();
     }
     auto compute_search(SearchParams params, const std::vector<T>& probes, T max_dc, View<const T> ref, double escape_radius = 2.0) -> bool {
         logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
@@ -168,7 +165,7 @@ class GenericBlaCalculator {
             auto middle {(upper_exp + lower_exp) / 2.0};
 
             auto epsilon = static_cast<ComplexValueTypeT<T>>(std::pow(10.0, middle));
-            (void) compute_manual(epsilon, ref, max_dc);
+            compute_manual(epsilon, ref, max_dc);
 
             if (upper_exp - lower_exp < params.convergence_radius) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} (converged)", iter, middle);
@@ -177,6 +174,7 @@ class GenericBlaCalculator {
 
             auto all_correct{true};
             auto total_skipped{0u};
+            // TODO: CRTP
             for (auto&& [i, probe] : probes | std::views::enumerate) {
                 auto [_, approx_escape_time, skipped] = escape_approximate(probe, View<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, get_approximator());
 
@@ -208,33 +206,34 @@ class GenericBlaCalculator {
         logging::info( "BLA epsilon search complete");
         return true;
     }
-
-    auto get_approximator() const -> BLA {
+    auto get_approximator() const -> Approximator<View, T> {
         return {_first_level, _last_level, get_columns(), get_approximations()};
     }
-
+    WF_HD
+    auto approximation_exists(unsigned m, std::size_t level) const -> bool {
+        return level >= _first_level && m > 0 && m - 1 < get_columns().size() && level - _first_level < get_columns()[m - 1].count;
+    }
+    WF_HD
+    auto approximation_at(unsigned m, std::size_t level) const -> const Bla<T>* {
+        if (approximation_exists(m, level))
+            return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
+        return nullptr;
+    }
+    WF_HD
+    auto approximation_at(unsigned m, std::size_t level) -> Bla<T>* {
+        if (approximation_exists(m, level))
+            return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
+        return nullptr;
+    }
     auto resize_approximations(unsigned size) -> void {
         static_cast<Derived*>(this)->resize_approximations(size);
     }
     auto resize_columns(unsigned size) -> void {
         static_cast<Derived*>(this)->resize_columns(size);
     }
-    auto approximation_exists(unsigned m, std::size_t level) const -> bool {
-        return level >= _first_level && m > 0 && m - 1 < get_columns().size() && level - _first_level < get_columns()[m - 1].count;
-    }
-    auto approximation_at(unsigned m, std::size_t level) const -> const Approximation* {
-        if (approximation_exists(m, level))
-            return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
-        return nullptr;
-    }
-    auto approximation_at(unsigned m, std::size_t level) -> Approximation* {
-        if (approximation_exists(m, level))
-            return &get_approximations()[get_columns()[m - 1].first + level - _first_level];
-        return nullptr;
-    }
     protected:
-    auto compute_initial_approximations(const BLA::ApproximationParams& params) -> void {
-        static_cast<Derived*>(this)->compute_initial_approximations(params);
+    auto compute_initial_approximations(CT epsilon, View<const T> ref, T max_dc) -> void {
+        static_cast<Derived*>(this)->compute_initial_approximations(epsilon, ref, max_dc);
     }
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
         static_cast<Derived*>(this)->merge_approximations(current_level, level_size, max_dc);
@@ -248,10 +247,10 @@ class GenericBlaCalculator {
     auto get_columns() const -> View<const ColumnInfo> {
         return static_cast<const Derived*>(this)->get_columns();
     }
-    auto get_approximations() -> View<Approximation> {
+    auto get_approximations() -> View<Bla<T>> {
         return static_cast<Derived*>(this)->get_approximations();
     }
-    auto get_approximations() const -> View<const Approximation> {
+    auto get_approximations() const -> View<const Bla<T>> {
         return static_cast<const Derived*>(this)->get_approximations();
     }
 
@@ -263,7 +262,7 @@ class GenericBlaCalculator {
 WF_HD
 template <template<typename>typename View, ComplexConcept T>
 auto escape_approximate(const T& dc, View<const T> ref, unsigned max_n, double escape_radius,
-                        const BivariateLinearApproximator<View, T>& approximator)
+                        const Approximator<View, T>& approximator)
                         -> std::tuple<Complex<float>, unsigned, unsigned> {
     unsigned ref_n {0u};
     unsigned skipped {0u};
@@ -285,28 +284,25 @@ auto escape_approximate(const T& dc, View<const T> ref, unsigned max_n, double e
 }
 
 template <typename T>
-class HostBlaCalculator;
+class HostCalculator;
 template <typename T>
-class HostBlaCalculator : public GenericBlaCalculator<HostBlaCalculator<T>, std::span, T> {
+class HostCalculator : public GenericCalculator<HostCalculator<T>, std::span, T> {
     public: 
-    using Base = GenericBlaCalculator<HostBlaCalculator<T>, std::span, T>;
+    using Base = GenericCalculator<HostCalculator<T>, std::span, T>;
     using CT = Base::CT;
-    using Approximation = Base::Approximation;
-    using ApproximationParams = typename Base::BLA::ApproximationParams;
     template <typename U>
     using View = std::span<U>;
 
     protected:
     std::vector<ColumnInfo>     _columns;
-    std::vector<Approximation>  _working_approximations;
-    std::vector<Approximation>  _approximations;
+    std::vector<Bla<T>>         _working_approximations;
+    std::vector<Bla<T>>         _approximations;
     std::vector<unsigned>       _true_escape_times;
 
     public:
-    HostBlaCalculator( std::size_t first_level)
+    HostCalculator( std::size_t first_level)
         : Base(first_level)
-    {
-    };
+    {};
     auto resize_columns(unsigned size) -> void {
         _columns.resize(size);
         _working_approximations.resize(size); // Needs to be the same size
@@ -314,22 +310,24 @@ class HostBlaCalculator : public GenericBlaCalculator<HostBlaCalculator<T>, std:
     auto resize_approximations(unsigned size) -> void {
         _approximations.resize(size);
     }
-    auto compute_initial_approximations(const ApproximationParams& params) -> void {
-        for (auto m : std::views::iota(1uz, params.ref.size() - 1)) {
-            Approximation bla {params, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
+    auto compute_initial_approximations(CT epsilon, View<const T> ref, T max_dc) -> void {
+        for (auto m : std::views::iota(1uz, ref.size() - 1)) {
+            Bla<T> bla {epsilon, ref, max_dc, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
             _working_approximations.at(m - 1) = bla;
             if (0 == Base::_first_level) {
-                *(Base::approximation_at(m, 0)) = bla;
+                auto* ptr {this->approximation_at(m, 0)};
+                if (ptr) { *ptr = bla; }
             }
         }
     }
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
         for (auto k : std::views::iota(0uz, level_size) | std::views::stride(2)) {
-            auto bla {Approximation::merge(max_dc, _working_approximations.at(k), _working_approximations.at(k+1))};
+            auto bla {Bla<T>::merge(max_dc, _working_approximations.at(k), _working_approximations.at(k+1))};
             _working_approximations.at(k/2) = bla;
             if (current_level >= Base::_first_level) {
                 auto m {1 + (k / 2) * (1uz << current_level)};
-                *(Base::approximation_at(m, current_level)) = bla;
+                auto* ptr {this->approximation_at(m, current_level)};
+                if (ptr) { *ptr = bla; }
             }
         }
     }
@@ -346,15 +344,15 @@ class HostBlaCalculator : public GenericBlaCalculator<HostBlaCalculator<T>, std:
     auto get_columns() const -> View<const ColumnInfo> {
         return _columns;
     }
-    auto get_approximations() -> View<Approximation> {
+    auto get_approximations() -> View<Bla<T>> {
         return _approximations;
     }
-    auto get_approximations() const -> View<const Approximation> {
+    auto get_approximations() const -> View<const Bla<T>> {
         return _approximations;
     }
 };
 
 template<typename T>
-using BlaCalculator = HostBlaCalculator<T>;
+using Calculator = HostCalculator<T>;
 
-} // namespace wacfrac
+} // namespace wacfrac::bla

@@ -164,7 +164,7 @@ static void compute_bla_coefficients(benchmark::State& state) {
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
     auto probes {view.generate_probes<T>(state.range(1), state.range(1))};
     for (auto _ : state) {
-        wacfrac::BlaCalculator<T> calculator{0};
+        wacfrac::bla::Calculator<T> calculator{0};
         calculator.compute_search({.lower_exp = -256.0, .upper_exp = 0.0, .tolerance = std::pow(10.0, -state.range(2))}, probes, max_dc, ref);
         benchmark::DoNotOptimize(calculator);
     }
@@ -255,7 +255,7 @@ static void render_phase_bla(benchmark::State& state) {
     auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
     auto probes {view.generate_probes<T>(3, 3)};
-    wacfrac::BlaCalculator<T> calculator{first_level};
+    wacfrac::bla::Calculator<T> calculator{first_level};
         calculator.compute_search({.lower_exp = -256.0, .upper_exp = 0.0, .tolerance = 1e-8}, probes, max_dc, ref);
 
     std::vector<wacfrac::Pixel> pixels(res.area());
@@ -264,7 +264,7 @@ static void render_phase_bla(benchmark::State& state) {
         std::vector<std::tuple<wacfrac::Complex<float>, unsigned, unsigned>> escaped_orbits;
         auto bla = calculator.get_approximator();
         for (auto dc : dcs) {
-            escaped_orbits.push_back(wacfrac::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), 2.0, bla));
+            escaped_orbits.push_back(wacfrac::bla::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), 2.0, bla));
         }
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
             auto [z, n, skipped] = orbit;
@@ -370,13 +370,13 @@ static void e2e_bla(benchmark::State& state) {
         auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
         auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
         auto probes {view.generate_probes<T>(3, 3)};
-        wacfrac::BlaCalculator<T> calculator{first_level};
+        wacfrac::bla::Calculator<T> calculator{first_level};
         calculator.compute_search({.lower_exp = -256.0, .upper_exp = 0.0, .tolerance = 1e-8}, probes, max_dc, ref);
         auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
         std::vector<std::tuple<wacfrac::Complex<float>, unsigned, unsigned>> escaped_orbits;
         auto bla = calculator.get_approximator();
         for (auto dc : dcs) {
-            escaped_orbits.push_back(wacfrac::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), 2.0, bla));
+            escaped_orbits.push_back(wacfrac::bla::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), 2.0, bla));
         }
         for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
             auto [z, n, skipped] = orbit;

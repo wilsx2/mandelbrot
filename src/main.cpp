@@ -90,7 +90,7 @@ void render_image(const wacfrac::ImageOptions& opts) {
             } else if (render_type == wacfrac::RenderType::BLA) {
                 using CT = wacfrac::ComplexValueTypeT<T>;
                 auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
-                wacfrac::BlaCalculator<T> calculator{opts.shared->first_level};
+                wacfrac::bla::Calculator<T> calculator{opts.shared->first_level};
                 if (opts.epsilon != 0.0) {
                     calculator.compute_manual(static_cast<CT>(opts.epsilon), ref, max_dc);
                 } else {
@@ -101,7 +101,7 @@ void render_image(const wacfrac::ImageOptions& opts) {
                 }
                 auto bla = calculator.get_approximator();
                 for (auto dc : dcs) {
-                    auto [z, n, _] = wacfrac::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), opts.shared->escape_radius, bla);
+                    auto [z, n, _] = wacfrac::bla::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), opts.shared->escape_radius, bla);
                     escaped_orbits.emplace_back(z, n);
                 }
             }

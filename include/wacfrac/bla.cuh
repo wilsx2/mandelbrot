@@ -10,29 +10,27 @@
 #include <cuda/memory_pool>
 #include <cuda/buffer>
 
-namespace wacfrac {
+namespace wacfrac::bla {
 
 template <typename T>
-class DeviceBlaCalculator;
+class DeviceCalculator;
 template <typename T>
-class DeviceBlaCalculator : public GenericBlaCalculator<DeviceBlaCalculator<T>, cuda::std::span, T> {
+class DeviceCalculator : public GenericCalculator<DeviceCalculator<T>, cuda::std::span, T> {
     public: 
-    using Base = GenericBlaCalculator<DeviceBlaCalculator<T>, cuda::std::span, T>;
+    using Base = GenericCalculator<DeviceCalculator<T>, cuda::std::span, T>;
     using CT = Base::CT;
-    using Approximation = Base::Approximation;
-    using ApproximationParams = Base::ApproximationParams;
     template <typename U>
     using View = std::span<U>;
 
     protected:
     // TODO: Stream and device params
     cuda::device_buffer<ColumnInfo>     _columns;
-    cuda::device_buffer<Approximation>  _working_approximations;
-    cuda::device_buffer<Approximation>  _approximations;
+    cuda::device_buffer<Bla<T>>         _working_approximations;
+    cuda::device_buffer<Bla<T>>         _approximations;
     cuda::host_buffer<unsigned>         _true_escape_times;
 
     public:
-    DeviceBlaCalculator(unsigned device_id, std::size_t first_level) {
+    DeviceCalculator(unsigned device_id, std::size_t first_level) : Base(first_level) {
         // TODO: Use CUDA make buffer and such
     }
 
@@ -43,10 +41,10 @@ class DeviceBlaCalculator : public GenericBlaCalculator<DeviceBlaCalculator<T>, 
         // TODO: Use CUDA make buffer and such
     }
 
-    auto compute_initial_approximations(const ApproximationParams& params) -> void {
+    auto compute_initial_approximations(CT epsilon, View<const T> ref, T max_dc) -> void {
         // TODO: Replace with launch of a kernel lambda
-        for (auto m : std::views::iota(1uz, params.ref.size() - 1)) {
-            Approximation bla {params, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
+        for (auto m : std::views::iota(1uz, ref.size() - 1)) {
+            Bla<T> bla {epsilon, ref, max_dc, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
             _working_approximations.at(m - 1) = bla;
             if (0 == Base::_first_level) {
                 *(Base::approximation_at(m, 0)) = bla;
@@ -56,7 +54,7 @@ class DeviceBlaCalculator : public GenericBlaCalculator<DeviceBlaCalculator<T>, 
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
         // TODO: Replace with launch of a kernel lambda
         for (auto k : std::views::iota(0uz, level_size) | std::views::stride(2)) {
-            auto bla {Approximation::merge(max_dc, _working_approximations.at(k), _working_approximations.at(k+1))};
+            auto bla {Bla<T>::merge(max_dc, _working_approximations.at(k), _working_approximations.at(k+1))};
             _working_approximations.at(k/2) = bla;
             if (current_level >= Base::_first_level) {
                 auto m {1 + (k / 2) * (1uz << current_level)};
@@ -78,10 +76,10 @@ class DeviceBlaCalculator : public GenericBlaCalculator<DeviceBlaCalculator<T>, 
     auto get_columns() const -> View<const ColumnInfo> {
         return _columns;
     }
-    auto get_approximations() -> View<Approximation> {
+    auto get_approximations() -> View<Bla<T>> {
         return _approximations;
     }
-    auto get_approximations() const -> View<const Approximation> {
+    auto get_approximations() const -> View<const Bla<T>> {
         return _approximations;
     }
 };
