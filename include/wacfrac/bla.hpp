@@ -136,15 +136,18 @@ class GenericCalculator {
     using Buffer = Context::template Buffer<U>;
     template<typename U>
     using Pointer = Context::template Pointer<U>;
-    GenericCalculator(std::size_t first_level)
-        : _ctx{}
-        , _max_ref_size(0)
-        , _first_level(first_level)
-        , _last_level(0)
-        // TODO: Ctx args
-        // TODO: Prealloc sizes
-    {}
-    auto resize_for_ref(std::size_t ref_size) -> void { // TODO: Give a more descriptive name
+    GenericCalculator(std::size_t first_level = 0, std::size_t initial_size = 0, Context ctx = {})
+        : _ctx{ctx}
+        , _max_ref_size{0}
+        , _first_level{first_level}
+        , _last_level{0}
+    {
+        if (initial_size != 0) {
+            resize_buffers(initial_size);
+        }
+        // TODO: Low impact: Pre-allocate probes
+    }
+    auto resize_buffers(std::size_t ref_size) -> void {
         _max_ref_size = ref_size;
         _last_level = ref_size < 3 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(ref_size)));
         auto max_n {ref_size - 1};
@@ -159,7 +162,7 @@ class GenericCalculator {
         if (ref.size() < 3)
             return;
         if (ref.size() > _max_ref_size) {
-            resize_for_ref(ref.size());
+            resize_buffers(ref.size());
         }
 
         auto level_size {ref.size() - 2};
@@ -252,25 +255,39 @@ class GenericCalculator {
             });
     }
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
-        _ctx.parallel_for(level_size / 2,
-            [current_level, max_dc,
-             first_level = _first_level,
-             approximator = get_approximator(),
-             working = _current_working.as_span(),
-             next_working = _next_working.as_span()]
-            WF_HD (auto tid){
-                auto k {tid * 2};
-                if (k >= working.size())
-                    return;
+        if (current_level >= _first_level) {
+            _ctx.parallel_for(level_size / 2,
+                [current_level, max_dc,
+                approximator = get_approximator(),
+                working = _current_working.as_span(),
+                next_working = _next_working.as_span()]
+                WF_HD (auto tid){
+                    auto k {tid * 2};
+                    if (k >= working.size())
+                        return;
 
-                auto bla {Bla<T>::merge(max_dc, working[k], working[k+1])};
-                next_working[k/2] = bla;
-                if (current_level >= first_level) { // NOTE: Can precompute this
+                    auto bla {Bla<T>::merge(max_dc, working[k], working[k+1])};
+                    next_working[k/2] = bla;
+
                     auto m {1 + (k / 2) * (1ull << current_level)};
                     auto* ptr {approximator.approximation_at(m, current_level)};
                     if (ptr) { *ptr = bla; }
-                }
-            });
+                });
+        } else {
+            _ctx.parallel_for(level_size / 2,
+                [max_dc,
+                approximator = get_approximator(),
+                working = _current_working.as_span(),
+                next_working = _next_working.as_span()]
+                WF_HD (auto tid){
+                    auto k {tid * 2};
+                    if (k >= working.size())
+                        return;
+
+                    auto bla {Bla<T>::merge(max_dc, working[k], working[k+1])};
+                    next_working[k/2] = bla;
+                });
+        }
     }
     auto compute_probe_escape_time(WF_STD::span<const T> probes, WF_STD::span<const T> ref, double escape_radius) -> void {
         if (probes.size() > _true_escape_times.size()) {
