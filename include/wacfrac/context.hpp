@@ -36,7 +36,6 @@ class Buffer {
 };
 
 
-// TODO: log allocations
 template <typename Derived>
 class Context {
     private:
@@ -45,10 +44,12 @@ class Context {
 
     template<typename T>
     auto alloc() -> T* {
+        // TODO: Log
         return static_cast<Derived&>(*this).template alloc<T>();
     }
     template<typename T>
     auto alloc(std::size_t count) -> T* {
+        // TODO: Log
         return static_cast<Derived&>(*this).template alloc<T>(count);
     }
     template<typename T>

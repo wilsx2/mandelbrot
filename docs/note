@@ -1,4 +1,3 @@
-    Fix precision bugs
     Gpu Storage and Executor
     Test GPU BLA
     Move BLA search params into member variable

@@ -131,12 +131,11 @@ void render_video(wacfrac::VideoOptions& opts) {
     }
     std::filesystem::current_path(opts.directory);
 
-    wacfrac::Viewport final_view {opts.shared->focus, opts.final_scale, opts.shared->resolution};
-    auto max_iterations = final_view.required_iterations();
-    auto precision = final_view.required_precision();
-
+    auto max_iterations = wacfrac::required_iterations(opts.final_scale);
+    auto precision = wacfrac::required_precision(opts.final_scale);
     wacfrac::MultiFloat::default_precision(static_cast<unsigned>(precision));
     wacfrac::MultiComplex::default_precision(static_cast<unsigned>(precision));
+    wacfrac::Viewport final_view {opts.shared->focus, opts.final_scale, opts.shared->resolution};
 
     auto refs = wacfrac::compute_reference_set(
         opts.shared->focus,

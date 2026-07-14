@@ -173,7 +173,7 @@ struct ImageOptions : argumentum::CommandOptions {
             return numeric_type;
         auto p {effective_precision()};
         if (p > 1000) return "dexp";
-        if (p > 53)   return "double";
+        if (p > 5)   return "double";
         return "float";
     }
 
