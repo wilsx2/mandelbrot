@@ -1,7 +1,7 @@
     Gpu Storage and Executor
     Test GPU BLA
     Move BLA search params into member variable
-    Renderer (w/ Executor type templated)
+    Renderer (w/ Context type templated)
     Integrate with Bench & CLI
 
 July

@@ -2,7 +2,7 @@
 
 #include "wacfrac/macros.hpp"
 #include "wacfrac/buffer.hpp"
-#include "wacfrac/executor.hpp"
+#include "wacfrac/context.hpp"
 #include "wacfrac/complex_concept.hpp"
 #include <chrono>
 #include <wacfrac/orbit.hpp>
@@ -57,9 +57,8 @@ struct Bla {
     Bla() = default;
     WF_HD
     Bla(T a, T b, CT r) : a(a), b(b), r(r) {}
-    template<typename ViewType>
     WF_HD
-    Bla(CT epsilon, ViewType ref, T max_dc, unsigned m, unsigned n) {
+    Bla(CT epsilon, WF_STD::span<const T> ref, T max_dc, unsigned m, unsigned n) {
         using std::abs;
         auto l {n - m};
         a = T{2.0, 0.0} * ref[m] * static_cast<CT>(l);
@@ -91,13 +90,13 @@ struct Bla {
     }
 };
 
-template<template<typename>typename View, ComplexConcept T>
+template<ComplexConcept T>
 struct Approximator {
     using CT = ComplexValueTypeT<T>;
     std::size_t first_level;
     std::size_t last_level;
-    View<const ColumnInfo> columns;
-    View<Bla<T>> approximations;
+    WF_STD::span<const ColumnInfo> columns;
+    WF_STD::span<Bla<T>> approximations;
 
     WF_HD
     auto approximation_exists(unsigned m, std::size_t level) const -> bool {
@@ -129,30 +128,34 @@ struct Approximator {
     }
 };
 
-template <ExecutorLike Executor, ComplexConcept T>
+template <typename Context, ComplexConcept T>
 class GenericCalculator {
     public:
     using CT = ComplexValueTypeT<T>;
     template<typename U>
-    using Buffer = Executor::template Buffer<U>;
+    using Buffer = Context::template Buffer<U>;
     template<typename U>
-    using View = typename Buffer<U>::View;
+    using Pointer = Context::template Pointer<U>;
     GenericCalculator(std::size_t first_level)
-        : _max_ref_size(0)
+        : _ctx{}
+        , _max_ref_size(0)
         , _first_level(first_level)
         , _last_level(0)
+        // TODO: Ctx args
+        // TODO: Prealloc sizes
     {}
-    auto resize_for_ref(std::size_t ref_size) -> void {
+    auto resize_for_ref(std::size_t ref_size) -> void { // TODO: Give a more descriptive name
         _max_ref_size = ref_size;
         _last_level = ref_size < 3 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(ref_size)));
         auto max_n {ref_size - 1};
-        _columns.resize(max_n);
-        _current_working.resize(max_n - 1);
-        _next_working.resize(_current_working.size());
+        _columns         = _ctx.template make_buffer<ColumnInfo>(max_n);
+        _current_working = _ctx.template make_buffer<Bla<T>>(max_n - 1);
+        _next_working    = _ctx.template make_buffer<Bla<T>>(max_n - 1);
         initialize_columns(max_n);
-        _approximations.resize(ColumnInfo::compute_start(max_n, _first_level, _last_level));
+        auto last_i {ColumnInfo::compute_start(max_n, _first_level, _last_level)};
+        _approximations  = _ctx.template make_buffer<Bla<T>>(last_i);
     }
-    auto compute_manual(CT epsilon, View<const T> ref, T max_dc) -> void {
+    auto compute_manual(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> void {
         if (ref.size() < 3)
             return;
         if (ref.size() > _max_ref_size) {
@@ -164,11 +167,11 @@ class GenericCalculator {
         for (auto i {1ull}; level_size >= 2; ++i) {
             auto even_size {level_size & ~1ull};
             merge_approximations(i, even_size, max_dc);
-            _current_working.swap(_next_working);
+            swap(_current_working, _next_working);
             level_size /= 2;
         }
     }
-    auto compute_search(SearchParams params, View<const T> probes, T max_dc, View<const T> ref, double escape_radius = 2.0) -> void {
+    auto compute_search(SearchParams params, WF_STD::span<const T> probes, T max_dc, WF_STD::span<const T> ref, double escape_radius = 2.0) -> void {
         logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
 
         compute_probe_escape_time(probes, ref, escape_radius);
@@ -188,13 +191,13 @@ class GenericCalculator {
             }
 
             compute_skipped_iterations(probes, ref, escape_radius, params.tolerance);
-            if (_tolerance_failed_atom[0].load()) {
+            if (_tolerance_failed_atom->load()) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} too high", iter, middle);
                 upper_exp = middle;
                 continue;
             }
 
-            auto avg_skipped = _skipped_atom[0].load() / static_cast<double>(probes.size());
+            auto avg_skipped = _skipped_atom->load() / static_cast<double>(probes.size());
             if (avg_skipped >= prev_avg_skipped) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} avg_skipped={} (improving)", iter, middle, avg_skipped);
                 prev_exp = epsilon;
@@ -207,19 +210,19 @@ class GenericCalculator {
         }
         logging::info( "BLA epsilon search complete");
     }
-    auto get_approximator() const -> Approximator<View, T> {
-        return {_first_level, _last_level, _columns.get_view(), _approximations.get_view()};
+    auto get_approximator() const -> Approximator<T> {
+        return {_first_level, _last_level, _columns, _approximations};
     }
-    auto get_approximator() -> Approximator<View, T> {
-        return {_first_level, _last_level, _columns.get_view(), _approximations.get_view()};
+    auto get_approximator() -> Approximator<T> {
+        return {_first_level, _last_level, _columns, _approximations};
     }
     private:
     auto initialize_columns(std::size_t max_n) -> void {
-        _executor(max_n - 1,
+        _ctx.parallel_for(max_n - 1,
             [max_n,
              first_level = _first_level,
              last_level = _last_level,
-             columns = _columns.get_view()]
+             columns = _columns.as_span()]
             WF_HD (auto tid){
                 auto m {tid + 1};
                 if (m >= max_n)
@@ -230,12 +233,12 @@ class GenericCalculator {
                 };
             });
     }
-    auto compute_initial_approximations(CT epsilon, View<const T> ref, T max_dc) -> void {
-        _executor(ref.size() - 2,
+    auto compute_initial_approximations(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> void {
+        _ctx.parallel_for(ref.size() - 2,
             [epsilon, ref, max_dc,
              first_level = _first_level,
              approximator = get_approximator(),
-             working = _current_working.get_view()]
+             working = _current_working.as_span()]
             WF_HD (auto tid){
                 if (tid + 2 >= ref.size())
                     return;
@@ -249,12 +252,12 @@ class GenericCalculator {
             });
     }
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
-        _executor(level_size / 2,
+        _ctx.parallel_for(level_size / 2,
             [current_level, max_dc,
              first_level = _first_level,
              approximator = get_approximator(),
-             working = _current_working.get_view(),
-             next_working = _next_working.get_view()]
+             working = _current_working.as_span(),
+             next_working = _next_working.as_span()]
             WF_HD (auto tid){
                 auto k {tid * 2};
                 if (k >= working.size())
@@ -269,14 +272,14 @@ class GenericCalculator {
                 }
             });
     }
-    auto compute_probe_escape_time(View<const T> probes, View<const T> ref, double escape_radius) -> void {
+    auto compute_probe_escape_time(WF_STD::span<const T> probes, WF_STD::span<const T> ref, double escape_radius) -> void {
         if (probes.size() > _true_escape_times.size()) {
-            _true_escape_times.resize(probes.size());
+            _true_escape_times = _ctx.template make_buffer<unsigned>(probes.size());
         }
 
-        _executor(probes.size(),
+        _ctx.parallel_for(probes.size(),
             [probes, ref, escape_radius,
-             escape_times = _true_escape_times.get_view()]
+             escape_times = _true_escape_times.as_span()]
             WF_HD (auto tid){
                 if (tid >= probes.size())
                     return;
@@ -286,19 +289,20 @@ class GenericCalculator {
                     escape_radius).second;
             });
     }
-    auto compute_skipped_iterations(View<const T> probes, View<const T> ref, double escape_radius, double tolerance) -> void {
-        if (_skipped_atom.size() == 0)
-            _skipped_atom.resize(1);
-        if (_tolerance_failed_atom.size() == 0)
-            _tolerance_failed_atom.resize(1);
-        _skipped_atom[0].store(0u);
-        _tolerance_failed_atom[0].store(false);
+    auto compute_skipped_iterations(WF_STD::span<const T> probes, WF_STD::span<const T> ref, double escape_radius, double tolerance) -> void {
+        if (_skipped_atom == nullptr)
+            _skipped_atom = _ctx.template make_pointer<WF_STD::atomic<unsigned>>();
+        if (_tolerance_failed_atom == nullptr)
+            _tolerance_failed_atom = _ctx.template make_pointer<WF_STD::atomic<bool>>();
 
-        _executor(probes.size(),
+        _skipped_atom->store(0u);
+        _tolerance_failed_atom->store(false);
+
+        _ctx.parallel_for(probes.size(),
             [probes, ref, escape_radius, tolerance,
-             escape_times = _true_escape_times.get_view(),
-             tolerance_failed = &_tolerance_failed_atom[0],
-             total_skipped = &_skipped_atom[0],
+             escape_times = _true_escape_times.as_span(),
+             tolerance_failed = _tolerance_failed_atom.get(),
+             total_skipped = _skipped_atom.get(),
              approximator = get_approximator()]
             WF_HD (auto tid){
                 if (tid >= probes.size())
@@ -306,7 +310,7 @@ class GenericCalculator {
                 auto [_, approx_escape_time, skipped] =
                     escape_approximate(
                         probes[tid], 
-                        View<const T>(ref), 
+                        WF_STD::span<const T>(ref), 
                         static_cast<unsigned>(ref.size()),
                         escape_radius,
                         approximator);
@@ -320,6 +324,7 @@ class GenericCalculator {
             });
     }
 
+    Context _ctx;
     std::size_t _max_ref_size;
     std::size_t _first_level;
     std::size_t _last_level;
@@ -328,9 +333,8 @@ class GenericCalculator {
     Buffer<Bla<T>>     _next_working;
     Buffer<Bla<T>>     _approximations;
     Buffer<unsigned>   _true_escape_times;
-    Buffer<WF_STD::atomic<unsigned>> _skipped_atom;
-    Buffer<WF_STD::atomic<bool>> _tolerance_failed_atom;
-    Executor _executor;
+    Pointer<WF_STD::atomic<unsigned>> _skipped_atom;
+    Pointer<WF_STD::atomic<bool>> _tolerance_failed_atom;
 };
 
 template <ComplexConcept T, typename Ref, typename Approx>
@@ -358,7 +362,7 @@ auto escape_approximate(const T& dc, Ref ref, unsigned max_n, double escape_radi
 }
 
 template <typename T>
-using HostCalculator = GenericCalculator<ParallelExecutor, T>;
+using HostCalculator = GenericCalculator<Host, T>;
 template<typename T>
 using Calculator = HostCalculator<T>;
 
