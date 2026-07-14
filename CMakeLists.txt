@@ -43,15 +43,18 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda>)
 add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-diag-suppress=20014>) # Boost host-only warnings in CUDA compilation
 if(MSVC)
-    add_compile_options($<$<COMPILE_LANGUAGEcma:CUDA>:-Xcompiler=/Zc:preprocessor>)
+    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>)
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>)
     add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:alignedNew->)
     set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "Embedded")
 endif()
-# TODO: Add optimization
+# TODO: Add optimization flags
 set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA compute capability")
+set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
+set(CMAKE_CUDA_COMPILE_SEPARABLE_COMPILATION ON)
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_EXTENSIONS OFF)
@@ -65,7 +68,7 @@ add_library(libwacfrac STATIC
     src/wacfrac/viewport.cpp
     src/wacfrac/io.cpp
     src/wacfrac/log.cpp
-    src/wacfrac/gpu_renderer.cu
+    src/wacfrac/context.cu
 )
 set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libwacfrac PUBLIC
@@ -99,7 +102,7 @@ target_link_libraries(wacfrac PRIVATE
     Argumentum::argumentum
 )
 
-# GPU Test
+#[[ GPU Test
 add_executable(gpu_test src/gpu_test.cpp)
 if(MSVC)
     set_source_files_properties(src/gpu_test.cpp PROPERTIES
@@ -112,9 +115,11 @@ endif()
 target_link_libraries(gpu_test PRIVATE
     libwacfrac
 )
+]]
 
-#[[ BLA Test
+# BLA Test
 add_executable(bla_test src/bla_test.cu)
+set_target_properties(bla_test PROPERTIES LINKER_LANGUAGE CUDA)
 if(MSVC)
     set_source_files_properties(src/bla_test.cu PROPERTIES
         COMPILE_DEFINITIONS "NOMINMAX"
@@ -125,5 +130,5 @@ if (MSVC)
 endif()
 target_link_libraries(bla_test PRIVATE
     libwacfrac
+    CUDA::cudart
 )
-]]

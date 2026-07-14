@@ -1,8 +1,12 @@
-    Gpu Storage and Executor
-    Test GPU BLA
+    GPU BLA w/ Test
     Move BLA search params into member variable
-    Renderer (w/ Context type templated)
-    Integrate with Bench & CLI
+    Renderer
+        Generic
+        Host
+        Device
+    Integrate Renderer w/
+        Bench
+        CLI
 
 July
 - GPU

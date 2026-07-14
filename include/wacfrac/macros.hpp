@@ -12,4 +12,4 @@
     #if !defined (WF_STD)
         #define WF_STD std
     #endif
-#endif 
+#endif

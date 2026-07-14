@@ -1,204 +1,334 @@
-#include <cuda/std/span>
-#include "wacfrac/bla.cuh"
-#include "wacfrac/types.hpp"
-#include "wacfrac/reference.hpp"
-#include "wacfrac/viewport.hpp"
-#include "wacfrac/log.hpp"
-#include <cuda/buffer>
-#include <cuda/devices>
-#include <cuda/memory_pool>
-#include <cuda/stream>
-#include <cstdio>
-#include <vector>
-#include <cmath>
+#include "wacfrac/bla.hpp"
+#include <cuda_runtime.h>
+#include <iostream>
+#include <cstring>
+#include <tuple>
+
+using namespace wacfrac;
+
+#define CUDA_CHECK(call) do { \
+    cudaError_t err = (call); \
+    if (err != cudaSuccess) { \
+        std::cerr << "CUDA error at " << __FILE__ << ":" << __LINE__ \
+                  << " - " << cudaGetErrorString(err) << std::endl; \
+        return false; \
+    } \
+} while(0)
+
+namespace {
+
+using T = DoubleComplex;
+using CT = ComplexValueTypeT<T>;
+constexpr double APPROX_TOL = 1e-10;
+constexpr float Z_TOL = 0.01f;
+
+auto make_reference(unsigned n) -> std::vector<T> {
+    std::vector<T> ref;
+    ref.reserve(n);
+    T z{0.0, 0.0};
+    T c{-0.75, 0.1};
+    ref.push_back(z);
+    for (unsigned i = 1; i < n; ++i) {
+        z = z * z + c;
+        ref.push_back(z);
+    }
+    return ref;
+}
+
+auto make_probes() -> std::vector<T> {
+    return {
+        {0.001, 0.001}, {-0.001, 0.001}, {0.001, -0.001}, {-0.001, -0.001},
+        {0.0005, 0.0}, {-0.0005, 0.0}, {0.0, 0.0005}, {0.0, -0.0005},
+        {0.0, 0.0},
+    };
+}
+
+auto bla_equal(const bla::Bla<T>& a, const bla::Bla<T>& b, double tol = APPROX_TOL) -> bool {
+    using std::abs;
+    auto approx_eq = [](auto x, auto y, double t) {
+        auto d = abs(x - y);
+        auto s = abs(x) + abs(y);
+        return d <= t || d <= s * t || (d != d);
+    };
+    return approx_eq(a.a, b.a, tol) && approx_eq(a.b, b.b, tol) && approx_eq(a.r, b.r, tol);
+}
+
+auto columns_equal(const bla::ColumnInfo& a, const bla::ColumnInfo& b) -> bool {
+    return a.start == b.start && a.count == b.count;
+}
+
+template<typename U>
+__global__ void escape_kernel(
+    const U* dcs, unsigned num_dcs,
+    const U* ref, unsigned ref_size,
+    double escape_radius,
+    bla::Approximator<U> approximator,
+    Complex<float>* z_out,
+    unsigned* n_out,
+    unsigned* skipped_out)
+{
+    unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid >= num_dcs) return;
+
+    auto [z, n, skipped] = bla::escape_approximate(
+        dcs[tid], WF_STD::span<const U>(ref, ref_size), ref_size, escape_radius, approximator);
+    z_out[tid] = z;
+    n_out[tid] = n;
+    skipped_out[tid] = skipped;
+}
+
+auto test_compute_manual(unsigned ref_size, std::size_t first_level) -> bool {
+    auto ref = make_reference(ref_size);
+    auto max_dc = T{0.001, 0.001};
+    CT epsilon = 1e-10;
+
+    bla::GenericCalculator<Host, T> host_calc{first_level};
+    host_calc.compute_manual(epsilon, WF_STD::span<const T>(ref.data(), ref.size()), max_dc);
+    auto host_approx = host_calc.get_approximator();
+
+    T* d_ref = nullptr;
+    CUDA_CHECK(cudaMallocManaged(&d_ref, ref_size * sizeof(T)));
+    std::memcpy(d_ref, ref.data(), ref_size * sizeof(T));
+
+    bla::GenericCalculator<Device, T> device_calc{first_level};
+    device_calc.compute_manual(epsilon, WF_STD::span<const T>(d_ref, ref_size), max_dc);
+    auto device_approx = device_calc.get_approximator();
+
+    bool ok = true;
+
+    if (host_approx.columns.size() != device_approx.columns.size()) {
+        std::cerr << "  Column count mismatch: " << host_approx.columns.size()
+                  << " vs " << device_approx.columns.size() << std::endl;
+        ok = false;
+    } else {
+        for (std::size_t i = 0; i < host_approx.columns.size(); ++i) {
+            if (!columns_equal(host_approx.columns[i], device_approx.columns[i])) {
+                std::cerr << "  Column[" << i << "]: host=(" << host_approx.columns[i].start
+                          << "," << host_approx.columns[i].count << ") device=("
+                          << device_approx.columns[i].start << "," << device_approx.columns[i].count
+                          << ")" << std::endl;
+                ok = false;
+            }
+        }
+    }
+
+    if (host_approx.approximations.size() != device_approx.approximations.size()) {
+        std::cerr << "  Approximation count mismatch: " << host_approx.approximations.size()
+                  << " vs " << device_approx.approximations.size() << std::endl;
+        ok = false;
+    } else {
+        for (std::size_t i = 0; i < host_approx.approximations.size(); ++i) {
+            if (!bla_equal(host_approx.approximations[i], device_approx.approximations[i])) {
+                auto& a = host_approx.approximations[i];
+                auto& b = device_approx.approximations[i];
+                std::cerr << "  Approx[" << i
+                          << "]: host a=(" << a.a.real() << "," << a.a.imag()
+                          << ") b=(" << a.b.real() << "," << a.b.imag() << ") r=" << a.r
+                          << " device a=(" << b.a.real() << "," << b.a.imag()
+                          << ") b=(" << b.b.real() << "," << b.b.imag() << ") r=" << b.r
+                          << std::endl;
+                ok = false;
+            }
+        }
+    }
+
+    CUDA_CHECK(cudaFree(d_ref));
+    return ok;
+}
+
+auto test_escape_approximate() -> bool {
+    constexpr unsigned REF_SIZE = 100;
+    auto ref = make_reference(REF_SIZE);
+    auto max_dc = T{0.001, 0.001};
+    CT epsilon = 1e-10;
+
+    bla::GenericCalculator<Host, T> host_calc{0};
+    host_calc.compute_manual(epsilon, WF_STD::span<const T>(ref.data(), ref.size()), max_dc);
+    auto host_approx = host_calc.get_approximator();
+
+    T* d_ref = nullptr;
+    CUDA_CHECK(cudaMallocManaged(&d_ref, REF_SIZE * sizeof(T)));
+    std::memcpy(d_ref, ref.data(), REF_SIZE * sizeof(T));
+
+    bla::GenericCalculator<Device, T> device_calc{0};
+    device_calc.compute_manual(epsilon, WF_STD::span<const T>(d_ref, REF_SIZE), max_dc);
+    auto device_approx = device_calc.get_approximator();
+
+    std::vector<T> test_dcs = {
+        {0.0001, 0.0001}, {-0.0001, 0.0001}, {0.0001, -0.0001},
+        {-0.0001, -0.0001}, {0.0, 0.0}, {0.0005, 0.0},
+    };
+    unsigned num_dcs = test_dcs.size();
+
+    T* d_dcs = nullptr;
+    Complex<float>* d_z_out = nullptr;
+    unsigned* d_n_out = nullptr;
+    unsigned* d_skipped_out = nullptr;
+    CUDA_CHECK(cudaMallocManaged(&d_dcs, num_dcs * sizeof(T)));
+    CUDA_CHECK(cudaMallocManaged(&d_z_out, num_dcs * sizeof(Complex<float>)));
+    CUDA_CHECK(cudaMallocManaged(&d_n_out, num_dcs * sizeof(unsigned)));
+    CUDA_CHECK(cudaMallocManaged(&d_skipped_out, num_dcs * sizeof(unsigned)));
+    std::memcpy(d_dcs, test_dcs.data(), num_dcs * sizeof(T));
+
+    std::vector<Complex<float>> host_z(num_dcs);
+    std::vector<unsigned> host_n(num_dcs);
+    std::vector<unsigned> host_skipped(num_dcs);
+    for (unsigned i = 0; i < num_dcs; ++i) {
+        auto [z, n, skipped] = bla::escape_approximate(
+            test_dcs[i], WF_STD::span<const T>(ref.data(), ref.size()), REF_SIZE, 2.0, host_approx);
+        host_z[i] = z;
+        host_n[i] = n;
+        host_skipped[i] = skipped;
+    }
+
+    int blocks = (num_dcs + 255) / 256;
+    escape_kernel<<<blocks, 256>>>(d_dcs, num_dcs, d_ref, REF_SIZE, 2.0,
+                                   device_approx, d_z_out, d_n_out, d_skipped_out);
+    CUDA_CHECK(cudaGetLastError());
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    bool ok = true;
+    for (unsigned i = 0; i < num_dcs; ++i) {
+        if (host_n[i] != d_n_out[i]) {
+            std::cerr << "  DC[" << i << "] escape count: host=" << host_n[i]
+                      << " device=" << d_n_out[i] << std::endl;
+            ok = false;
+        }
+        if (host_skipped[i] != d_skipped_out[i]) {
+            std::cerr << "  DC[" << i << "] skipped: host=" << host_skipped[i]
+                      << " device=" << d_skipped_out[i] << std::endl;
+            ok = false;
+        }
+        float z_diff = std::abs(host_z[i].real() - d_z_out[i].real())
+                      + std::abs(host_z[i].imag() - d_z_out[i].imag());
+        if (z_diff > Z_TOL) {
+            std::cerr << "  DC[" << i << "] z: host=(" << host_z[i].real()
+                      << "," << host_z[i].imag() << ") device=(" << d_z_out[i].real()
+                      << "," << d_z_out[i].imag() << ")" << std::endl;
+            ok = false;
+        }
+    }
+
+    CUDA_CHECK(cudaFree(d_ref));
+    CUDA_CHECK(cudaFree(d_dcs));
+    CUDA_CHECK(cudaFree(d_z_out));
+    CUDA_CHECK(cudaFree(d_n_out));
+    CUDA_CHECK(cudaFree(d_skipped_out));
+    return ok;
+}
+
+auto test_compute_search() -> bool {
+    constexpr unsigned REF_SIZE = 100;
+    auto ref = make_reference(REF_SIZE);
+    auto probes = make_probes();
+    auto max_dc = T{0.001, 0.001};
+    bla::SearchParams params{
+        .lower_exp = -10.0,
+        .upper_exp = 0.0,
+        .tolerance = 1e-4,
+        .convergence_radius = 0.1,
+    };
+
+    bla::GenericCalculator<Host, T> host_calc{0};
+    host_calc.compute_search(params, WF_STD::span<const T>(probes.data(), probes.size()),
+                             max_dc, WF_STD::span<const T>(ref.data(), ref.size()));
+    auto host_approx = host_calc.get_approximator();
+
+    T* d_ref = nullptr;
+    T* d_probes = nullptr;
+    CUDA_CHECK(cudaMallocManaged(&d_ref, REF_SIZE * sizeof(T)));
+    CUDA_CHECK(cudaMallocManaged(&d_probes, probes.size() * sizeof(T)));
+    std::memcpy(d_ref, ref.data(), REF_SIZE * sizeof(T));
+    std::memcpy(d_probes, probes.data(), probes.size() * sizeof(T));
+
+    bla::GenericCalculator<Device, T> device_calc{0};
+    device_calc.compute_search(params, WF_STD::span<const T>(d_probes, probes.size()),
+                               max_dc, WF_STD::span<const T>(d_ref, REF_SIZE));
+    auto device_approx = device_calc.get_approximator();
+
+    bool ok = true;
+
+    if (host_approx.columns.size() != device_approx.columns.size()) {
+        std::cerr << "  Column count mismatch: " << host_approx.columns.size()
+                  << " vs " << device_approx.columns.size() << std::endl;
+        ok = false;
+    } else {
+        for (std::size_t i = 0; i < host_approx.columns.size(); ++i) {
+            if (!columns_equal(host_approx.columns[i], device_approx.columns[i])) {
+                std::cerr << "  Column[" << i << "]: host=(" << host_approx.columns[i].start
+                          << "," << host_approx.columns[i].count << ") device=("
+                          << device_approx.columns[i].start << "," << device_approx.columns[i].count
+                          << ")" << std::endl;
+                ok = false;
+            }
+        }
+    }
+
+    if (host_approx.approximations.size() != device_approx.approximations.size()) {
+        std::cerr << "  Approximation count mismatch: " << host_approx.approximations.size()
+                  << " vs " << device_approx.approximations.size() << std::endl;
+        ok = false;
+    } else {
+        for (std::size_t i = 0; i < host_approx.approximations.size(); ++i) {
+            if (!bla_equal(host_approx.approximations[i], device_approx.approximations[i])) {
+                auto& a = host_approx.approximations[i];
+                auto& b = device_approx.approximations[i];
+                std::cerr << "  Approx[" << i
+                          << "]: host a=(" << a.a.real() << "," << a.a.imag()
+                          << ") b=(" << a.b.real() << "," << a.b.imag() << ") r=" << a.r
+                          << " device a=(" << b.a.real() << "," << b.a.imag()
+                          << ") b=(" << b.b.real() << "," << b.b.imag() << ") r=" << b.r
+                          << std::endl;
+                ok = false;
+            }
+        }
+    }
+
+    CUDA_CHECK(cudaFree(d_ref));
+    CUDA_CHECK(cudaFree(d_probes));
+    return ok;
+}
+
+} // anonymous namespace
 
 int main() {
-    wacfrac::logging::init(0);
-
-    std::printf("=== BLA GPU Calculator Test ===\n");
-
-    wacfrac::MultiComplex::default_precision(100);
-    wacfrac::MultiFloat::default_precision(100);
-    wacfrac::MultiComplex c{"-0.75", "0.1", 100};
-    constexpr unsigned max_n = 1000;
-
-    std::printf("Computing reference orbit...\n");
-    auto host_ref = wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c, max_n, INFINITY);
-    std::printf("Reference orbit: %zu points\n", host_ref.size());
-
-    if (host_ref.size() < 10) {
-        std::printf("ERROR: Reference orbit too short\n");
+    int deviceCount = 0;
+    cudaError_t cudaStatus = cudaGetDeviceCount(&deviceCount);
+    if (cudaStatus != cudaSuccess) {
+        std::cerr << "cudaGetDeviceCount failed: " << cudaGetErrorString(cudaStatus) << std::endl;
         return 1;
     }
-
-    auto epsilon = static_cast<wacfrac::ComplexValueTypeT<wacfrac::DoubleExpComplex>>(1e-10);
-    wacfrac::DoubleExpComplex max_dc{wacfrac::DoubleExp(1e-10), wacfrac::DoubleExp(1e-10)};
-    constexpr std::size_t first_level = 0;
-
-    std::printf("Running host BLA calculator...\n");
-    wacfrac::bla::HostCalculator<wacfrac::DoubleExpComplex> host_calc(first_level);
-    auto host_approx = host_calc.compute_manual(
-        epsilon,
-        std::span<const wacfrac::DoubleExpComplex>(host_ref),
-        max_dc);
-    auto host_cols = host_calc.get_columns();
-    auto host_approx_span = host_calc.get_approximations();
-    std::printf("Host: %zu columns, %zu approximations\n", host_cols.size(), host_approx_span.size());
-
-    std::printf("Copying reference to GPU...\n");
-    cuda::device_ref device{0};
-    cuda::stream stream{device};
-    auto device_ref_buf = cuda::make_buffer<wacfrac::DoubleExpComplex>(
-        stream, cuda::device_default_memory_pool(device),
-        host_ref.begin(), host_ref.end());
-    cuda::std::span<const wacfrac::DoubleExpComplex> device_ref_span{device_ref_buf};
-
-    std::printf("Running device BLA calculator...\n");
-    wacfrac::bla::DeviceCalculator<wacfrac::DoubleExpComplex> device_calc(0, first_level);
-    auto device_approx = device_calc.compute_manual(epsilon, device_ref_span, max_dc);
-
-    auto dev_cols_span = device_calc.get_columns();
-    std::vector<wacfrac::bla::ColumnInfo> dev_cols(dev_cols_span.size());
-    cudaMemcpy(dev_cols.data(), dev_cols_span.data(),
-               dev_cols_span.size() * sizeof(wacfrac::bla::ColumnInfo), cudaMemcpyDeviceToHost);
-
-    auto dev_approx_span = device_calc.get_approximations();
-    std::vector<wacfrac::bla::Bla<wacfrac::DoubleExpComplex>> dev_approxs(dev_approx_span.size());
-    cudaMemcpy(dev_approxs.data(), dev_approx_span.data(),
-               dev_approx_span.size() * sizeof(wacfrac::bla::Bla<wacfrac::DoubleExpComplex>),
-               cudaMemcpyDeviceToHost);
-
-    std::printf("Device: %zu columns, %zu approximations\n", dev_cols.size(), dev_approxs.size());
-
-    int errors = 0;
-
-    if (host_cols.size() != dev_cols.size()) {
-        std::printf("FAIL: Column count mismatch: host=%zu device=%zu\n", host_cols.size(), dev_cols.size());
-        ++errors;
-    } else {
-        for (std::size_t i = 0; i < host_cols.size(); ++i) {
-            if (host_cols[i].first != dev_cols[i].first || host_cols[i].count != dev_cols[i].count) {
-                std::printf("FAIL: Column[%zu] mismatch: host(%zu,%zu) device(%zu,%zu)\n",
-                    i, host_cols[i].first, host_cols[i].count,
-                    dev_cols[i].first, dev_cols[i].count);
-                ++errors;
-                if (errors > 10) { std::printf("... stopping after 10 errors\n"); break; }
-            }
-        }
+    if (deviceCount == 0) {
+        std::cerr << "No CUDA devices found" << std::endl;
+        return 1;
     }
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, 0);
+    std::cerr << "Using GPU: " << prop.name
+              << " (compute " << prop.major << "." << prop.minor << ")" << std::endl;
 
-    if (host_approx_span.size() != dev_approxs.size()) {
-        std::printf("FAIL: Approximation count mismatch: host=%zu device=%zu\n",
-            host_approx_span.size(), dev_approxs.size());
-        ++errors;
-    } else {
-        for (std::size_t i = 0; i < host_approx_span.size(); ++i) {
-            auto& h = host_approx_span[i];
-            auto& d = dev_approxs[i];
-            bool a_match = (static_cast<double>(h.a.real()) == static_cast<double>(d.a.real()))
-                        && (static_cast<double>(h.a.imag()) == static_cast<double>(d.a.imag()));
-            bool b_match = (static_cast<double>(h.b.real()) == static_cast<double>(d.b.real()))
-                        && (static_cast<double>(h.b.imag()) == static_cast<double>(d.b.imag()));
-            bool r_match = (static_cast<double>(h.r) == static_cast<double>(d.r));
-            if (!a_match || !b_match || !r_match) {
-                std::printf("FAIL: Approximation[%zu] mismatch\n", i);
-                ++errors;
-                if (errors > 10) { std::printf("... stopping after 10 errors\n"); break; }
-            }
-        }
-    }
+    int failures = 0;
+    auto run = [&](const char* name, auto fn) {
+        std::cout << name << " ... " << std::flush;
+        bool ok = fn();
+        std::cout << (ok ? "PASSED" : "FAILED") << std::endl;
+        if (!ok) failures++;
+    };
 
-    if (errors == 0) {
-        std::printf("PASS: All %zu columns match\n", host_cols.size());
-        std::printf("PASS: All %zu approximations match\n", host_approx_span.size());
-    }
+    std::cout << "=== bla_test ===" << std::endl;
 
-    std::printf("\n=== compute_search test ===\n");
-    std::vector<wacfrac::DoubleExpComplex> probes;
-    {
-        wacfrac::MultiComplex::default_precision(100);
-        wacfrac::MultiFloat::default_precision(100);
-        wacfrac::MultiComplex dim{"4.0", "4.0", 100};
-        wacfrac::Viewport view{c, dim};
-        probes = view.generate_probes<wacfrac::DoubleExpComplex>(3, 3);
-    }
-    std::printf("Generated %zu probes\n", probes.size());
+    run("Test 1: compute_manual columns+approx (first_level=0)",
+        []{ return test_compute_manual(100, 0); });
+    run("Test 2: compute_manual columns+approx (first_level=1)",
+        []{ return test_compute_manual(100, 1); });
+    run("Test 3: escape_approximate", test_escape_approximate);
+    run("Test 4: compute_search", test_compute_search);
 
-    std::printf("Running host compute_search...\n");
-    wacfrac::bla::HostCalculator<wacfrac::DoubleExpComplex> host_search_calc(first_level);
-    wacfrac::bla::SearchParams params{.lower_exp = -128.0, .upper_exp = 0.0, .tolerance = 1e-8};
-    auto host_ok = host_search_calc.compute_search(params, probes, max_dc,
-        std::span<const wacfrac::DoubleExpComplex>(host_ref));
-    std::printf("Host compute_search returned: %s\n", host_ok ? "true" : "false");
+    std::cout << std::endl;
+    if (failures == 0)
+        std::cout << "All tests passed." << std::endl;
+    else
+        std::cout << failures << " test(s) failed." << std::endl;
 
-    std::printf("Running device compute_search...\n");
-    wacfrac::bla::DeviceCalculator<wacfrac::DoubleExpComplex> device_search_calc(0, first_level);
-    auto device_ok = device_search_calc.compute_search(params, probes, max_dc, device_ref_span);
-    std::printf("Device compute_search returned: %s\n", device_ok ? "true" : "false");
-
-    if (!host_ok) {
-        std::printf("FAIL: host compute_search returned false\n");
-        ++errors;
-    }
-    if (!device_ok) {
-        std::printf("FAIL: device compute_search returned false\n");
-        ++errors;
-    }
-
-    auto host_search_cols = host_search_calc.get_columns();
-    auto host_search_approxs = host_search_calc.get_approximations();
-    auto device_search_cols_span = device_search_calc.get_columns();
-    auto device_search_approxs_span = device_search_calc.get_approximations();
-    std::vector<wacfrac::bla::ColumnInfo> dev_search_cols(device_search_cols_span.size());
-    cudaMemcpy(dev_search_cols.data(), device_search_cols_span.data(),
-               device_search_cols_span.size() * sizeof(wacfrac::bla::ColumnInfo), cudaMemcpyDeviceToHost);
-    std::vector<wacfrac::bla::Bla<wacfrac::DoubleExpComplex>> dev_search_approxs(device_search_approxs_span.size());
-    cudaMemcpy(dev_search_approxs.data(), device_search_approxs_span.data(),
-               device_search_approxs_span.size() * sizeof(wacfrac::bla::Bla<wacfrac::DoubleExpComplex>),
-               cudaMemcpyDeviceToHost);
-
-    std::printf("Host search: %zu cols, %zu approxs\n", host_search_cols.size(), host_search_approxs.size());
-    std::printf("Device search: %zu cols, %zu approxs\n", dev_search_cols.size(), dev_search_approxs.size());
-
-    if (host_search_cols.size() != dev_search_cols.size()) {
-        std::printf("FAIL: Search column count mismatch\n");
-        ++errors;
-    } else {
-        for (std::size_t i = 0; i < host_search_cols.size(); ++i) {
-            if (host_search_cols[i].first != dev_search_cols[i].first ||
-                host_search_cols[i].count != dev_search_cols[i].count) {
-                std::printf("FAIL: Search Column[%zu] mismatch\n", i);
-                ++errors;
-                if (errors > 20) break;
-            }
-        }
-    }
-
-    if (host_search_approxs.size() != dev_search_approxs.size()) {
-        std::printf("FAIL: Search approximation count mismatch\n");
-        ++errors;
-    } else {
-        for (std::size_t i = 0; i < host_search_approxs.size(); ++i) {
-            auto& h = host_search_approxs[i];
-            auto& d = dev_search_approxs[i];
-            bool match = (static_cast<double>(h.a.real()) == static_cast<double>(d.a.real()))
-                      && (static_cast<double>(h.a.imag()) == static_cast<double>(d.a.imag()))
-                      && (static_cast<double>(h.b.real()) == static_cast<double>(d.b.real()))
-                      && (static_cast<double>(h.b.imag()) == static_cast<double>(d.b.imag()))
-                      && (static_cast<double>(h.r) == static_cast<double>(d.r));
-            if (!match) {
-                std::printf("FAIL: Search Approximation[%zu] mismatch\n", i);
-                ++errors;
-                if (errors > 20) break;
-            }
-        }
-    }
-
-    if (errors == 0) {
-        std::printf("ALL TESTS PASSED\n");
-    } else {
-        std::printf("FAILED: %d errors\n", errors);
-    }
-
-    return errors == 0 ? 0 : 1;
+    return failures == 0 ? 0 : 1;
 }

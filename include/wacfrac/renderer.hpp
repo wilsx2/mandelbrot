@@ -2,6 +2,7 @@
 #include "wacfrac/types.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/color.hpp"
+#include "wacfrac/viewport.hpp"
 #include <boost/optional.hpp>
 #include <string>
 
@@ -40,36 +41,77 @@ struct VideoConfig {
     double zoom_per_second {2.0};
 };
 
-template<template<typename>typename Storage, typename Executor>
-class Renderer {
+template<typename Context>
+struct Renderer {
+    template<typename T>
+    using Buffer = Context::template Buffer<T>;
+    template<typename T>
+    using Pointer = Context::template Pointer<T>;
+
+    Context ctx;
     Resolution resolution;
     MultiComplex focus;
     double escape_radius;
-    Storage palette;
+    Buffer<Pixel> palette;
     bool discrete_coloring;
-    std::tuple<double, double, double> iteration_parameters;
-    bla::SearchParams search_params;
-    std::size_t bla_first_level;
-    std::vector<wacfrac::Pixel> pixels;
+    WF_STD::tuple<double, double, double> iteration_parameters;
+    Buffer<Pixel> pixels;
+    Buffer<DoubleExpComplex> pixel_orbits;
+    bla::GenericCalculator<Context, DoubleExpComplex> dexp_bla_calculator;
 
-    Renderer(const RendererConfig& conf)
-        : resolution(conf.resolution)
+    Renderer(const RendererConfig& conf, Context ctx = {})
+        : ctx(ctx)
+        , resolution(conf.resolution)
         , focus(conf.focus)
         , escape_radius(conf.escape_radius)
-        // TODO: init palette
+        , palette(ctx.copy_buffer(conf.palette))
         , discrete_coloring(conf.discrete_coloring)
         , iteration_parameters(conf.iteration_parameters)
-        , search_params(conf.search_params)
-        , pixels((resolution.area()))
+        , pixels(ctx.template make_buffer<Pixel>(resolution.area()))
+        , pixel_orbits(ctx.template make_buffer<DoubleExpComplex>(resolution.area()))
+        , dexp_bla_calculator(conf.bla_first_level) // TODO: Pass search params. Make it a set?
     {
         // TODO: Log params
     }
 
     auto render_image(const ImageConfig& conf) -> std::vector<Pixel> {
-        auto max_n          {conf.effective_max_iterations()};
-        auto num_type       {conf.effective_numeric_type()};
-        auto render_type    {conf.effective_render_type()};
-        auto p              {conf.effective_precision()};
+        auto max_n {conf.max_iterations != 0 
+            ? conf.max_iterations
+            : required_iterations(
+                conf.scale,
+                WF_STD::get<0>(iteration_parameters),
+                WF_STD::get<1>(iteration_parameters),
+                WF_STD::get<2>(iteration_parameters))};
+        auto p {conf.precision != 0 
+            ? conf.precision
+            : required_precision(conf.scale)};
+        wacfrac::MultiFloat::default_precision(static_cast<unsigned>(p));
+        wacfrac::MultiComplex::default_precision(static_cast<unsigned>(p));
+
+        /* T delta {
+            to_real<CT>(view.dimensions.real()) / static_cast<CT>(resolution.width),
+            to_real<CT>(view.dimensions.imag()) / static_cast<CT>(resolution.height)
+        }; */
+        auto render_type {[&](){
+            if (conf.render_type != RenderType::Auto) {
+                return conf.render_type;
+            }
+            // compute delta of float for direct perhaps? maybe just always do BLA or perturbed
+            auto 
+            if (delta == 0.0) {
+                //if (/*max_iters > magic num*/) {
+                    return RenderType::BLA;
+                //}
+                //return RenderType::Perturbed;
+            }
+            return RenderType::Direct;
+        }};
+        auto num_type {conf.numeric_type != NumericType::Auto
+            ? conf.numeric_type
+            : NumericType::Float};
+
+        // TODO: Auto-determine ideal numeric and render type
+
         wacfrac::logging::info(
             "Render: zoom={} max_iterations={} precision={} numeric_type={} render_type={}",
             focus.real(), focus.imag(), conf.scale,
@@ -78,26 +120,19 @@ class Renderer {
                     case wacfrac::RenderType::Direct: return "direct";
                     case wacfrac::RenderType::Perturbed: return "perturbed";
                     case wacfrac::RenderType::BLA: return "bla";
+                    case wacfrac::RenderType::Auto: return "ERROR";
                 }
                 return "???";
             }());
 
-        wacfrac::MultiFloat::default_precision(static_cast<unsigned>(p));
-        wacfrac::MultiComplex::default_precision(static_cast<unsigned>(p));
-
-
         auto start = std::chrono::steady_clock::now();
-        // TODO: Dynamically select render type and numeric type based on measurements
         with_numeric_type(num_type, [&]<typename T>(NumericTypeTag<T>){
-            std::vector<std::pair<wacfrac::Complex<float>, unsigned>> escaped_orbits;
-            escaped_orbits.reserve(pixels.size());
+            Viewport v {focus, conf.scale, resolution};
+            v.precision(p);
+            auto orbits {pixel_orbits.as_span<T>()}; // NOTE: as_span is not currently a template
 
             if (render_type == wacfrac::RenderType::Direct) {
-                Viewport v {focus, conf.scale, resolution};
-                v.precision(p);
-                auto cs {wacfrac::sample_c_values<T>(v, resolution)};
-                for (auto c : cs)
-                    escaped_orbits.push_back(wacfrac::escape(c, max_n, escape_radius));
+                // TODO: parallel for; render
             } else {
                 Viewport view {focus, conf.scale, resolution};
                 view.precision(p);
@@ -109,46 +144,24 @@ class Renderer {
                         c_ref, max_n, 
                         std::numeric_limits<double>::infinity())
                 };
-                auto dcs {wacfrac::sample_c_values<T>(
-                    view, resolution,
-                    wacfrac::to_complex<T>(c_ref)
-                )};
 
                 if (render_type == wacfrac::RenderType::Perturbed) {
-                    // TODO: CRTP
-                    for (auto dc : dcs)
-                        escaped_orbits.push_back(wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_n, escape_radius));
-                    // END
+                    // TODO: parallel for; render
                 } else if (render_type == wacfrac::RenderType::BLA) {
                     using CT = wacfrac::ComplexValueTypeT<T>;
                     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
-                    // TODO: CRTP
-                    wacfrac::bla::Calculator<T> calculator{first_level};
                     if (conf.epsilon != 0.0) {
-                        calculator.compute_manual(static_cast<CT>(conf.epsilon), ref, max_dc);
+                        dexp_bla_calculator.compute_manual(static_cast<CT>(conf.epsilon), ref, max_dc);
                     } else {
-                        calculator.compute_search(search_params,
+                        dexp_bla_calculator.compute_search( // NOTE: Assumes search params were initialized in the BLA
                             view.generate_probes<T>(probe_grid.first, probe_grid.second),
                             max_dc, ref, escape_radius);
                     }
-                    auto bla = calculator.get_approximator();
-                    // END
-                    // TODO: CRTP
-                    for (auto dc : dcs) {
-                        auto [z, n, _] = wacfrac::bla::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), escape_radius, bla);
-                        escaped_orbits.emplace_back(z, n);
-                    }
-                    // END
+                    auto bla = dexp_bla_calculator.get_approximator();
+
+                    // TODO: parallel for; render
                 }
             }
-
-            // TODO: CRTP
-            for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
-                pixel = discrete_coloring
-                    ? wacfrac::colorize_discrete(std::get<1>(orbit), max_n, palette)
-                    : wacfrac::colorize_continuous(wacfrac::Complex<float>{std::get<0>(orbit).real(), std::get<0>(orbit).imag()}, std::get<1>(orbit), max_n, palette);
-            } 
-            // END
         });
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - start

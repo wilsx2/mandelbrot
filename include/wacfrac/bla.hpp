@@ -14,6 +14,11 @@
 #include <cmath>
 #include <cstddef>
 
+#if defined(__CUDACC__)
+#include <cuda/std/span>
+#include <cuda/std/atomic>
+#endif
+
 namespace wacfrac::bla {
 
 struct ColumnInfo {
@@ -34,7 +39,13 @@ struct ColumnInfo {
     }
     WF_HD
     static auto compute_count(std::size_t m, std::size_t first_level, std::size_t last_level) -> std::size_t {
-        auto cz {static_cast<unsigned>(std::countr_zero(m - 1))};
+        auto val {m - 1};
+        unsigned cz {0};
+        if (val == 0) {
+            cz = 64;
+        } else {
+            while ((val & 1) == 0) { val >>= 1; ++cz; }
+        }
         auto count {(cz >= first_level && first_level <= last_level)
             ? 1 + std::min(cz - first_level, last_level - first_level)
             : 0ull};
@@ -219,16 +230,20 @@ class GenericCalculator {
     auto get_approximator() -> Approximator<T> {
         return {_first_level, _last_level, _columns, _approximations};
     }
-    private:
+    public: // TODO: Remove from public API. This is a work around to make NVCC happy with our lambda usage in device code
     auto initialize_columns(std::size_t max_n) -> void {
-        _ctx.parallel_for(max_n - 1,
+        auto columns {_columns.as_span()};
+        auto first_level {_first_level};
+        auto last_level {_last_level};
+        _ctx.parallel_for(max_n,
             [max_n,
-             first_level = _first_level,
-             last_level = _last_level,
-             columns = _columns.as_span()]
-            WF_HD (auto tid){
+             first_level,
+             last_level,
+             columns]
+            WF_HD
+            (int tid){
                 auto m {tid + 1};
-                if (m >= max_n)
+                if (m > max_n)
                     return;
                 columns[m - 1] = {
                     ColumnInfo::compute_start(m, first_level, last_level),
@@ -237,12 +252,18 @@ class GenericCalculator {
             });
     }
     auto compute_initial_approximations(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> void {
+        auto first_level {_first_level};
+        auto approximator = get_approximator();
+        auto working = _current_working.as_span();
         _ctx.parallel_for(ref.size() - 2,
-            [epsilon, ref, max_dc,
-             first_level = _first_level,
-             approximator = get_approximator(),
-             working = _current_working.as_span()]
-            WF_HD (auto tid){
+            [epsilon,
+             ref,
+             max_dc,
+             first_level,
+             approximator,
+             working]
+            WF_HD
+            (int tid){
                 if (tid + 2 >= ref.size())
                     return;
                 auto m {tid + 1};
@@ -256,12 +277,17 @@ class GenericCalculator {
     }
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
         if (current_level >= _first_level) {
+            auto approximator = get_approximator();
+            auto working = _current_working.as_span();
+            auto next_working = _next_working.as_span();
             _ctx.parallel_for(level_size / 2,
-                [current_level, max_dc,
-                approximator = get_approximator(),
-                working = _current_working.as_span(),
-                next_working = _next_working.as_span()]
-                WF_HD (auto tid){
+                [current_level,
+                 max_dc,
+                 approximator,
+                 working,
+                 next_working]
+                WF_HD
+                (int tid){
                     auto k {tid * 2};
                     if (k >= working.size())
                         return;
@@ -274,12 +300,16 @@ class GenericCalculator {
                     if (ptr) { *ptr = bla; }
                 });
         } else {
+            auto approximator = get_approximator();
+            auto working = _current_working.as_span();
+            auto next_working = _next_working.as_span();
             _ctx.parallel_for(level_size / 2,
                 [max_dc,
-                approximator = get_approximator(),
-                working = _current_working.as_span(),
-                next_working = _next_working.as_span()]
-                WF_HD (auto tid){
+                 approximator,
+                 working,
+                 next_working]
+                WF_HD
+                (int tid){
                     auto k {tid * 2};
                     if (k >= working.size())
                         return;
@@ -294,10 +324,14 @@ class GenericCalculator {
             _true_escape_times = _ctx.template make_buffer<unsigned>(probes.size());
         }
 
+        auto escape_times = _true_escape_times.as_span();
         _ctx.parallel_for(probes.size(),
-            [probes, ref, escape_radius,
-             escape_times = _true_escape_times.as_span()]
-            WF_HD (auto tid){
+            [probes,
+             ref,
+             escape_radius,
+             escape_times]
+            WF_HD
+            (int tid){
                 if (tid >= probes.size())
                     return;
                 escape_times[tid] = escape_perturbed<T>(
@@ -315,13 +349,21 @@ class GenericCalculator {
         _skipped_atom->store(0u);
         _tolerance_failed_atom->store(false);
 
+        auto approximator = get_approximator();
+        auto escape_times = _true_escape_times.as_span();
+        auto tolerance_failed = _tolerance_failed_atom.get();
+        auto total_skipped = _skipped_atom.get();
         _ctx.parallel_for(probes.size(),
-            [probes, ref, escape_radius, tolerance,
-             escape_times = _true_escape_times.as_span(),
-             tolerance_failed = _tolerance_failed_atom.get(),
-             total_skipped = _skipped_atom.get(),
-             approximator = get_approximator()]
-            WF_HD (auto tid){
+            [probes,
+             ref,
+             escape_radius,
+             tolerance,
+             escape_times,
+             tolerance_failed,
+             total_skipped,
+             approximator]
+            WF_HD
+            (int tid){
                 if (tid >= probes.size())
                     return;
                 auto [_, approx_escape_time, skipped] =
@@ -334,10 +376,10 @@ class GenericCalculator {
 
                 using std::abs;
                 if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(escape_times[tid]) - 1.0) > tolerance) {
-                    tolerance_failed->store(true, std::memory_order_seq_cst); // TODO: Pick a good setting
+                    tolerance_failed->store(true, WF_STD::memory_order_seq_cst); // TODO: Pick a good setting
                     return;
                 }
-                total_skipped->fetch_add(skipped, std::memory_order_seq_cst);
+                total_skipped->fetch_add(skipped, WF_STD::memory_order_seq_cst);
             });
     }
 
@@ -382,5 +424,9 @@ template <typename T>
 using HostCalculator = GenericCalculator<Host, T>;
 template<typename T>
 using Calculator = HostCalculator<T>;
+#if defined(__CUDACC__)
+template<typename T>
+using DeviceCalculator = GenericCalculator<Device, T>;
+#endif
 
 } // namespace wacfrac::bla
