@@ -1,7 +1,7 @@
 #pragma once
 
 #include <concepts>
-#include <vector>
+#include <memory>
 #include <span>
 
 namespace wacfrac {
@@ -22,34 +22,37 @@ struct HostBuffer {
     using stored_type = std::remove_cvref_t<T>;
     using View = std::span<T>;
     using ConstView = std::span<const stored_type>;
-    std::vector<stored_type> value;
+    std::unique_ptr<stored_type[]> data;
+    std::size_t len = 0;
 
     auto size() const -> std::size_t {
-        return value.size();
+        return len;
     }
     auto resize(std::size_t new_size) -> void {
-        value.resize(new_size);
+        data = std::make_unique<stored_type[]>(new_size);
+        len = new_size;
     }
     T& operator[](std::size_t i) {
-        return value[i];
+        return data[i];
     }
     const T& operator[](std::size_t i) const {
-        return value[i];
+        return data[i];
     }
     View as_view() { // NOTE: Unused
-        return std::span(value);
+        return View(data.get(), len);
     }
     ConstView as_view() const { // NOTE: Unused
-        return std::span(value);
+        return ConstView(data.get(), len);
     }
     View get_view() {
-        return std::span(value);
+        return View(data.get(), len);
     }
     ConstView get_view() const {
-        return std::span(value);
+        return ConstView(data.get(), len);
     }
     void swap(HostBuffer& other) {
-        value.swap(other.value);
+        std::swap(data, other.data);
+        std::swap(len, other.len);
     }
 };
 

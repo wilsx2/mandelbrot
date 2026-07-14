@@ -148,7 +148,7 @@ class GenericCalculator {
         auto max_n {ref_size - 1};
         _columns.resize(max_n);
         _current_working.resize(max_n - 1);
-        _next_working.resize(_current_working.size() / 2);
+        _next_working.resize(_current_working.size());
         initialize_columns(max_n);
         _approximations.resize(ColumnInfo::compute_start(max_n, _first_level, _last_level));
     }
@@ -187,14 +187,14 @@ class GenericCalculator {
                 break;
             }
 
-            auto total_skipped {compute_skipped_iterations(probes, ref, escape_radius, params.tolerance)};
-            if (!total_skipped) {
+            compute_skipped_iterations(probes, ref, escape_radius, params.tolerance);
+            if (_tolerance_failed_atom[0].load()) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} too high", iter, middle);
                 upper_exp = middle;
                 continue;
             }
 
-            auto avg_skipped = *total_skipped / static_cast<double>(probes.size());
+            auto avg_skipped = _skipped_atom[0].load() / static_cast<double>(probes.size());
             if (avg_skipped >= prev_avg_skipped) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} avg_skipped={} (improving)", iter, middle, avg_skipped);
                 prev_exp = epsilon;
@@ -224,7 +224,6 @@ class GenericCalculator {
                 auto m {tid + 1};
                 if (m >= max_n)
                     return;
-                  
                 columns[m - 1] = {
                     ColumnInfo::compute_start(m, first_level, last_level),
                     ColumnInfo::compute_count(m, first_level, last_level)
@@ -287,14 +286,19 @@ class GenericCalculator {
                     escape_radius).second;
             });
     }
-    auto compute_skipped_iterations(View<const T> probes, View<const T> ref, double escape_radius, double tolerance) -> std::optional<unsigned> {
-        std::atomic total_skipped {0u}; // NOTE: Does not work on GPU. Use storage and WF_STD::atomic. Allocate as member
-        std::atomic tolerance_failed {false};
+    auto compute_skipped_iterations(View<const T> probes, View<const T> ref, double escape_radius, double tolerance) -> void {
+        if (_skipped_atom.size() == 0)
+            _skipped_atom.resize(1);
+        if (_tolerance_failed_atom.size() == 0)
+            _tolerance_failed_atom.resize(1);
+        _skipped_atom[0].store(0u);
+        _tolerance_failed_atom[0].store(false);
+
         _executor(probes.size(),
             [probes, ref, escape_radius, tolerance,
              escape_times = _true_escape_times.get_view(),
-             tolerance_failed = &tolerance_failed,
-             total_skipped = &total_skipped,
+             tolerance_failed = &_tolerance_failed_atom[0],
+             total_skipped = &_skipped_atom[0],
              approximator = get_approximator()]
             WF_HD (auto tid){
                 if (tid >= probes.size())
@@ -309,15 +313,11 @@ class GenericCalculator {
 
                 using std::abs;
                 if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(escape_times[tid]) - 1.0) > tolerance) {
-                    *tolerance_failed = true; // TODO: Use explicit method calls
+                    tolerance_failed->store(true, std::memory_order_seq_cst); // TODO: Pick a good setting
                     return;
                 }
-                *total_skipped += skipped; // TODO: Above
+                total_skipped->fetch_add(skipped, std::memory_order_seq_cst);
             });
-
-        if (tolerance_failed)
-            return std::nullopt;
-        return total_skipped;
     }
 
     std::size_t _max_ref_size;
@@ -328,7 +328,9 @@ class GenericCalculator {
     Buffer<Bla<T>>     _next_working;
     Buffer<Bla<T>>     _approximations;
     Buffer<unsigned>   _true_escape_times;
-    Executor            _executor;
+    Buffer<WF_STD::atomic<unsigned>> _skipped_atom;
+    Buffer<WF_STD::atomic<bool>> _tolerance_failed_atom;
+    Executor _executor;
 };
 
 template <ComplexConcept T, typename Ref, typename Approx>
