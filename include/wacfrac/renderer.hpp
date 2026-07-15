@@ -157,6 +157,15 @@ struct Renderer {
         with_numeric_type(num_type, [&]<typename T>(NumericTypeTag<T>){
             using CT = ComplexValueTypeT<T>;
 
+            auto palette {conf.palette.as_span()};
+            auto discrete {conf.discrete_coloring};
+            auto colorize {[discrete, palette, max_n](auto orbit){ // WARN: Per-pixel branch we know the result of in advance
+                    auto [z, n] = orbit;
+                    if (discrete)
+                        return colorize_discrete(n, max_n, palette);
+                    return colorize_continuous(z, n, max_n, palette);
+                }};
+
             if (render_type == RenderType::Direct) {
                 auto screen {pixels.as_span()};
                 auto row_width {conf.resolution.width};
@@ -169,7 +178,6 @@ struct Renderer {
                     to_real<CT>(view.dimensions.imag()) / static_cast<CT>(conf.resolution.height)
                 };
                 auto escape_radius {conf.escape_radius};
-                auto palette {conf.palette.as_span()};
 
                 logging::debug("Performing a direct render: pixels={}, row_width={}", screen.size(), row_width);
                 conf.ctx.parallel_for(screen.size(),
@@ -179,19 +187,17 @@ struct Renderer {
                      delta,
                      max_n,
                      escape_radius,
-                     palette] // TODO: Sensatize to colorization type param (discrete vs cont)
+                     colorize]
                     WF_HD
                     (int tid){
-                        auto [z, n] {escape(
+                        screen[tid] = colorize(escape(
                             sample_c_value(
                                 tid,
                                 row_width,
                                 start,
                                 delta),
                             max_n,
-                            escape_radius)};
-
-                        screen[tid] = colorize_discrete(n, max_n, palette);
+                            escape_radius));
                     });
                 logging::debug("Render finished");
             } else {
@@ -206,6 +212,20 @@ struct Renderer {
 
                 if (render_type == RenderType::Perturbed) {
                     // TODO: parallel for; render perturbed
+                    /*
+    if (tid < pixels.size()) {
+        auto [z, n] {escape_perturbed(
+            sample_c_value(
+                tid,
+                row_width,
+                start,
+                delta),
+            reference,
+            max_iterations,
+            ESCAPE_RADIUS)};
+        pixels[tid] = colorize_continuous(z, n, max_iterations, palette);
+    }
+                    */
                 } else if (render_type == RenderType::BLA) {
                     using CT = ComplexValueTypeT<T>;
                     auto max_dc {to_complex<T>(view.compute_max_dc(c_ref))};
