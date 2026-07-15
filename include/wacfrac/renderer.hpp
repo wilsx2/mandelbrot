@@ -1,5 +1,6 @@
 #include "wacfrac/bla.hpp"
 #include "wacfrac/complex_concept.hpp"
+#include "wacfrac/orbit.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/color.hpp"
@@ -166,9 +167,11 @@ struct Renderer {
                     return colorize_continuous(z, n, max_n, palette);
                 }};
 
+            auto screen {pixels.as_span()};
+            auto row_width {conf.resolution.width};
+            auto escape_radius {conf.escape_radius};
+
             if (render_type == RenderType::Direct) {
-                auto screen {pixels.as_span()};
-                auto row_width {conf.resolution.width};
                 T start {
                     to_real<CT>(view.center.real()) - to_real<CT>(view.dimensions.real()) / static_cast<CT>(2.0),
                     to_real<CT>(view.center.imag()) - to_real<CT>(view.dimensions.imag()) / static_cast<CT>(2.0)
@@ -177,7 +180,6 @@ struct Renderer {
                     to_real<CT>(view.dimensions.real()) / static_cast<CT>(conf.resolution.width),
                     to_real<CT>(view.dimensions.imag()) / static_cast<CT>(conf.resolution.height)
                 };
-                auto escape_radius {conf.escape_radius};
 
                 logging::debug("Performing a direct render: pixels={}, row_width={}", screen.size(), row_width);
                 conf.ctx.parallel_for(screen.size(),
@@ -202,40 +204,56 @@ struct Renderer {
                 logging::debug("Render finished");
             } else {
                 auto c_ref {conf.focus};
-                const auto& ref {
+                const auto& reference {
                     img_conf.ref_set.has_value()
                     ? img_conf.ref_set->select<T>()
                     : compute_reference_mt<T>(
                         c_ref, max_n, 
                         std::numeric_limits<double>::infinity())
                 };
+                auto ref {std::span(reference)}; // NOTE: When reference becomes a buffer type we will have to change this 
 
                 if (render_type == RenderType::Perturbed) {
-                    // TODO: parallel for; render perturbed
-                    /*
-    if (tid < pixels.size()) {
-        auto [z, n] {escape_perturbed(
-            sample_c_value(
-                tid,
-                row_width,
-                start,
-                delta),
-            reference,
-            max_iterations,
-            ESCAPE_RADIUS)};
-        pixels[tid] = colorize_continuous(z, n, max_iterations, palette);
-    }
-                    */
+                    T start {
+                        -to_real<CT>(view.dimensions.real()) / static_cast<CT>(2.0),
+                        -to_real<CT>(view.dimensions.imag()) / static_cast<CT>(2.0)
+                    };
+                    T delta { // WARN: May be an incorrect equation, seems right
+                        to_real<CT>(view.dimensions.real()) / static_cast<CT>(conf.resolution.width),
+                        to_real<CT>(view.dimensions.imag()) / static_cast<CT>(conf.resolution.height)
+                    };
+
+                    conf.ctx.parallel_for(screen.size(),
+                        [screen,
+                        row_width,
+                        start,
+                        delta,
+                        ref,
+                        max_n,
+                        escape_radius,
+                        colorize]
+                        WF_HD
+                        (int tid){
+                            screen[tid] = colorize(escape_perturbed(
+                                sample_c_value(
+                                    tid,
+                                    row_width,
+                                    start,
+                                    delta),
+                                ref,
+                                max_n,
+                                escape_radius));
+                        });
                 } else if (render_type == RenderType::BLA) {
                     using CT = ComplexValueTypeT<T>;
                     auto max_dc {to_complex<T>(view.compute_max_dc(c_ref))};
                     bla::Calculator<Context, T> bla_calculator {conf.bla_config}; // WARN: Filthy Nasty. See previous 
                     if (img_conf.epsilon != 0.0) {
-                        bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), ref, max_dc);
+                        bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), reference, max_dc);
                     } else {
                         bla_calculator.compute_search(
                             view.generate_probes<T>(conf.probe_grid.first, conf.probe_grid.second),
-                            max_dc, ref, conf.escape_radius);
+                            max_dc, reference, conf.escape_radius);
                     }
                     auto bla = bla_calculator.get_approximator();
 
