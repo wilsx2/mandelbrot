@@ -2,14 +2,11 @@
 
 #include "wacfrac/bla.hpp"
 #include "wacfrac/complex_concept.hpp"
-#include "wacfrac/io.hpp"
 #include "wacfrac/types.hpp"
 #include <wacfrac/color.hpp>
 #include <wacfrac/log.hpp>
 #include <wacfrac/orbit.hpp>
-#include <wacfrac/viewport.hpp>
 #include <wacfrac/resolution.hpp>
-#include <ranges>
 
 namespace wacfrac
 {

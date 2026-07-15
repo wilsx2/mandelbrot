@@ -130,10 +130,10 @@ struct Approximator {
 };
 
 struct Config {
-    std::size_t first_level;
-    double lower_exp;
-    double upper_exp;
-    double tolerance;
+    std::size_t first_level {0};
+    double lower_exp {-1028};
+    double upper_exp {-16};
+    double tolerance {1e-8};
     double convergence_radius = 1e-3;
 };
 

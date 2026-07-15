@@ -1,5 +1,6 @@
 #pragma once
 
+#include "wacfrac/rendering.hpp"
 #include <vector>
 #include <wacfrac/types.hpp>
 #include <wacfrac/resolution.hpp>
@@ -60,30 +61,18 @@ auto Viewport::get_corner_relative() const -> T {
 template<ComplexConcept T>
 auto Viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<T> {
     using CT = ComplexValueTypeT<T>;
-    std::vector<T> probes;
-    T dimensions_t {
-        to_real<CT>(dimensions.real()),
-        to_real<CT>(dimensions.imag())
-    };
-    T interval {
-        dimensions_t.real() / CT(cols),
-        dimensions_t.imag() / CT(rows)
-    };
-    if (interval.real() == CT(0) || interval.imag() == CT(0)) {
-        probes.emplace_back(CT(0), CT(0));
-        return probes;
-    }
-    T start {
-        cols % 2 == 0 ? -dimensions_t.real() / CT(2) : (-dimensions_t.real() + interval.real()) / CT(2),
-        rows % 2 == 0 ? -dimensions_t.imag() / CT(2) : (-dimensions_t.imag() + interval.imag()) / CT(2)
-    };
-    T end {
-        +dimensions_t.real() / CT(2),
-        +dimensions_t.imag() / CT(2)
-    };
-    for (CT dx = start.real(); dx <= end.real(); dx += interval.real()) {
-        for (CT dy = start.imag(); dy <= end.imag(); dy += interval.imag()) {
-            probes.emplace_back(dx, dy);
+    std::vector<T> probes; // WARN: Should just fill up a span passed as an argument
+    auto delta {get_pixel_delta<T>(dimensions, Resolution{cols, rows})};
+    auto corner {get_corner_relative<T>()};
+    if (cols % 2)
+        corner.real() += delta.real() / static_cast<CT>(2.0);
+    if (rows % 2)
+        corner.imag() += delta.imag() / static_cast<CT>(2.0);
+    for (auto col {0u}; col < cols; ++col) { // TODO: Cartesian product view. Parallel for if we're feeling fun
+        for (auto row {0u}; row < rows; ++row) {
+            probes.emplace_back(
+                corner.real() + delta.real() * static_cast<CT>(col),
+                corner.imag() + delta.imag() * static_cast<CT>(row));
         }
     }
     return probes;

@@ -1,14 +1,11 @@
+    Reimplement video rendering
     Move BLA impl into .cpp for host and .cu for Device
-    Default param fix
-    Renderer
-        Generic
-        Host
-        Device
+    Device Renderer
     Utilize Arenas for image render (BLA, orbits)
-    Integrate Renderer w/
-        CLI
-        Bench
+    Integrate Renderer w/ Bench
     Determine lower and higher exp for BLA search dynamically
+    Handle really small BLA exponents
+    Fix wrong probe grid being produced
 
 July
 - GPU

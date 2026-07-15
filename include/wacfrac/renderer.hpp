@@ -189,10 +189,12 @@ struct Renderer {
             auto row_width {conf.resolution.width};
             auto escape_radius {conf.escape_radius};
             auto delta {get_pixel_delta<T>(view.dimensions, conf.resolution)};
+            logging::debug("delta c: ({}, {})", delta.real(), delta.imag());
 
             if (render_type == RenderType::Direct) {
                 auto start {view.get_corner_absolute<T>()};
-                logging::debug("Performing a direct render: pixels={}, row_width={}", screen.size(), row_width);
+                logging::debug("start, absolute: ({}, {})", start.real(), start.imag());
+
                 conf.ctx.parallel_for(screen.size(),
                     [screen,
                      row_width,
@@ -212,9 +214,10 @@ struct Renderer {
                             max_n,
                             escape_radius));
                     });
-                logging::debug("Render finished");
             } else {
                 auto start {view.get_corner_relative<T>()};
+                logging::debug("start, relative: ({}, {})", start.real(), start.imag());
+
                 auto c_ref {conf.focus};
                 const auto& reference {
                     img_conf.ref_set.has_value()
@@ -250,7 +253,7 @@ struct Renderer {
                 } else if (render_type == RenderType::BLA) {
                     using CT = ComplexValueTypeT<T>;
                     auto max_dc {to_complex<T>(view.compute_max_dc(c_ref))};
-                    bla::Calculator<Context, T> bla_calculator {conf.bla_config}; // WARN: Filthy Nasty. See previous 
+                    bla::Calculator<Context, T> bla_calculator {conf.bla_config}; // WARN: Filthy Nasty. Throw this an an Arena
                     if (img_conf.epsilon != 0.0) {
                         bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), reference, max_dc);
                     } else {
