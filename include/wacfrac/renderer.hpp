@@ -107,15 +107,23 @@ struct Renderer {
         Viewport view {conf.focus, img_conf.scale, conf.resolution};
         view.precision(precision);
 
+        auto underflows {[&]<typename T>(RenderType rt){
+            auto start {[&](){
+                if (rt == RenderType::Direct) {
+                    return view.get_corner_absolute<T>();
+                }
+                return view.get_corner_relative<T>();
+            }()};
+            auto delta {get_pixel_delta<T>(view.dimensions, conf.resolution)};
+            auto next {start + delta};
+            return start.real() - next.real() == 0 || start.imag() - next.imag() == 0;
+        }};
+
         auto render_type {[&](){
             if (img_conf.render_type != RenderType::Auto) {
                 return img_conf.render_type;
             }
-            // NOTE: Computation for direct render. We MUST make this into its own function
-            auto start {view.get_corner_absolute<Complex<double>>()};
-            auto delta {get_pixel_delta<Complex<double>>(view.dimensions, conf.resolution)};
-            auto next {start + delta};
-            if (start.real() == next.real() || start.imag() == next.imag()) { // WARN: Will need a larger tolerance
+            if (underflows.template operator()<Complex<double>>(RenderType::Direct)) { // NOTE: May need a larger tolerance
                 constexpr auto SIGNIFICANT_ITERATIONS {50'000}; // NOTE: Arbitrarily chosen
                 if (max_n >= SIGNIFICANT_ITERATIONS) {
                     return RenderType::BLA;
@@ -125,12 +133,19 @@ struct Renderer {
             return RenderType::Direct;
         }()};
 
-        auto num_type {
-            img_conf.numeric_type != NumericType::Auto
-            ? img_conf.numeric_type
-            : NumericType::Float};
+        auto num_type {[&](){
+            if (img_conf.numeric_type != NumericType::Auto) {
+                return img_conf.numeric_type;
+            }
 
-        // TODO: Promote type until we have a non-zero delta; log a warning if impossible
+            if (underflows.template operator()<Complex<float>>(render_type)) {
+                if (underflows.template operator()<Complex<double>>(render_type)) {
+                    return NumericType::DoubleExp;
+                }
+                return NumericType::Double;
+            }
+            return NumericType::Float;
+        }()};
 
         logging::info(
             "Render Config: zoom={} max_iterations={} precision={} numeric_type={} render_type={}",
