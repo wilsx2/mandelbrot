@@ -161,7 +161,9 @@ struct Renderer {
             auto palette {conf.palette.as_span()};
             auto discrete {conf.discrete_coloring};
             auto colorize {[discrete, palette, max_n](auto orbit){ // WARN: Per-pixel branch we know the result of in advance
-                    auto [z, n] = orbit;
+                    auto z {std::get<0>(orbit)};
+                    auto n {std::get<1>(orbit)};
+
                     if (discrete)
                         return colorize_discrete(n, max_n, palette);
                     return colorize_continuous(z, n, max_n, palette);
@@ -212,17 +214,16 @@ struct Renderer {
                         std::numeric_limits<double>::infinity())
                 };
                 auto ref {std::span(reference)}; // NOTE: When reference becomes a buffer type we will have to change this 
+                T start {
+                    -to_real<CT>(view.dimensions.real()) / static_cast<CT>(2.0),
+                    -to_real<CT>(view.dimensions.imag()) / static_cast<CT>(2.0)
+                };
+                T delta { // WARN: May be an incorrect equation, seems right
+                    to_real<CT>(view.dimensions.real()) / static_cast<CT>(conf.resolution.width),
+                    to_real<CT>(view.dimensions.imag()) / static_cast<CT>(conf.resolution.height)
+                };
 
                 if (render_type == RenderType::Perturbed) {
-                    T start {
-                        -to_real<CT>(view.dimensions.real()) / static_cast<CT>(2.0),
-                        -to_real<CT>(view.dimensions.imag()) / static_cast<CT>(2.0)
-                    };
-                    T delta { // WARN: May be an incorrect equation, seems right
-                        to_real<CT>(view.dimensions.real()) / static_cast<CT>(conf.resolution.width),
-                        to_real<CT>(view.dimensions.imag()) / static_cast<CT>(conf.resolution.height)
-                    };
-
                     conf.ctx.parallel_for(screen.size(),
                         [screen,
                         row_width,
@@ -256,8 +257,29 @@ struct Renderer {
                             max_dc, reference, conf.escape_radius);
                     }
                     auto bla = bla_calculator.get_approximator();
-
-                    // TODO: parallel for; render approx
+                    conf.ctx.parallel_for(screen.size(),
+                        [screen,
+                        row_width,
+                        start,
+                        delta,
+                        ref,
+                        max_n,
+                        escape_radius,
+                        colorize,
+                        bla]
+                        WF_HD
+                        (int tid){
+                            screen[tid] = colorize(bla::escape_approximate(
+                                sample_c_value(
+                                    tid,
+                                    row_width,
+                                    start,
+                                    delta),
+                                ref,
+                                max_n,
+                                escape_radius,
+                                bla));
+                        });
                 }
             }
         });
