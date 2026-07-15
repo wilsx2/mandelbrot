@@ -1,4 +1,5 @@
 #include "wacfrac/bla.hpp"
+#include "wacfrac/complex_concept.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/color.hpp"
@@ -8,22 +9,37 @@
 
 namespace wacfrac {
 
-enum class NumericType { Auto, Float , Double , DoubleExp };
-enum class RenderType { Auto, Direct , Perturbed , BLA }; // NOTE: Redefined in cli_options.hpp
+template <typename T>
+struct NumericTypeTag { using type = T; };
 
+enum class NumericType { Auto, Float , Double , DoubleExp };
+enum class RenderType { Auto, Direct , Perturbed , BLA };
+
+template <typename F>
+decltype(auto) with_numeric_type(NumericType type, F&& f) {
+    switch (type) {
+        case NumericType::Float:     return f(NumericTypeTag<wacfrac::SingleComplex>{});
+        case NumericType::Double:    return f(NumericTypeTag<wacfrac::DoubleComplex>{});
+        case NumericType::DoubleExp: return f(NumericTypeTag<wacfrac::DoubleExpComplex>{});
+        case NumericType::Auto:      return f(NumericTypeTag<wacfrac::SingleComplex>{});
+    }
+}
+
+template<typename Context>
 struct RendererConfig {
+    Context ctx {};
     Resolution resolution {500, 500};
     MultiComplex focus {-0.5, 0.0};
     double escape_radius {4.0};
-    std::vector<Pixel> palette {wacfrac::ULTRA};
+    Context::template Buffer<Pixel> palette {ctx.make_buffer(std::span(ULTRA))};
     bool discrete_coloring {false};
-    std::tuple<double, double, double> iteration_parameters {250.0, 50.0, 1.5};
-    bla::SearchParams search_params;
-    std::size_t bla_first_level {0};
+    WF_STD::tuple<double, double, double> iteration_parameters {250.0, 50.0, 1.5};
+    bla::Config bla_config;
+    WF_STD::pair<std::size_t, std::size_t> probe_grid {8, 8};
 };
 
 struct ImageConfig {
-    boost::optional<const ReferenceSet&> ref_set;
+    boost::optional<const ReferenceSet&> ref_set; // NOTE: Should belong to the renderer, not the image
     MultiFloat scale {0.4};
     unsigned max_iterations {0u};
     std::size_t precision {0};
@@ -33,7 +49,6 @@ struct ImageConfig {
 };
 
 struct VideoConfig {
-    std::string directory {"mandelbrot"};
     double frames_per_second {24.0};
     std::size_t segment_size {64};
     MultiFloat initial_scale {0.4};
@@ -48,127 +63,172 @@ struct Renderer {
     template<typename T>
     using Pointer = Context::template Pointer<T>;
 
-    Context ctx;
-    Resolution resolution;
-    MultiComplex focus;
-    double escape_radius;
-    Buffer<Pixel> palette;
-    bool discrete_coloring;
-    WF_STD::tuple<double, double, double> iteration_parameters;
+    RendererConfig<Context> conf;
     Buffer<Pixel> pixels;
     Buffer<DoubleExpComplex> pixel_orbits;
-    bla::GenericCalculator<Context, DoubleExpComplex> dexp_bla_calculator;
 
-    Renderer(const RendererConfig& conf, Context ctx = {})
-        : ctx(ctx)
-        , resolution(conf.resolution)
-        , focus(conf.focus)
-        , escape_radius(conf.escape_radius)
-        , palette(ctx.copy_buffer(conf.palette))
-        , discrete_coloring(conf.discrete_coloring)
-        , iteration_parameters(conf.iteration_parameters)
-        , pixels(ctx.template make_buffer<Pixel>(resolution.area()))
-        , pixel_orbits(ctx.template make_buffer<DoubleExpComplex>(resolution.area()))
-        , dexp_bla_calculator(conf.bla_first_level) // TODO: Pass search params. Make it a set?
+    Renderer(RendererConfig<Context> config)
+        : conf(std::move(config))
+        , pixels(this->conf.ctx.template make_buffer<Pixel>(this->conf.resolution.area()))
     {
-        // TODO: Log params
+        if (conf.palette.size() == 0) {
+            conf.palette = conf.ctx.make_buffer(std::span(ULTRA));
+        }
+
+        // NOTE: Jesus Christ!
+        logging::info("Renderer Config: resolution={}x{} focus={}x{} escape_radius={} palette size={}\
+                       discrete={} iteration_params={} + {} * exp^{} first_bla_level={},\
+                       epsilon_range=10^{}-10^{} epsilon_tolerance={} epsilon_convergence_rad={}",
+                       conf.resolution.width, conf.resolution.height, conf.focus.real(), conf.focus.imag(),
+                       conf.escape_radius, conf.palette.as_span().size(), conf.discrete_coloring,
+                       WF_STD::get<0>(conf.iteration_parameters), WF_STD::get<1>(conf.iteration_parameters),
+                       WF_STD::get<2>(conf.iteration_parameters), conf.bla_config.first_level, 
+                       conf.bla_config.lower_exp, conf.bla_config.upper_exp, conf.bla_config.tolerance,
+                       conf.bla_config.convergence_radius);
     }
 
-    auto render_image(const ImageConfig& conf) -> std::vector<Pixel> {
-        auto max_n {conf.max_iterations != 0 
-            ? conf.max_iterations
+    auto render(const ImageConfig& img_conf) -> Buffer<Pixel> {
+        // Configuration Pass  NOTE: We can easily and likely ought to break this into its own function
+        auto max_n {img_conf.max_iterations != 0 
+            ? img_conf.max_iterations
             : required_iterations(
-                conf.scale,
-                WF_STD::get<0>(iteration_parameters),
-                WF_STD::get<1>(iteration_parameters),
-                WF_STD::get<2>(iteration_parameters))};
-        auto p {conf.precision != 0 
-            ? conf.precision
-            : required_precision(conf.scale)};
-        wacfrac::MultiFloat::default_precision(static_cast<unsigned>(p));
-        wacfrac::MultiComplex::default_precision(static_cast<unsigned>(p));
+                img_conf.scale,
+                WF_STD::get<0>(conf.iteration_parameters),
+                WF_STD::get<1>(conf.iteration_parameters),
+                WF_STD::get<2>(conf.iteration_parameters))};
+        auto precision {img_conf.precision != 0 
+            ? img_conf.precision
+            : required_precision(img_conf.scale)};
+        MultiFloat::default_precision(static_cast<unsigned>(precision));
+        MultiComplex::default_precision(static_cast<unsigned>(precision));
 
-        /* T delta {
-            to_real<CT>(view.dimensions.real()) / static_cast<CT>(resolution.width),
-            to_real<CT>(view.dimensions.imag()) / static_cast<CT>(resolution.height)
-        }; */
+        Viewport view {conf.focus, img_conf.scale, conf.resolution};
+        view.precision(precision);
+
         auto render_type {[&](){
-            if (conf.render_type != RenderType::Auto) {
-                return conf.render_type;
+            if (img_conf.render_type != RenderType::Auto) {
+                return img_conf.render_type;
             }
-            // compute delta of float for direct perhaps? maybe just always do BLA or perturbed
-            auto 
-            if (delta == 0.0) {
-                //if (/*max_iters > magic num*/) {
+            DoubleComplex direct_delta { // WARN: May be an incorrect equation, seems right
+                to_real<double>(view.dimensions.real()) / static_cast<double>(conf.resolution.width),
+                to_real<double>(view.dimensions.imag()) / static_cast<double>(conf.resolution.height)
+            };
+            if (direct_delta.real() == 0.0 || direct_delta.imag() == 0.0) { // NOTE: May need a larger tolerance
+                constexpr auto SIGNIFICANT_ITERATIONS {50'000}; // NOTE: Arbitrarily chosen
+                if (max_n >= SIGNIFICANT_ITERATIONS) {
                     return RenderType::BLA;
-                //}
-                //return RenderType::Perturbed;
+                }
+                return RenderType::Perturbed;
             }
             return RenderType::Direct;
-        }};
-        auto num_type {conf.numeric_type != NumericType::Auto
-            ? conf.numeric_type
+        }()};
+
+        auto num_type {
+            img_conf.numeric_type != NumericType::Auto
+            ? img_conf.numeric_type
             : NumericType::Float};
 
-        // TODO: Auto-determine ideal numeric and render type
+        // TODO: Promote type until we have a non-zero delta; log a warning if impossible
 
-        wacfrac::logging::info(
-            "Render: zoom={} max_iterations={} precision={} numeric_type={} render_type={}",
-            focus.real(), focus.imag(), conf.scale,
-            max_n, p, num_type, [&](){
+        logging::info(
+            "Render Config: zoom={} max_iterations={} precision={} numeric_type={} render_type={}",
+            img_conf.scale, max_n, precision,
+            [&](){
+                switch (num_type) {
+                    case NumericType::Float: return "float";
+                    case NumericType::Double: return "double";
+                    case NumericType::DoubleExp: return "dexp";
+                    case NumericType::Auto: return "ERROR";
+                }
+                return "???";
+            }(),
+            [&](){
                 switch (render_type) {
-                    case wacfrac::RenderType::Direct: return "direct";
-                    case wacfrac::RenderType::Perturbed: return "perturbed";
-                    case wacfrac::RenderType::BLA: return "bla";
-                    case wacfrac::RenderType::Auto: return "ERROR";
+                    case RenderType::Direct: return "direct";
+                    case RenderType::Perturbed: return "perturbed";
+                    case RenderType::BLA: return "bla";
+                    case RenderType::Auto: return "ERROR";
                 }
                 return "???";
             }());
 
-        auto start = std::chrono::steady_clock::now();
+        // Render Pass
+        auto start = std::chrono::steady_clock::now(); // NOTE: Unnecessary if log level > info
         with_numeric_type(num_type, [&]<typename T>(NumericTypeTag<T>){
-            Viewport v {focus, conf.scale, resolution};
-            v.precision(p);
-            auto orbits {pixel_orbits.as_span<T>()}; // NOTE: as_span is not currently a template
+            using CT = ComplexValueTypeT<T>;
 
-            if (render_type == wacfrac::RenderType::Direct) {
-                // TODO: parallel for; render
+            if (render_type == RenderType::Direct) {
+                auto screen {pixels.as_span()};
+                auto row_width {conf.resolution.width};
+                T start {
+                    to_real<CT>(view.center.real()) - to_real<CT>(view.dimensions.real()) / static_cast<CT>(2.0),
+                    to_real<CT>(view.center.imag()) - to_real<CT>(view.dimensions.imag()) / static_cast<CT>(2.0)
+                };
+                T delta { // WARN: May be an incorrect equation, seems right
+                    to_real<CT>(view.dimensions.real()) / static_cast<CT>(conf.resolution.width),
+                    to_real<CT>(view.dimensions.imag()) / static_cast<CT>(conf.resolution.height)
+                };
+                auto escape_radius {conf.escape_radius};
+                auto palette {conf.palette.as_span()};
+
+                logging::debug("Performing a direct render: pixels={}, row_width={}", screen.size(), row_width);
+                conf.ctx.parallel_for(screen.size(),
+                    [screen,
+                     row_width,
+                     start,
+                     delta,
+                     max_n,
+                     escape_radius,
+                     palette] // TODO: Sensatize to colorization type param (discrete vs cont)
+                    WF_HD
+                    (int tid){
+                        auto [z, n] {escape(
+                            sample_c_value(
+                                tid,
+                                row_width,
+                                start,
+                                delta),
+                            max_n,
+                            escape_radius)};
+
+                        screen[tid] = colorize_discrete(n, max_n, palette);
+                    });
+                logging::debug("Render finished");
             } else {
-                Viewport view {focus, conf.scale, resolution};
-                view.precision(p);
-                auto c_ref {focus};
+                auto c_ref {conf.focus};
                 const auto& ref {
-                    conf.ref_set.has_value()
-                    ? conf.ref_set->select<T>()
-                    : wacfrac::compute_reference_mt<T>(
+                    img_conf.ref_set.has_value()
+                    ? img_conf.ref_set->select<T>()
+                    : compute_reference_mt<T>(
                         c_ref, max_n, 
                         std::numeric_limits<double>::infinity())
                 };
 
-                if (render_type == wacfrac::RenderType::Perturbed) {
-                    // TODO: parallel for; render
-                } else if (render_type == wacfrac::RenderType::BLA) {
-                    using CT = wacfrac::ComplexValueTypeT<T>;
-                    auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
-                    if (conf.epsilon != 0.0) {
-                        dexp_bla_calculator.compute_manual(static_cast<CT>(conf.epsilon), ref, max_dc);
+                if (render_type == RenderType::Perturbed) {
+                    // TODO: parallel for; render perturbed
+                } else if (render_type == RenderType::BLA) {
+                    using CT = ComplexValueTypeT<T>;
+                    auto max_dc {to_complex<T>(view.compute_max_dc(c_ref))};
+                    bla::Calculator<Context, T> bla_calculator {conf.bla_config}; // WARN: Filthy Nasty. See previous 
+                    if (img_conf.epsilon != 0.0) {
+                        bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), ref, max_dc);
                     } else {
-                        dexp_bla_calculator.compute_search( // NOTE: Assumes search params were initialized in the BLA
-                            view.generate_probes<T>(probe_grid.first, probe_grid.second),
-                            max_dc, ref, escape_radius);
+                        bla_calculator.compute_search(
+                            view.generate_probes<T>(conf.probe_grid.first, conf.probe_grid.second),
+                            max_dc, ref, conf.escape_radius);
                     }
-                    auto bla = dexp_bla_calculator.get_approximator();
+                    auto bla = bla_calculator.get_approximator();
 
-                    // TODO: parallel for; render
+                    // TODO: parallel for; render approx
                 }
             }
         });
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( // NOTE: Unnecessary if log level > info
             std::chrono::steady_clock::now() - start
         );
 
         logging::info("Image render took {}ms", elapsed.count());
-        return pixels;
+        return std::move(pixels);
     }
 };
 

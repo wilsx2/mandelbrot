@@ -1,11 +1,13 @@
 #pragma once
 #include "wacfrac/macros.hpp"
 #include "wacfrac/log.hpp"
+#include <cstring>
 #include <memory>
 #include <ranges>
 #include <algorithm>
 #include <execution>
 #include <functional>
+#include <utility>
 
 #if defined(__CUDACC__)
 #include <cuda/std/span>
@@ -25,6 +27,14 @@ class Buffer {
         : _data(raw, del)
         , _size(size)
     {}
+    Buffer(const Buffer&) = delete;
+    Buffer& operator=(const Buffer&) = delete;
+    Buffer(Buffer&& other) : _data(std::move(other._data)), _size(std::exchange(other._size, 0)) {}
+    Buffer& operator= (Buffer&& other){
+        _data = std::move(other._data);
+        _size = std::exchange(other._size, 0);
+        return *this;
+    }
     auto as_span() const { return WF_STD::span<T>(_data.get(), _size); }
     auto data() const {
         return _data.get();
@@ -32,7 +42,7 @@ class Buffer {
     auto size() const {
         return _size;
     }
-    operator WF_STD::span<T>() const { return {_data.get(), _size}; }
+    operator WF_STD::span<T>() const requires (!std::is_const_v<T>) { return {_data.get(), _size}; }
     operator WF_STD::span<const T>() const { return {_data.get(), _size}; }
 
     friend void swap(Buffer& lhs, Buffer& rhs) {
@@ -74,10 +84,25 @@ class Context {
         return Buffer<T>(alloc<T>(count), count, deallocator<T>());
     }
     template<typename T>
+    auto make_buffer(WF_STD::span<T> src) {
+        auto buf {Buffer<T>(alloc<T>(src.size()), src.size(), deallocator<T>())};
+        Context<Derived>::memcpy<T>(buf.as_span(), src);
+        return buf;
+    }
+    template<typename T>
+    auto make_buffer(WF_STD::span<const T> src) {
+        auto buf {Buffer<T>(alloc<T>(src.size()), src.size(), deallocator<T>())};
+        Context<Derived>::memcpy<T>(buf.as_span(), src);
+        return buf;
+    }
+    template<typename T>
     auto make_pointer() {
         return Pointer<T>(alloc<T>(), deallocator<T>());
     }
-
+    template<typename T>
+    auto memcpy(WF_STD::span<T> dst, WF_STD::span<const T> src) -> void {
+        return static_cast<Derived&>(*this).memcpy(dst, src);
+    }
     template <typename F>
     void parallel_for(std::size_t count, F&& func) const {
         return static_cast<Derived&>(*this).parallel_for(count, std::forward(func));
@@ -102,6 +127,11 @@ struct Host : public Context<Host> {
     }
 
     public:
+    template<typename T>
+    auto memcpy(WF_STD::span<T> dst, WF_STD::span<const T> src) -> void {
+        // TODO: Assert sizes are the same
+        std::memcpy(dst.data(), src.data(), dst.size() * sizeof(T));
+    }
     template <typename F>
     void parallel_for(std::size_t count, F&& func) const {
         auto range {std::ranges::iota_view(std::size_t{0}, count)};
@@ -130,17 +160,41 @@ class Device : public Context<Device> {
     // TODO: Support multiple GPUs by specifying device in constructor
 
     template<typename T>
-    auto alloc() -> T*;
+    auto alloc() -> T* {
+        void* raw;
+        auto err {cudaMallocManaged(&raw, sizeof(T))};
+        if (err != cudaSuccess) {
+            logging::error("CUDA error: {}", cudaGetErrorString(err));
+        }
+        return static_cast<T*>(raw);
+    }
     template<typename T>
-    auto alloc(std::size_t count) -> T*;
+    auto alloc(std::size_t count) -> T* {
+        void* raw;
+        auto err {cudaMallocManaged(&raw, sizeof(T) * count)};
+        if (err != cudaSuccess) {
+            logging::error("CUDA error: {}", cudaGetErrorString(err));
+        }
+        return static_cast<T*>(raw);
+    }
     template<typename T>
     struct Deallocator {
-        auto operator()(T* ptr) -> void;
+        auto operator()(T* ptr) -> void {
+            cudaFree(ptr);
+        }
     };
     template<typename T>
-    auto deallocator() -> Deallocator<T>;
+    auto deallocator() -> Deallocator<T> {
+        return {};
+    }
 
     public:
+    template<typename T>
+    auto memcpy(WF_STD::span<T> dst, WF_STD::span<const T> src) -> void {
+        // TODO: Assert sizes are the same
+        cudaMemcpy(dst, src, dst.size());
+        // TODO: Catch errors
+    }
     template <typename F>
     void parallel_for(std::size_t count, F&& func) const {
         auto numBlocks {(count + ThreadsPerBlock - 1) / ThreadsPerBlock};

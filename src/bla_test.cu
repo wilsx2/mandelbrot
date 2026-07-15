@@ -82,7 +82,7 @@ auto test_compute_manual(unsigned ref_size, std::size_t first_level) -> bool {
     auto max_dc = T{0.001, 0.001};
     CT epsilon = 1e-10;
 
-    bla::GenericCalculator<Host, T> host_calc{first_level};
+    bla::Calculator<Host, T> host_calc{{.first_level = 0}};
     host_calc.compute_manual(epsilon, WF_STD::span<const T>(ref.data(), ref.size()), max_dc);
     auto host_approx = host_calc.get_approximator();
 
@@ -90,7 +90,7 @@ auto test_compute_manual(unsigned ref_size, std::size_t first_level) -> bool {
     CUDA_CHECK(cudaMallocManaged(&d_ref, ref_size * sizeof(T)));
     std::memcpy(d_ref, ref.data(), ref_size * sizeof(T));
 
-    bla::GenericCalculator<Device, T> device_calc{first_level};
+    bla::Calculator<Device, T> device_calc{{.first_level = 0}};
     device_calc.compute_manual(epsilon, WF_STD::span<const T>(d_ref, ref_size), max_dc);
     auto device_approx = device_calc.get_approximator();
 
@@ -142,7 +142,7 @@ auto test_escape_approximate() -> bool {
     auto max_dc = T{0.001, 0.001};
     CT epsilon = 1e-10;
 
-    bla::GenericCalculator<Host, T> host_calc{0};
+    bla::Calculator<Host, T> host_calc{{.first_level = 0}};
     host_calc.compute_manual(epsilon, WF_STD::span<const T>(ref.data(), ref.size()), max_dc);
     auto host_approx = host_calc.get_approximator();
 
@@ -150,7 +150,7 @@ auto test_escape_approximate() -> bool {
     CUDA_CHECK(cudaMallocManaged(&d_ref, REF_SIZE * sizeof(T)));
     std::memcpy(d_ref, ref.data(), REF_SIZE * sizeof(T));
 
-    bla::GenericCalculator<Device, T> device_calc{0};
+    bla::Calculator<Device, T> device_calc{{.first_level = 0}};
     device_calc.compute_manual(epsilon, WF_STD::span<const T>(d_ref, REF_SIZE), max_dc);
     auto device_approx = device_calc.get_approximator();
 
@@ -222,15 +222,16 @@ auto test_compute_search() -> bool {
     auto ref = make_reference(REF_SIZE);
     auto probes = make_probes();
     auto max_dc = T{0.001, 0.001};
-    bla::SearchParams params{
+    bla::Params params{
+        .first_level = 0,
         .lower_exp = -10.0,
         .upper_exp = 0.0,
         .tolerance = 1e-4,
         .convergence_radius = 0.1,
     };
 
-    bla::GenericCalculator<Host, T> host_calc{0};
-    host_calc.compute_search(params, WF_STD::span<const T>(probes.data(), probes.size()),
+    bla::Calculator<Host, T> host_calc{params};
+    host_calc.compute_search(WF_STD::span<const T>(probes.data(), probes.size()),
                              max_dc, WF_STD::span<const T>(ref.data(), ref.size()));
     auto host_approx = host_calc.get_approximator();
 
@@ -241,8 +242,8 @@ auto test_compute_search() -> bool {
     std::memcpy(d_ref, ref.data(), REF_SIZE * sizeof(T));
     std::memcpy(d_probes, probes.data(), probes.size() * sizeof(T));
 
-    bla::GenericCalculator<Device, T> device_calc{0};
-    device_calc.compute_search(params, WF_STD::span<const T>(d_probes, probes.size()),
+    bla::Calculator<Device, T> device_calc{params};
+    device_calc.compute_search(WF_STD::span<const T>(d_probes, probes.size()),
                                max_dc, WF_STD::span<const T>(d_ref, REF_SIZE));
     auto device_approx = device_calc.get_approximator();
 

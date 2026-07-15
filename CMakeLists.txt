@@ -68,7 +68,6 @@ add_library(libwacfrac STATIC
     src/wacfrac/viewport.cpp
     src/wacfrac/io.cpp
     src/wacfrac/log.cpp
-    src/wacfrac/context.cu
 )
 set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libwacfrac PUBLIC

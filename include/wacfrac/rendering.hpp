@@ -28,4 +28,19 @@ auto sample_c_values(const Viewport& view, const Resolution& res, T center = 0.0
     });
 }
 
+template <ComplexConcept T>
+WF_HD
+auto sample_c_value(std::size_t idx,
+                    std::size_t row_width,
+                    T start,
+                    T delta) -> T {
+    using CT = ComplexValueTypeT<T>;
+    CT x {static_cast<CT>(idx % row_width)};
+    CT y {static_cast<CT>(idx / row_width)};
+    return T {
+        start.real() + delta.real() * x,
+        start.imag() + delta.imag() * y
+    };
+}
+
 }   // namespace wacfrac

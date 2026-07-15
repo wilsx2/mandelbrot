@@ -1,20 +1,23 @@
 #pragma once
 
 #include "wacfrac/log.hpp"
-#include "wacfrac/orbit.hpp"
-#include "wacfrac/wacfrac.hpp"
+#include "wacfrac/renderer.hpp"
+#include "wacfrac/types.hpp"
 #include <argumentum/argparse.h>
 #include <array>
 #include <boost/optional.hpp>
+#include <algorithm>
+#include <cctype>
 #include <cstddef>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <ranges>
 
 namespace wacfrac {
 
-constexpr std::size_t DEFAULT_MP_PRECISION = 2000;
+constexpr std::size_t DEFAULT_MP_PRECISION = 2000; // WARN: Dangerous assumption
 
 template <typename F>
 auto make_nargs2_parser(F&& on_complete) {
@@ -50,63 +53,66 @@ static void parse_multifloat(MultiFloat& target, const std::string& value){
     target = MultiFloat(value, DEFAULT_MP_PRECISION);
 }
 
-static void parse_palette_string(std::vector<Pixel>& target, const std::string& value) {
-    std::ranges::copy(
-        value | std::views::split(' ') | std::views::transform([](auto subrange) {
+static void parse_multicomplex(MultiComplex& target, const std::string& value){
+    std::string normalized(value);
+    std::transform(normalized.begin(), normalized.end(), normalized.begin(),
+        [](unsigned char c) { return std::isspace(c) ? ' ' : c; });
+    std::stringstream ss {normalized};
+    std::string real, imag;
+    std::getline(ss, real, ' ');
+    std::getline(ss, imag, ' ');
+
+    target = MultiComplex(real, imag, DEFAULT_MP_PRECISION);
+}
+
+template<typename Context>
+static void parse_palette_string(typename Context::template Buffer<Pixel>& target, const std::string& value) {
+    Context ctx {}; // WARN: Should be an arg
+    std::string normalized(value);
+    std::transform(normalized.begin(), normalized.end(), normalized.begin(),
+        [](unsigned char c) { return std::isspace(c) ? ' ' : c; });
+    auto view {normalized | std::views::split(' ') | std::views::transform([](auto subrange) {
             return parse_color(std::string_view(&*subrange.begin(), subrange.size()));
-        }),
-        std::back_inserter(target)
-    );
-    if (target.empty()) {
-        logging::info("Falling back to default palette");
-        target = wacfrac::ULTRA;
+        }) | std::views::enumerate};
+    target = ctx.template make_buffer<Pixel>(std::ranges::distance(view));
+    for (auto&& [idx, pixel] : view) {
+        target.as_span()[idx] = pixel;
     }
 }
 
-struct SharedOptions {
-    Resolution resolution {500, 500};
-    MultiComplex focus {-0.5, 0.0};
-    double escape_radius {4.0};
-    std::vector<Pixel> palette {};
-    bool discrete_coloring {false};
-    int log_level {2};
-
-    // Iteration
-    std::tuple<double, double, double> iteration_parameters {250.0, 50.0, 1.5};
-
-    // BLA Search
-    std::pair<std::size_t, std::size_t> probe_grid {8, 8};
-    double tolerance {1e-6};
-    double lower_exp {-(1 << 12)};
-    double upper_exp {-(1 << 6)};
-    std::size_t first_level {0};
+template<typename Context>
+struct RendererOptions : public RendererConfig<Context> {
+    unsigned log_level {2};
 
     void add_parameters(argumentum::ParameterConfig& args) {
-        args.add_parameter(resolution, "--resolution", "-r")
-            .nargs(2).absent({500, 500})
+        args.add_parameter(this->resolution, "--resolution", "-r")
+            .nargs(2).absent(this->resolution)
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
                 target.width = std::stoul(parts[0]);
                 target.height = std::stoul(parts[1]);
             }))
             .help("Width and height of output image");
-        args.add_parameter(focus, "--focus", "-f")
-            .nargs(2).absent({-0.5, 0.0})
+        args.add_parameter(this->focus, "--focus", "-f")
+            .nargs(2).absent(this->focus)
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
-                target = MultiComplex{MultiFloat{parts[0], DEFAULT_MP_PRECISION}, MultiFloat{parts[1], DEFAULT_MP_PRECISION}, DEFAULT_MP_PRECISION};
+                target = MultiComplex(parts[0], parts[1], DEFAULT_MP_PRECISION);
             }))
             .help("Coordinates to zoom in on");
-        args.add_parameter(escape_radius, "--escape-radius", "-e")
-            .nargs(1).absent(4.0)
+        args.add_parameter(this->escape_radius, "--escape-radius", "-e")
+            .nargs(1).absent(this->escape_radius)
             .help("Escape radius");
-        args.add_parameter(palette, "--color-palette", "-c")
-            .minargs(0).absent(ULTRA)
-            .action(parse_palette_string)
+        args.add_parameter(this->palette, "--color-palette", "-c")
+            .nargs(1) /*  NOTE: Argumentum requires .absent to take a const&, and without absent 
+                       *        will zero initialize the parameter. Buffer cannot be
+                       *        copied, so the default value is reinitialized in Renderer.
+                       *        I hate argumentum. */
+            .action(parse_palette_string<Context>)
             .help("Hex formatted colors mapped to escape time");
-        args.add_parameter(discrete_coloring, "--discrete-coloring", "-d")
-            .nargs(0).absent(false)
+        args.add_parameter(this->discrete_coloring, "--discrete-coloring", "-d")
+            .nargs(0).absent(this->discrete_coloring)
             .help("Disable smooth/continuous coloring");
-        args.add_parameter(iteration_parameters, "--iteration-parameters", "-N")
-            .nargs(3).absent({250.0, 50.0, 1.5})
+        args.add_parameter(this->iteration_parameters, "--iteration-parameters", "-N")
+            .nargs(3).absent(this->iteration_parameters)
             .action(make_nargs3_parser([](auto& target, const std::array<std::string, 3>& parts){
                 std::get<0>(target) = std::stod(parts[0]);
                 std::get<1>(target) = std::stod(parts[1]);
@@ -114,158 +120,120 @@ struct SharedOptions {
             }))
             .help("func max_iterations(mod, fact, exp) = mod + fact * exponential_scale^exp");
         args.add_parameter(log_level, "--log-level")
-            .nargs(1).absent(2)
+            .nargs(1).absent(log_level)
             .help("Log level: 0=Trace, 1=Debug, 2=Info, 3=Warning, 4=Error, 5=Fatal");
-        
-        // BLA Search
-        args.add_parameter(probe_grid, "--probes")
-            .nargs(2).absent({8, 8})
+
+        args.add_parameter(this->probe_grid, "--probes")
+            .nargs(2).absent(this->probe_grid)
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
                 target.first = std::stoul(parts[0]);
                 target.second = std::stoul(parts[1]);
             }))
             .help("Probe grid dimensions (rows cols)");
-        args.add_parameter(tolerance, "--tolerance", "-T")
-            .nargs(1).absent(1e-6)
+        args.add_parameter(this->bla_config.tolerance, "--tolerance", "-T")
+            .nargs(1).absent(this->bla_config.tolerance)
             .help("Epsilon search tolerance");
-        args.add_parameter(lower_exp, "--lower-exp", "-l")
-            .nargs(1).absent(-(1 << 12))
+        args.add_parameter(this->bla_config.lower_exp, "--lower-exp", "-l")
+            .nargs(1).absent(this->bla_config.lower_exp)
             .help("Lower exponent for epsilon search");
-        args.add_parameter(upper_exp, "--upper-exp", "-u")
-            .nargs(1).absent(-(1 << 6))
+        args.add_parameter(this->bla_config.upper_exp, "--upper-exp", "-u")
+            .nargs(1).absent(this->bla_config.upper_exp)
             .help("Upper exponent for epsilon search");
-        args.add_parameter(first_level, "--first-level", "-L")
-            .nargs(1).absent(0)
+        args.add_parameter(this->bla_config.first_level, "--first-level", "-L")
+            .nargs(1).absent(this->bla_config.first_level)
             .help("First BLA level (0 = auto)");
     }
 };
 
 constexpr double DIRECT_THRESHOLD = 1e13;
 constexpr double PERTURB_THRESHOLD = 1e25;
-enum class RenderType { Direct , Perturbed , BLA };
 
-struct ImageOptions : argumentum::CommandOptions {
+struct ImageOptions : public ImageConfig, public argumentum::CommandOptions {
     using CommandOptions::CommandOptions;
-    std::shared_ptr<SharedOptions> shared;
-    boost::optional<const ReferenceSet&> ref_set;
 
     std::string filepath {"mandelbrot.ppm"};
-    MultiFloat scale {0.4};
-    unsigned max_iterations {0u};
-    std::size_t precision {0};
-    std::string numeric_type {"auto"};
-    std::string render_type {"auto"};
-    
-    // Manual BLA Override
-    double epsilon {0.0};
-
-    auto effective_max_iterations() const -> unsigned {
-        return max_iterations ? max_iterations
-        : wacfrac::required_iterations(1.0 / scale, 
-            std::get<0>(shared->iteration_parameters),
-            std::get<1>(shared->iteration_parameters),
-            std::get<2>(shared->iteration_parameters)
-        );
-    }
-
-    auto effective_numeric_type() const -> std::string {
-        if (numeric_type != "auto")
-            return numeric_type;
-        auto p {effective_precision()};
-        if (p > 1000) return "dexp";
-        if (p > 5)   return "double";
-        return "float";
-    }
-
-    auto effective_precision() const -> std::size_t {
-        return precision ? precision : wacfrac::required_precision(1.0 / scale);
-    }
-
-    auto effective_render_type() const -> RenderType {
-        if (render_type == "auto") {
-            if (scale < DIRECT_THRESHOLD) {
-                return RenderType::Direct;
-            } else if (scale < PERTURB_THRESHOLD) {
-                return RenderType::Perturbed;
-            } else {
-                return RenderType::BLA;
-            }
-        } else if (render_type == "direct")
-            return RenderType::Direct;
-        else if (render_type == "perturbed")
-            return RenderType::Perturbed;
-        else if (render_type == "bla")
-            return RenderType::BLA;
-        wacfrac::logging::warning("Invalid render type '{}' provided, falling back to direct", render_type);
-        return RenderType::Direct;
-    }
 
     void add_parameters(argumentum::ParameterConfig& args) override {
-        shared = std::make_shared<SharedOptions>();
-        shared->add_parameters(args);
-
         args.add_parameter(filepath, "--output", "-o")
-            .nargs(1).absent("mandelbrot.ppm")
+            .nargs(1).absent(filepath)
             .help("Path to output file");
-        args.add_parameter(scale, "--zoom-scale", "-z")
-            .nargs(1).absent(0.4)
+        args.add_parameter(this->scale, "--zoom-scale", "-z")
+            .nargs(1).absent(this->scale)
             .action(parse_multifloat)
             .help("Zoom scale factor");
-        args.add_parameter(max_iterations, "--max-iterations", "-n")
-            .nargs(1).absent(0)
+        args.add_parameter(this->max_iterations, "--max-iterations", "-n")
+            .nargs(1).absent(this->max_iterations)
             .help("Maximum iterations (0 = auto)");
-        args.add_parameter(precision, "--precision", "-p")
-            .nargs(1).absent(0)
+        args.add_parameter(this->precision, "--precision", "-p")
+            .nargs(1).absent(this->precision)
             .help("Decimal digits (0 = auto)");
-        args.add_parameter(numeric_type, "--numeric-type", "-t")
-            .nargs(1).absent("auto")
+        args.add_parameter(this->numeric_type, "--numeric-type", "-t")
+            .nargs(1).absent(this->numeric_type)
+            .action([](auto& target, const std::string& value){
+                target = [&](){
+                    if (value == "auto") {
+                        return NumericType::Auto;
+                    } else if (value == "float") {
+                        return NumericType::Float;
+                    } else if (value == "double") {
+                        return NumericType::Double;
+                    } else if (value == "dexp") {
+                        return NumericType::DoubleExp;
+                    }
+                    logging::warning("\"{}\" is not a recognized numeric type, falling back to auto", value);
+                    return NumericType::Auto;
+                }();
+            })
             .help("Number type: auto, float, double, dexp");
-        args.add_parameter(render_type, "--render-type", "-R")
-            .nargs(1).absent("auto")
+        args.add_parameter(this->render_type, "--render-type", "-R") // WARN: Above
+            .nargs(1).absent(this->render_type)
+            .action([](auto& target, const std::string& value){
+                target = [&](){
+                    if (value == "auto") {
+                        return RenderType::Auto;
+                    } else if (value == "direct") {
+                        return RenderType::Direct;
+                    } else if (value == "perturbed") {
+                        return RenderType::Perturbed;
+                    } else if (value == "bla") {
+                        return RenderType::BLA;
+                    }
+                    logging::warning("\"{}\" is not a recognized numeric type, falling back to auto", value);
+                    return RenderType::Auto;
+                }();
+            })
             .help("Number type: auto, direct, perturbed, bla");
-        args.add_parameter(epsilon, "--epsilon", "-E")
-            .nargs(1).absent(0.0)
+        args.add_parameter(this->epsilon, "--epsilon", "-E")
+            .nargs(1).absent(this->epsilon)
             .help("Direct epsilon value (0 = use binary search)");
     }
 };
 
-struct VideoOptions : argumentum::CommandOptions {
+struct VideoOptions : public VideoConfig, public argumentum::CommandOptions {
     using CommandOptions::CommandOptions;
-    std::shared_ptr<SharedOptions> shared;
 
-    // Files
     std::string directory {"mandelbrot"};
-    double frames_per_second {24.0};
-    std::size_t segment_size {64};
-    
-    // Zoom
-    MultiFloat initial_scale {0.4};
-    MultiFloat final_scale {1e1};
-    double zoom_per_second {2.0};
 
     void add_parameters(argumentum::ParameterConfig& args) override {
-        shared = std::make_shared<SharedOptions>();
-        shared->add_parameters(args);
-
         args.add_parameter(directory, "--output", "-o")
-            .nargs(1).absent("mandelbrot")
+            .nargs(1).absent(directory)
             .help("Path to the directory where video frames will be written to");
-        args.add_parameter(initial_scale, "--initial-scale", "-a")
-            .nargs(1).absent(0.4)
+        args.add_parameter(this->initial_scale, "--initial-scale", "-a")
+            .nargs(1).absent(this->initial_scale)
             .action(parse_multifloat)
             .help("Zoom factor at the first frame");
-        args.add_parameter(final_scale, "--final-scale", "-b")
-            .nargs(1).absent(1e1)
+        args.add_parameter(this->final_scale, "--final-scale", "-b")
+            .nargs(1).absent(this->final_scale)
             .action(parse_multifloat)
             .help("Zoom factor at the last frame");
-        args.add_parameter(frames_per_second, "--fps")
-            .nargs(1).absent(24.0)
+        args.add_parameter(this->frames_per_second, "--fps")
+            .nargs(1).absent(this->frames_per_second)
             .help("Frames per second");
-        args.add_parameter(zoom_per_second, "--zoom-per-second", "-z")
-            .nargs(1).absent(2.0)
+        args.add_parameter(this->zoom_per_second, "--zoom-per-second", "-z")
+            .nargs(1).absent(this->zoom_per_second)
             .help("Zoom factor applied each second");
-        args.add_parameter(segment_size, "--segment-size", "-S")
-            .nargs(1).absent(64)
+        args.add_parameter(this->segment_size, "--segment-size", "-S")
+            .nargs(1).absent(this->segment_size)
             .help("Frames in each video segment from which the final video is composed");
     }
 };

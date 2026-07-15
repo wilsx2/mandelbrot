@@ -1,14 +1,11 @@
 #pragma once
 
 #include "wacfrac/macros.hpp"
-#include "wacfrac/buffer.hpp"
 #include "wacfrac/context.hpp"
 #include "wacfrac/complex_concept.hpp"
-#include <chrono>
 #include <wacfrac/orbit.hpp>
 #include <wacfrac/types.hpp>
 #include <wacfrac/log.hpp>
-#include <vector>
 #include <optional>
 #include <ranges>
 #include <cmath>
@@ -51,13 +48,6 @@ struct ColumnInfo {
             : 0ull};
         return count;
     }
-};
-
-struct SearchParams {
-    double lower_exp;
-    double upper_exp;
-    double tolerance;
-    double convergence_radius = 1e-3;
 };
 
 template<ComplexConcept T>
@@ -139,25 +129,29 @@ struct Approximator {
     }
 };
 
+struct Config {
+    std::size_t first_level;
+    double lower_exp;
+    double upper_exp;
+    double tolerance;
+    double convergence_radius = 1e-3;
+};
+
+// NOTE: No reason this class cannot be a function
 template <typename Context, ComplexConcept T>
-class GenericCalculator {
+class Calculator {
     public:
     using CT = ComplexValueTypeT<T>;
     template<typename U>
     using Buffer = Context::template Buffer<U>;
     template<typename U>
     using Pointer = Context::template Pointer<U>;
-    GenericCalculator(std::size_t first_level = 0, std::size_t initial_size = 0, Context ctx = {})
+    Calculator(const Config& params, Context ctx = {})
         : _ctx{ctx}
+        , _params(params)
         , _max_ref_size{0}
-        , _first_level{first_level}
         , _last_level{0}
-    {
-        if (initial_size != 0) {
-            resize_buffers(initial_size);
-        }
-        // TODO: Low impact: Pre-allocate probes
-    }
+    { }
     auto resize_buffers(std::size_t ref_size) -> void {
         _max_ref_size = ref_size;
         _last_level = ref_size < 3 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(ref_size)));
@@ -166,7 +160,7 @@ class GenericCalculator {
         _current_working = _ctx.template make_buffer<Bla<T>>(max_n - 1);
         _next_working    = _ctx.template make_buffer<Bla<T>>(max_n - 1);
         initialize_columns(max_n);
-        auto last_i {ColumnInfo::compute_start(max_n, _first_level, _last_level)};
+        auto last_i {ColumnInfo::compute_start(max_n, _params.first_level, _last_level)};
         _approximations  = _ctx.template make_buffer<Bla<T>>(last_i);
     }
     auto compute_manual(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> void {
@@ -185,26 +179,27 @@ class GenericCalculator {
             level_size /= 2;
         }
     }
-    auto compute_search(SearchParams params, WF_STD::span<const T> probes, T max_dc, WF_STD::span<const T> ref, double escape_radius = 2.0) -> void {
-        logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]", params.tolerance, probes.size(), params.lower_exp, params.upper_exp);
+    auto compute_search(WF_STD::span<const T> probes, T max_dc, WF_STD::span<const T> ref, double escape_radius = 2.0) -> void {
+        logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]",
+                      _params.tolerance, probes.size(), _params.lower_exp, _params.upper_exp);
 
         compute_probe_escape_time(probes, ref, escape_radius);
         auto prev_avg_skipped {-1.0};
         CT prev_exp;
-        auto lower_exp {params.lower_exp};
-        auto upper_exp {params.upper_exp};
+        auto lower_exp {_params.lower_exp};
+        auto upper_exp {_params.upper_exp};
         constexpr auto UPPER_LIMIT {32ull};
         for (auto iter : std::views::iota(0ull, UPPER_LIMIT)) {
             auto middle {(upper_exp + lower_exp) / 2.0};
 
             auto epsilon = static_cast<ComplexValueTypeT<T>>(std::pow(10.0, middle));
             compute_manual(epsilon, ref, max_dc);
-            if (upper_exp - lower_exp < params.convergence_radius) {
+            if (upper_exp - lower_exp < _params.convergence_radius) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} (converged)", iter, middle);
                 break;
             }
 
-            compute_skipped_iterations(probes, ref, escape_radius, params.tolerance);
+            compute_skipped_iterations(probes, ref, escape_radius, _params.tolerance);
             if (_tolerance_failed_atom->load()) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} too high", iter, middle);
                 upper_exp = middle;
@@ -225,15 +220,15 @@ class GenericCalculator {
         logging::info( "BLA epsilon search complete");
     }
     auto get_approximator() const -> Approximator<T> {
-        return {_first_level, _last_level, _columns, _approximations};
+        return {_params.first_level, _last_level, _columns, _approximations};
     }
     auto get_approximator() -> Approximator<T> {
-        return {_first_level, _last_level, _columns, _approximations};
+        return {_params.first_level, _last_level, _columns, _approximations};
     }
     public: // TODO: Remove from public API. This is a work around to make NVCC happy with our lambda usage in device code
     auto initialize_columns(std::size_t max_n) -> void {
         auto columns {_columns.as_span()};
-        auto first_level {_first_level};
+        auto first_level {_params.first_level};
         auto last_level {_last_level};
         _ctx.parallel_for(max_n,
             [max_n,
@@ -252,7 +247,7 @@ class GenericCalculator {
             });
     }
     auto compute_initial_approximations(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> void {
-        auto first_level {_first_level};
+        auto first_level {_params.first_level};
         auto approximator = get_approximator();
         auto working = _current_working.as_span();
         _ctx.parallel_for(ref.size() - 2,
@@ -276,7 +271,7 @@ class GenericCalculator {
             });
     }
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
-        if (current_level >= _first_level) {
+        if (current_level >= _params.first_level) {
             auto approximator = get_approximator();
             auto working = _current_working.as_span();
             auto next_working = _next_working.as_span();
@@ -384,8 +379,8 @@ class GenericCalculator {
     }
 
     Context _ctx;
+    Config _params;
     std::size_t _max_ref_size;
-    std::size_t _first_level;
     std::size_t _last_level;
     Buffer<ColumnInfo> _columns;
     Buffer<Bla<T>>     _current_working;
@@ -419,14 +414,5 @@ auto escape_approximate(const T& dc, Ref ref, unsigned max_n, double escape_radi
         });
     return {z, n, skipped};
 }
-
-template <typename T>
-using HostCalculator = GenericCalculator<Host, T>;
-template<typename T>
-using Calculator = HostCalculator<T>;
-#if defined(__CUDACC__)
-template<typename T>
-using DeviceCalculator = GenericCalculator<Device, T>;
-#endif
 
 } // namespace wacfrac::bla

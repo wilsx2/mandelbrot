@@ -1,130 +1,12 @@
-#include "wacfrac/bla.hpp"
 #include "wacfrac/cli_options.hpp"
-#include "wacfrac/color.hpp"
+#include "wacfrac/context.hpp"
 #include "wacfrac/io.hpp"
 #include "wacfrac/log.hpp"
-#include "wacfrac/orbit.hpp"
-#include "wacfrac/rendering.hpp"
-#include "wacfrac/viewport.hpp"
-#include "wacfrac/wacfrac.hpp"
-#include <atomic>
-#include <chrono>
-#include <cmath>
-#include <cstddef>
 #include <cstdlib>
-#include <filesystem>
-#include <functional>
-#include <limits>
 #include <string_view>
 
 namespace {
-
-template <typename T>
-struct NumericTypeTag { using type = T; };
-
-template <typename F>
-decltype(auto) with_numeric_type(const std::string& type, F&& f) {
-    if (type == "float")
-        return f(NumericTypeTag<wacfrac::SingleComplex>{});
-    if (type == "double")
-        return f(NumericTypeTag<wacfrac::DoubleComplex>{});
-    if (type == "dexp")
-        return f(NumericTypeTag<wacfrac::DoubleExpComplex>{});
-    wacfrac::logging::error("Unknown numeric type '{}'", type);
-    std::exit(EXIT_FAILURE);
-}
-
-void render_image(const wacfrac::ImageOptions& opts) {
-    auto max_n {opts.effective_max_iterations()};
-    auto num_type {opts.effective_numeric_type()};
-    auto render_type {opts.effective_render_type()};
-    auto p {opts.effective_precision()};
-    wacfrac::logging::info(
-        "{}: resolution={}x{} focus=({}, {}) zoom={} max_iterations={} precision={} numeric_type={} render_type={}",
-        opts.filepath, opts.shared->resolution.width, opts.shared->resolution.height,
-        opts.shared->focus.real(), opts.shared->focus.imag(), opts.scale,
-        max_n, p, num_type, [&](){
-            switch (render_type) {
-                case wacfrac::RenderType::Direct: return "direct";
-                case wacfrac::RenderType::Perturbed: return "perturbed";
-                case wacfrac::RenderType::BLA: return "bla";
-            }
-            return "???";
-        }());
-
-    wacfrac::MultiFloat::default_precision(static_cast<unsigned>(p));
-    wacfrac::MultiComplex::default_precision(static_cast<unsigned>(p));
-
-    std::vector<wacfrac::Pixel> pixels(opts.shared->resolution.area());
-
-    auto start = std::chrono::steady_clock::now();
-    with_numeric_type(num_type, [&]<typename T>(NumericTypeTag<T>){
-        std::vector<std::pair<wacfrac::Complex<float>, unsigned>> escaped_orbits;
-        escaped_orbits.reserve(pixels.size());
-
-        if (render_type == wacfrac::RenderType::Direct) {
-            wacfrac::Viewport v {opts.shared->focus, opts.scale, opts.shared->resolution};
-            v.precision(p);
-            auto cs {wacfrac::sample_c_values<T>(v, opts.shared->resolution)};
-            for (auto c : cs)
-                escaped_orbits.push_back(wacfrac::escape(c, max_n, opts.shared->escape_radius));
-        } else {
-            wacfrac::Viewport view {opts.shared->focus, opts.scale, opts.shared->resolution};
-            view.precision(p);
-            auto c_ref {opts.shared->focus};
-            const auto& ref {
-                opts.ref_set.has_value()
-                ? opts.ref_set->select<T>()
-                : wacfrac::compute_reference_mt<T>(
-                    c_ref, max_n, 
-                    std::numeric_limits<double>::infinity())
-            };
-            auto dcs {wacfrac::sample_c_values<T>(
-                view, opts.shared->resolution,
-                wacfrac::to_complex<T>(c_ref)
-            )};
-
-            if (render_type == wacfrac::RenderType::Perturbed) {
-                for (auto dc : dcs)
-                    escaped_orbits.push_back(wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_n, opts.shared->escape_radius));
-            } else if (render_type == wacfrac::RenderType::BLA) {
-                using CT = wacfrac::ComplexValueTypeT<T>;
-                auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
-                wacfrac::bla::Calculator<T> calculator{opts.shared->first_level};
-                if (opts.epsilon != 0.0) {
-                    calculator.compute_manual(static_cast<CT>(opts.epsilon), ref, max_dc);
-                } else {
-                    auto probes {view.generate_probes<T>(opts.shared->probe_grid.first, opts.shared->probe_grid.second)};
-                    calculator.compute_search(
-                        {.lower_exp = opts.shared->lower_exp, .upper_exp = opts.shared->upper_exp, .tolerance = opts.shared->tolerance},
-                        std::span(probes), max_dc, ref, opts.shared->escape_radius);
-                }
-                auto bla = calculator.get_approximator();
-                for (auto dc : dcs) {
-                    auto [z, n, _] = wacfrac::bla::escape_approximate(dc, std::span<const T>(ref), static_cast<unsigned>(ref.size()), opts.shared->escape_radius, bla);
-                    escaped_orbits.emplace_back(z, n);
-                }
-            }
-        }
-
-        for (auto&& [pixel, orbit] : std::views::zip(pixels, escaped_orbits)) {
-            pixel = opts.shared->discrete_coloring
-                ? wacfrac::colorize_discrete(std::get<1>(orbit), max_n, opts.shared->palette)
-                : wacfrac::colorize_continuous(wacfrac::Complex<float>{std::get<0>(orbit).real(), std::get<0>(orbit).imag()}, std::get<1>(orbit), max_n, opts.shared->palette);
-        } 
-    });
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now() - start
-    );
-
-    wacfrac::logging::info("Image render took {}ms", elapsed.count());
-    if (wacfrac::write_ppm(opts.filepath, opts.shared->resolution, pixels)) {
-        wacfrac::logging::info("Image written to {}", opts.filepath);
-    } else {
-        wacfrac::logging::error("Image write failed");
-    }
-}
-
+/*
 void render_video(wacfrac::VideoOptions& opts) {
     if (!std::filesystem::create_directory(opts.directory)) {
         wacfrac::logging::error("Directory '{}' failed to create", opts.directory);
@@ -201,17 +83,23 @@ void render_video(wacfrac::VideoOptions& opts) {
         wacfrac::logging::error("Final video failed to compose");
     }
 }
+*/
 
 } // namespace
 
 int main(int argc, char* argv[])
 {
+    wacfrac::logging::init(0);
+
     auto parser = argumentum::argument_parser{};
     auto params = parser.params();
     parser.config().program(argv[0]).description("Mandelbrot Set Plotter");
 
-    params.add_command<wacfrac::ImageOptions>("image").help("Single render");
-    params.add_command<wacfrac::VideoOptions>("video").help("Multi-render video");
+    wacfrac::RendererOptions<wacfrac::Host> renderer_opts;
+    renderer_opts.add_parameters(params);
+
+    params.add_command<wacfrac::ImageOptions>("image");
+    // params.add_command<wacfrac::VideoOptions>("video");
 
     auto parse_result = parser.parse_args(argc, argv);
     if (!parse_result)
@@ -226,12 +114,20 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    if (auto* p = dynamic_cast<wacfrac::ImageOptions*>(cmd.get())) {
-        wacfrac::logging::init(p->shared->log_level);
-        render_image(*p);
+    wacfrac::logging::log_level() = renderer_opts.log_level;
+    wacfrac::Renderer<wacfrac::Host> renderer {std::move(renderer_opts)};
+
+    if (auto* img_opts = dynamic_cast<wacfrac::ImageOptions*>(cmd.get())) {
+        if (wacfrac::write_ppm(img_opts->filepath, renderer.conf.resolution, renderer.render(*img_opts))) {
+            wacfrac::logging::info("Image written to {}", img_opts->filepath);
+        } else {
+            wacfrac::logging::error("Image write failed");
+        }
     }
+    /*
     if (auto* p = dynamic_cast<wacfrac::VideoOptions*>(cmd.get())) {
         wacfrac::logging::init(p->shared->log_level);
         render_video(*p);
     }
+    */
 }

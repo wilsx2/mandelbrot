@@ -1,12 +1,14 @@
-    GPU BLA w/ Test
-    Move BLA search params into member variable
+    Move BLA impl into .cpp for host and .cu for Device
+    Default param fix
     Renderer
         Generic
         Host
         Device
+    Utilize Arenas for image render (BLA, orbits)
     Integrate Renderer w/
-        Bench
         CLI
+        Bench
+    Determine lower and higher exp for BLA search dynamically
 
 July
 - GPU
