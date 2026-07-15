@@ -1,6 +1,7 @@
 #include "wacfrac/bla.hpp"
 #include "wacfrac/complex_concept.hpp"
 #include "wacfrac/orbit.hpp"
+#include "wacfrac/rendering.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/color.hpp"
@@ -110,11 +111,11 @@ struct Renderer {
             if (img_conf.render_type != RenderType::Auto) {
                 return img_conf.render_type;
             }
-            DoubleComplex direct_delta { // WARN: May be an incorrect equation, seems right
-                to_real<double>(view.dimensions.real()) / static_cast<double>(conf.resolution.width),
-                to_real<double>(view.dimensions.imag()) / static_cast<double>(conf.resolution.height)
-            };
-            if (direct_delta.real() == 0.0 || direct_delta.imag() == 0.0) { // NOTE: May need a larger tolerance
+            // NOTE: Computation for direct render. We MUST make this into its own function
+            auto start {view.get_corner_absolute<Complex<double>>()};
+            auto delta {get_pixel_delta<Complex<double>>(view.dimensions, conf.resolution)};
+            auto next {start + delta};
+            if (start.real() == next.real() || start.imag() == next.imag()) { // WARN: Will need a larger tolerance
                 constexpr auto SIGNIFICANT_ITERATIONS {50'000}; // NOTE: Arbitrarily chosen
                 if (max_n >= SIGNIFICANT_ITERATIONS) {
                     return RenderType::BLA;
@@ -172,17 +173,10 @@ struct Renderer {
             auto screen {pixels.as_span()};
             auto row_width {conf.resolution.width};
             auto escape_radius {conf.escape_radius};
+            auto delta {get_pixel_delta<T>(view.dimensions, conf.resolution)};
 
             if (render_type == RenderType::Direct) {
-                T start {
-                    to_real<CT>(view.center.real()) - to_real<CT>(view.dimensions.real()) / static_cast<CT>(2.0),
-                    to_real<CT>(view.center.imag()) - to_real<CT>(view.dimensions.imag()) / static_cast<CT>(2.0)
-                };
-                T delta { // WARN: May be an incorrect equation, seems right
-                    to_real<CT>(view.dimensions.real()) / static_cast<CT>(conf.resolution.width),
-                    to_real<CT>(view.dimensions.imag()) / static_cast<CT>(conf.resolution.height)
-                };
-
+                auto start {view.get_corner_absolute<T>()};
                 logging::debug("Performing a direct render: pixels={}, row_width={}", screen.size(), row_width);
                 conf.ctx.parallel_for(screen.size(),
                     [screen,
@@ -205,6 +199,7 @@ struct Renderer {
                     });
                 logging::debug("Render finished");
             } else {
+                auto start {view.get_corner_relative<T>()};
                 auto c_ref {conf.focus};
                 const auto& reference {
                     img_conf.ref_set.has_value()
@@ -214,14 +209,6 @@ struct Renderer {
                         std::numeric_limits<double>::infinity())
                 };
                 auto ref {std::span(reference)}; // NOTE: When reference becomes a buffer type we will have to change this 
-                T start {
-                    -to_real<CT>(view.dimensions.real()) / static_cast<CT>(2.0),
-                    -to_real<CT>(view.dimensions.imag()) / static_cast<CT>(2.0)
-                };
-                T delta { // WARN: May be an incorrect equation, seems right
-                    to_real<CT>(view.dimensions.real()) / static_cast<CT>(conf.resolution.width),
-                    to_real<CT>(view.dimensions.imag()) / static_cast<CT>(conf.resolution.height)
-                };
 
                 if (render_type == RenderType::Perturbed) {
                     conf.ctx.parallel_for(screen.size(),

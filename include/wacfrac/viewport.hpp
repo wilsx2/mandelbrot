@@ -29,12 +29,33 @@ struct Viewport {
     auto required_precision() const -> std::size_t;
     auto required_iterations(double modifier = 250.0, double factor = 50.0, double exponent = 1.5) const -> unsigned;
     template<ComplexConcept T>
+    auto get_corner_absolute() const -> T;
+    template<ComplexConcept T>
+    auto get_corner_relative() const -> T;
+    template<ComplexConcept T>
     auto generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<T>;
     template<ComplexConcept T>
     auto find_periodic_reference(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<T>>;
 };
 auto required_precision(MultiFloat zoom_factor) -> std::size_t;
 auto required_iterations(MultiFloat zoom_factor, double modifier = 250.0, double factor = 50.0, double exponent = 1.5) -> unsigned;
+
+template<ComplexConcept T>
+auto Viewport::get_corner_absolute() const -> T {
+    using CT = ComplexValueTypeT<T>;
+    return {
+        to_real<CT>(center.real()) - to_real<CT>(dimensions.real()) / static_cast<CT>(2.0),
+        to_real<CT>(center.imag()) - to_real<CT>(dimensions.imag()) / static_cast<CT>(2.0)
+    };
+}
+template<ComplexConcept T>
+auto Viewport::get_corner_relative() const -> T {
+    using CT = ComplexValueTypeT<T>;
+    return {
+        -to_real<CT>(dimensions.real()) / static_cast<CT>(2.0),
+        -to_real<CT>(dimensions.imag()) / static_cast<CT>(2.0)
+    };
+}
 
 template<ComplexConcept T>
 auto Viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<T> {
