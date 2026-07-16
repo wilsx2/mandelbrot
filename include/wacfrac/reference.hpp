@@ -1,5 +1,6 @@
 #pragma once
 
+#include "wacfrac/bla.hpp"
 #include "wacfrac/complex_concept.hpp"
 #include "wacfrac/orbit.hpp"
 #include "wacfrac/types.hpp"
@@ -11,40 +12,40 @@
 namespace wacfrac {
 
 template <ComplexConcept T = DoubleComplex>
-auto compute_reference(MultiComplex c, unsigned max_n, double escape_radius = 4.0) -> std::vector<T> {
+auto compute_reference(WF_STD::span<T> buffer, MultiComplex c, double escape_radius = 4.0) -> unsigned {
+    auto max_n {static_cast<unsigned>(buffer.size())};
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={}", c, max_n, escape_radius);
 
-    std::vector<T> reference;
-    reference.reserve(max_n);
-    reference.emplace_back(to_complex<T>(MultiComplex{0.0, 0.0}));
+    buffer[0] = to_complex<T>(MultiComplex{0.0, 0.0});
 
     MultiComplex z{0.0, 0.0};
-    for (auto n{0u}; n < max_n - 1 && !escaped(z, escape_radius);) {
+    auto n{0u};
+    for (; n < max_n - 1 && !escaped(z, escape_radius);) {
         compute_next_orbit(z, n, c);
-        reference.emplace_back(to_complex<T>(z));
+        buffer[n] = to_complex<T>(z);
     }
 
-    logging::debug( "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
-    return reference;
+    logging::debug( "Reference orbit computed: {} points (max_n={})", n, max_n);
+    return n;
 }
 
 template <ComplexConcept T = DoubleComplex>
-auto compute_reference_mt(MultiComplex c, unsigned max_n, double escape_radius = 4.0) -> std::vector<T> {
+auto compute_reference_mt(WF_STD::span<T> buffer, MultiComplex c, double escape_radius = 4.0) -> std::size_t {
+    auto max_n {static_cast<unsigned>(buffer.size())};
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
     if (max_n == 0)
         return {};
 
-    std::vector<T> reference (max_n);
-    reference[0] = T{0.0, 0.0};
+    buffer[0] = T{0.0, 0.0};
     using CT = ComplexValueTypeT<T>;
-
-    auto count = compute_reference_iteration(c, max_n, escape_radius, [&](unsigned n, const MultiFloat& r, const MultiFloat& i) {
-        reference[n] = T{to_real<CT>(r), to_real<CT>(i)};
-    });
-
-    reference.resize(count);
-    logging::debug( "Reference orbit computed: {} points (max_n={})", reference.size(), max_n);
-    return reference;
+    auto count {compute_reference_iteration(c, max_n, escape_radius, [&](unsigned n, const MultiFloat& r, const MultiFloat& i) {
+        if (n >= buffer.size()) {
+            std::cerr << "NOOO!!" << n << "/" << buffer.size() << std::endl;
+        }
+        buffer[n] = T{to_real<CT>(r), to_real<CT>(i)};
+    })};
+    logging::debug( "Reference orbit computed: {} points (max_n={})", count, max_n);
+    return count;
 }
 
 template <std::invocable<unsigned, const MultiFloat&, const MultiFloat&> F>
@@ -90,30 +91,77 @@ auto compute_reference_iteration(MultiComplex c, unsigned max_n, double escape_r
     return n_1;
 }
 
-inline auto compute_reference_set(MultiComplex c, unsigned max_n, double escape_radius = 4.0) -> ReferenceSet {
-    ReferenceSet refs;
-    if (max_n == 0)
-        return refs;
+template<typename Context>
+struct ReferenceSet {
+    public:
+    ReferenceSet() = default;
+    ReferenceSet(Context ctx, unsigned max_n)
+        : _float_ref {ctx.template make_buffer<SingleComplex>(max_n)}
+        , _double_ref{ctx.template make_buffer<DoubleComplex>(max_n)}
+        , _dexp_ref  {ctx.template make_buffer<DoubleExpComplex>(max_n)}
+        , _size      {0u}
+    {}
+    ReferenceSet& operator=(ReferenceSet&& other) = default; 
 
-    refs.float_ref.resize(max_n);
-    refs.double_ref.resize(max_n);
-    refs.dexp_ref.resize(max_n);
-    refs.float_ref[0]       = SingleComplex{0.0f, 0.0f};
-    refs.double_ref[0]      = DoubleComplex{0.0, 0.0};
-    refs.dexp_ref[0]        = to_complex<DoubleExpComplex>(MultiComplex{0.0, 0.0});
+    void make(Context ctx, unsigned max_n) {
+        _float_ref   = ctx.template make_buffer<SingleComplex>(max_n);
+        _double_ref  = ctx.template make_buffer<DoubleComplex>(max_n);
+        _dexp_ref    = ctx.template make_buffer<DoubleExpComplex>(max_n);
+        _size        = 0u;
+    }
 
-    auto count = compute_reference_iteration(c, max_n, escape_radius, [&](unsigned n, const MultiFloat& r, const MultiFloat& i) {
-        refs.float_ref[n]       = SingleComplex{to_real<float>(r), to_real<float>(i)};
-        refs.double_ref[n]      = DoubleComplex{to_real<double>(r), to_real<double>(i)};
-        refs.dexp_ref[n]        = DoubleExpComplex{to_real<DoubleExp>(r), to_real<DoubleExp>(i)};
-    });
+    auto max_n() const -> unsigned {
+        return _float_ref.size();
+    }
 
-    refs.float_ref.resize(count);
-    refs.double_ref.resize(count);
-    refs.dexp_ref.resize(count);
+    auto size() const -> unsigned {
+        return _size;
+    }
 
-    logging::debug( "All references computed: {} points", count);
-    return refs;
-}
+    template <typename T>
+    auto select() const -> WF_STD::span<const T> {
+        if constexpr (std::is_same_v<T, SingleComplex>)
+            return _float_ref.as_span().subspan(0, _size);
+        else if constexpr (std::is_same_v<T, DoubleComplex>)
+            return _double_ref.as_span().subspan(0, _size);
+        else
+            return _dexp_ref.as_span().subspan(0, _size);
+    }
+
+    template <typename T>
+    auto select() -> WF_STD::span<T> {
+        if constexpr (std::is_same_v<T, SingleComplex>)
+            return _float_ref.as_span().subspan(0, _size);
+        else if constexpr (std::is_same_v<T, DoubleComplex>)
+            return _double_ref.as_span().subspan(0, _size);
+        else
+            return _dexp_ref.as_span().subspan(0, _size);
+    }
+
+    auto compute(MultiComplex c, double escape_radius = 4.0) -> void {
+        if (max_n() == 0)
+            return;
+
+        _float_ref[0]       = SingleComplex{0.0f, 0.0f};
+        _double_ref[0]      = DoubleComplex{0.0, 0.0};
+        _dexp_ref[0]        = to_complex<DoubleExpComplex>(MultiComplex{0.0, 0.0}); // WARN: Seems unecessesary
+        _size = compute_reference_iteration(c, max_n(), escape_radius, [&](unsigned n, const MultiFloat& r, const MultiFloat& i) {
+            if (n >= _float_ref.size()) {
+                std::cerr << "NOOO!!" << n << "/" << max_n() << std::endl;
+            }
+            _float_ref[n]       = SingleComplex{to_real<float>(r), to_real<float>(i)};
+            _double_ref[n]      = DoubleComplex{to_real<double>(r), to_real<double>(i)};
+            _dexp_ref[n]        = DoubleExpComplex{to_real<DoubleExp>(r), to_real<DoubleExp>(i)};
+        });
+
+        logging::debug( "All references computed: {} points", _size);
+    }
+
+    private:
+    Context::template Buffer<SingleComplex> _float_ref;
+    Context::template Buffer<DoubleComplex> _double_ref;
+    Context::template Buffer<DoubleExpComplex> _dexp_ref;
+    unsigned _size;
+};
 
 } // namespace wacfrac

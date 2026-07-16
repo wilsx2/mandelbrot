@@ -26,38 +26,6 @@ using MultiComplex  = boost::multiprecision::mpc_complex;
 using SingleExpComplex = Complex<SingleExp>;
 using DoubleExpComplex = Complex<DoubleExp>;
 
-struct ReferenceSet {
-    std::vector<SingleComplex> float_ref;
-    std::vector<DoubleComplex> double_ref;
-    std::vector<DoubleExpComplex> dexp_ref;
-
-    template <typename T>
-    auto select() const -> const std::vector<T>& {
-        if constexpr (std::is_same_v<T, SingleComplex>)
-            return float_ref;
-        else if constexpr (std::is_same_v<T, DoubleComplex>)
-            return double_ref;
-        else
-            return dexp_ref;
-    }
-
-    template <typename T>
-    auto select() -> std::vector<T>& {
-        if constexpr (std::is_same_v<T, SingleComplex>)
-            return float_ref;
-        else if constexpr (std::is_same_v<T, DoubleComplex>)
-            return double_ref;
-        else
-            return dexp_ref;
-    }
-
-    void reserve(std::size_t size) {
-        select<SingleComplex>().reserve(size);
-        select<DoubleComplex>().reserve(size);
-        select<DoubleExpComplex>().reserve(size);
-    }
-};
-
 template <typename Real>
 auto to_real(const MultiFloat& val) -> Real {
     using NumberDoubleExp = boost::multiprecision::number<DoubleExp>;

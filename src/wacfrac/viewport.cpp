@@ -70,10 +70,6 @@ auto Viewport::required_iterations(double modifier, double factor, double expone
     return wacfrac::required_iterations(1.0 / dimensions.real(), modifier, factor, exponent);
 }
 
-template auto Viewport::find_periodic_reference<SingleComplex>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<SingleComplex>>;
-template auto Viewport::find_periodic_reference<DoubleComplex>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<DoubleComplex>>;
-template auto Viewport::find_periodic_reference<DoubleExpComplex>(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<DoubleExpComplex>>;
-
 auto required_precision(MultiFloat zoom) -> std::size_t {
     using namespace std;
     using namespace boost::multiprecision;

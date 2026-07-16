@@ -26,6 +26,8 @@ void save_render(wacfrac::Renderer<Context>& renderer, const wacfrac::ImageOptio
 
 template<typename Context>
 void render_video(wacfrac::Renderer<Context>& renderer, wacfrac::VideoOptions& vid_opts) {
+    Context ctx {};
+
     if (!std::filesystem::create_directory(vid_opts.directory)) {
         wacfrac::logging::error("Directory '{}' failed to create", vid_opts.directory);
     }
@@ -41,14 +43,15 @@ void render_video(wacfrac::Renderer<Context>& renderer, wacfrac::VideoOptions& v
     wacfrac::MultiComplex::default_precision(static_cast<unsigned>(precision));
     wacfrac::Viewport final_view {renderer.conf.focus, vid_opts.final_scale, renderer.conf.resolution};
 
-    auto refs = wacfrac::compute_reference_set(
-        renderer.conf.focus,
-        max_iterations,
-        std::numeric_limits<double>::infinity());
+    {
+        wacfrac::ReferenceSet refs {ctx, max_iterations};
+        refs.compute(final_view.center, renderer.conf.escape_radius);
+        renderer.cache_references(std::move(refs));
+    }
 
     wacfrac::logging::info(
         "Video pre-compute: final_zoom={} max_iterations={} precision={} ref_size={}",
-        vid_opts.final_scale, max_iterations, precision, refs.double_ref.size());
+        vid_opts.final_scale, max_iterations, precision, renderer.ref_cache.size());
     auto total_frames {wacfrac::total_frames(
         vid_opts.initial_scale, vid_opts.final_scale, 
         vid_opts.zoom_per_second, static_cast<float>(vid_opts.frames_per_second))};
@@ -65,7 +68,6 @@ void render_video(wacfrac::Renderer<Context>& renderer, wacfrac::VideoOptions& v
             if (!std::filesystem::exists(frame_filename)) {
                 wacfrac::logging::info("Frame #{}/{} being rendered", frame, total_frames);
                 wacfrac::ImageOptions frame_opts {""};
-                frame_opts.ref_set = refs;
                 frame_opts.filepath = "frame_" + wacfrac::file_suffix(frame % vid_opts.segment_size, vid_opts.segment_size) + ".ppm";
                 frame_opts.scale = scale;
                 save_render(renderer, frame_opts);

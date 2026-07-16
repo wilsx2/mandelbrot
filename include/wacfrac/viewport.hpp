@@ -35,8 +35,6 @@ struct Viewport {
     auto get_corner_relative() const -> T;
     template<ComplexConcept T, typename Context>
     auto generate_probes(const Context& ctx, WF_STD::span<T> buffer, std::size_t cols, std::size_t rows) const -> void;
-    template<ComplexConcept T>
-    auto find_periodic_reference(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<T>>;
 };
 auto required_precision(MultiFloat zoom_factor) -> std::size_t;
 auto required_iterations(MultiFloat zoom_factor, double modifier = 250.0, double factor = 50.0, double exponent = 1.5) -> unsigned;
@@ -78,42 +76,6 @@ auto Viewport::generate_probes(const Context& ctx, WF_STD::span<T> buffer, std::
             corner.imag() + delta.imag() * static_cast<CT>(row)
         };
     });
-}
-
-// https://philthompson.me/2023/Faster-Mandelbrot-Set-Rendering-with-BLA-Bivariate-Linear-Approximation.html
-template<ComplexConcept T>
-auto Viewport::find_periodic_reference(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<T>> {
-    using boost::multiprecision::isnan;
-    logging::info( "Searching for periodic reference (max_n={}, nucleus_iter={})", max_n, find_nucleus_iter);
-
-    auto half_dx = dimensions.real() / 2.0;
-    auto half_dy = dimensions.imag() / 2.0;
-
-    auto inf {std::numeric_limits<double>::infinity()};
-    // Find first non-degenerate reference
-    std::size_t period;
-    PeriodFinder iter {center, half_dx, half_dy, max_n};
-    while ((period = iter.next()) != 0) {
-        logging::debug( "Trying period {} for non-degenerate reference", period);
-        auto c_ref {find_nucleus(center, period, find_nucleus_iter)};
-        if (isnan(c_ref.real()) || isnan(c_ref.imag())) {
-            logging::debug( "Failed to find nucleus");
-            continue;
-        }
-        logging::debug( "Nucleus found, starting on reference");
-        auto reference {compute_reference_mt<T>(c_ref, period, inf)};
-        if (!is_reference_degenerate(reference)) {
-            logging::debug( "Found non-degenerate reference at period {}", period);
-            return std::make_pair(c_ref, reference);
-        }
-    }
-
-    // Fallback to center if none found
-    logging::warning( "No suitable periodic reference found, falling back to view center");
-    return std::make_pair(
-        center,
-        compute_reference_mt<T>(center, max_n, inf)
-    );
 }
 
 }   // namespace wacfrac

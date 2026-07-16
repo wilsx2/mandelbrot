@@ -157,6 +157,11 @@ Renderer<Context>::Renderer(RendererConfig<Context> config)
 }
 
 template<typename Context>
+ auto Renderer<Context>::cache_references(ReferenceSet<Context>&& refs) -> void {
+    ref_cache = std::move(refs);
+}
+
+template<typename Context>
 auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
     // Configuration Pass  NOTE: We can easily and likely ought to break this into its own function
     auto max_n {img_conf.max_iterations != 0 
@@ -256,15 +261,13 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
             logging::debug("start, relative: ({}, {})", static_cast<double>(start.real()), static_cast<double>(start.imag()));
 
             auto c_ref {conf.focus};
-            const auto& reference { // WARN: Memory allocation
-                img_conf.ref_set.has_value()
-                ? img_conf.ref_set->select<T>()
-                : compute_reference_mt<T>(
-                    c_ref, max_n, 
-                    std::numeric_limits<double>::infinity())
-            };
-            auto ref_buf {conf.ctx.make_buffer(WF_STD::span(reference))}; // WARN: Memory allocation. Bad. Put in arena.
-            WF_STD::span<const T> ref {ref_buf.as_span()};
+            auto ref_buf {conf.ctx.template make_buffer<T>(max_n)}; // WARN: Memory allocation. Bad. Put in arena.
+            WF_STD::span<const T> ref {[&](){
+                if (ref_cache.max_n() >= max_n)
+                    return ref_cache.template select<T>();
+                auto n {compute_reference_mt<T>(ref_buf.as_span(), c_ref, conf.escape_radius)};
+                return ref_buf.as_span().subspan(0, n);
+            }()};
 
             if (render_type == RenderType::Perturbed) {
                 perturbed_render_pass(start, delta, ref, max_n);
@@ -273,13 +276,13 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
                 auto max_dc {to_complex<T>(view.compute_max_dc(c_ref))};
                 bla::Calculator<Context, T> bla_calculator {conf.bla_config}; // WARN: Filthy Nasty. Throw this an an Arena
                 if (img_conf.epsilon != 0.0) {
-                    bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), reference, max_dc);
+                    bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), ref, max_dc);
                 } else {
                     auto probes {conf.ctx.template make_buffer<T>(conf.probe_grid.first * conf.probe_grid.second)};
                         // WARN: FILTH! NAST! IN GODS NAME FORSAKE THIS WRETCHED ALLOCATION!
                         // WARN: I'm going to be sick.
                     view.generate_probes<T>(conf.ctx, probes.as_span(), conf.probe_grid.first, conf.probe_grid.second);
-                    bla_calculator.compute_search(probes, max_dc, reference, conf.escape_radius);
+                    bla_calculator.compute_search(probes, max_dc, ref, conf.escape_radius);
                 }
                 auto bla = bla_calculator.get_approximator();
                 bla_render_pass(start, delta, ref, bla, max_n);

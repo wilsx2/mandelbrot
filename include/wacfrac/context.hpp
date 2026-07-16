@@ -43,6 +43,12 @@ class Buffer {
     auto size() const {
         return _size;
     }
+    decltype(auto) operator[](std::size_t idx) const {
+        return _data.get()[idx]; // NOTE: Permits out of bounds reads
+    }
+    decltype(auto) operator[](std::size_t idx) {
+        return _data.get()[idx]; // NOTE: Permits out of bounds reads
+    }
     operator WF_STD::span<T>() const requires (!std::is_const_v<T>) { return {_data.get(), _size}; }
     operator WF_STD::span<const T>() const { return {_data.get(), _size}; }
 
@@ -61,12 +67,12 @@ class Context {
 
     template<typename T>
     auto alloc() -> T* {
-        // TODO: Log
+        logging::debug("Allocating {} bytes", sizeof(T));
         return static_cast<Derived&>(*this).template alloc<T>();
     }
     template<typename T>
     auto alloc(std::size_t count) -> T* {
-        // TODO: Log
+        logging::debug("Allocating {} bytes", sizeof(T)*count);
         return static_cast<Derived&>(*this).template alloc<T>(count);
     }
     template<typename T>

@@ -1,4 +1,5 @@
 #include "wacfrac/bla.hpp"
+#include "wacfrac/reference.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/color.hpp"
@@ -30,7 +31,6 @@ struct RendererConfig {
 };
 
 struct ImageConfig {
-    boost::optional<const ReferenceSet&> ref_set; // NOTE: Should belong to the renderer, not the image
     MultiFloat scale {0.4};
     unsigned max_iterations {0u};
     std::size_t precision {0};
@@ -47,10 +47,12 @@ struct Renderer {
     using Pointer = Context::template Pointer<T>;
 
     RendererConfig<Context> conf;
+    ReferenceSet<Context> ref_cache;
     Buffer<Pixel> pixels;
     Buffer<DoubleExpComplex> pixel_orbits;
 
     Renderer(RendererConfig<Context> config);
+    auto cache_references(ReferenceSet<Context>&& refs) -> void;
     auto render(const ImageConfig& img_conf) -> std::span<const Pixel>;
 
     template<typename T>
