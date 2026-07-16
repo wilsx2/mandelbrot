@@ -50,6 +50,7 @@ struct Renderer {
     ReferenceSet<Context> ref_cache;
     Buffer<Pixel> pixels;
     Buffer<DoubleExpComplex> pixel_orbits;
+    Buffer<std::byte> arena_buffer;
 
     Renderer(RendererConfig<Context> config);
     auto cache_references(ReferenceSet<Context>&& refs) -> void;

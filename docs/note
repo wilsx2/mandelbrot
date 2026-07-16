@@ -1,4 +1,3 @@
-    Store references and ReferenceSets directly on Context::Buffers
     Utilize Arenas for image render (BLA, orbits)
     Integrate Renderer w/ Bench
     Handle really small BLA exponents

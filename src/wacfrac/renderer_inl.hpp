@@ -135,10 +135,13 @@ auto Renderer<Context>::bla_render_pass(T start, T delta, WF_STD::span<const T> 
 
 }
 
+constexpr auto A_GIGABYTE {1'000'000'000ull};
+constexpr auto ARENA_SIZE {A_GIGABYTE};
 template <typename Context>
 Renderer<Context>::Renderer(RendererConfig<Context> config)
     : conf(std::move(config))
     , pixels(this->conf.ctx.template make_buffer<Pixel>(this->conf.resolution.area()))
+    , arena_buffer(this->conf.ctx.template make_buffer<std::byte>(ARENA_SIZE))
 {
     if (conf.palette.size() == 0) {
         conf.palette = conf.ctx.make_buffer(WF_STD::span(ULTRA));
@@ -257,16 +260,18 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
 
             direct_render_pass(start, delta, max_n);
         } else {
+            Arena arena {arena_buffer.as_span()};
+
             auto start {view.get_corner_relative<T>()};
             logging::debug("start, relative: ({}, {})", static_cast<double>(start.real()), static_cast<double>(start.imag()));
 
             auto c_ref {conf.focus};
-            auto ref_buf {conf.ctx.template make_buffer<T>(max_n)}; // WARN: Memory allocation. Bad. Put in arena.
             WF_STD::span<const T> ref {[&](){
                 if (ref_cache.max_n() >= max_n)
                     return ref_cache.template select<T>();
-                auto n {compute_reference_mt<T>(ref_buf.as_span(), c_ref, conf.escape_radius)};
-                return ref_buf.as_span().subspan(0, n);
+                auto buf {arena.alloc<T>(max_n)}; // NOTE: We may be able to give some memory back
+                auto n {compute_reference_mt<T>(buf, c_ref, conf.escape_radius)}; 
+                return buf.subspan(0, n);
             }()};
 
             if (render_type == RenderType::Perturbed) {
