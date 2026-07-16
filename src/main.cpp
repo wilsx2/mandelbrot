@@ -9,6 +9,12 @@
 
 namespace {
 
+bool has_gpu() {
+    int count = 0;
+    auto err = cudaGetDeviceCount(&count);
+    return err == cudaSuccess && count > 0;
+}
+
 template<typename Context>
 void save_render(wacfrac::Renderer<Context>& renderer, const wacfrac::ImageOptions& img_opts) {
     if (wacfrac::write_ppm(img_opts.filepath, renderer.conf.resolution, renderer.render(img_opts))) {
@@ -27,9 +33,9 @@ void render_video(wacfrac::Renderer<Context>& renderer, wacfrac::VideoOptions& v
 
     auto max_iterations = wacfrac::required_iterations(
         vid_opts.final_scale,
-        WF_STD::get<0>(renderer.conf.iteration_parameters),
-        WF_STD::get<1>(renderer.conf.iteration_parameters),
-        WF_STD::get<2>(renderer.conf.iteration_parameters));
+        renderer.conf.iteration_parameters.modifier,
+        renderer.conf.iteration_parameters.factor,
+        renderer.conf.iteration_parameters.exponent);
     auto precision = wacfrac::required_precision(vid_opts.final_scale);
     wacfrac::MultiFloat::default_precision(static_cast<unsigned>(precision));
     wacfrac::MultiComplex::default_precision(static_cast<unsigned>(precision));
@@ -99,6 +105,19 @@ void render_video(wacfrac::Renderer<Context>& renderer, wacfrac::VideoOptions& v
     }
 }
 
+template<typename Context>
+void dispatch(wacfrac::RendererOptions<Context>& opts, argumentum::CommandOptions* cmd) {
+    wacfrac::logging::info("Using {} rendering",
+        std::is_same_v<Context, wacfrac::Device> ? "GPU" : "CPU");
+    wacfrac::Renderer<Context> renderer {std::move(opts)};
+    if (auto* img_opts = dynamic_cast<wacfrac::ImageOptions*>(cmd)) {
+        save_render(renderer, *img_opts);
+    }
+    if (auto* vid_opts = dynamic_cast<wacfrac::VideoOptions*>(cmd)) {
+        render_video(renderer, *vid_opts);
+    }
+}
+
 } // namespace
 
 int main(int argc, char* argv[])
@@ -129,12 +148,22 @@ int main(int argc, char* argv[])
     }
 
     wacfrac::logging::log_level() = renderer_opts.log_level;
-    wacfrac::Renderer<wacfrac::Host> renderer {std::move(renderer_opts)};
 
-    if (auto* img_opts = dynamic_cast<wacfrac::ImageOptions*>(cmd.get())) {
-        save_render(renderer, *img_opts);
-    }
-    if (auto* p = dynamic_cast<wacfrac::VideoOptions*>(cmd.get())) {
-        render_video(renderer, *p);
+    if (has_gpu() && renderer_opts.use_gpu) {
+        wacfrac::RendererOptions<wacfrac::Device> dev_opts;
+        dev_opts.resolution = renderer_opts.resolution;
+        dev_opts.focus = renderer_opts.focus;
+        dev_opts.escape_radius = renderer_opts.escape_radius;
+        dev_opts.discrete_coloring = renderer_opts.discrete_coloring;
+        dev_opts.iteration_parameters = renderer_opts.iteration_parameters; // WARN: It seems like the iteration parameters get flipped. TODO: Make a struct
+        dev_opts.bla_config = renderer_opts.bla_config;
+        dev_opts.probe_grid = renderer_opts.probe_grid;
+        if (renderer_opts.palette.size() > 0) {
+            dev_opts.palette = dev_opts.ctx.make_buffer(renderer_opts.palette.as_span());
+        }
+        dev_opts.log_level = renderer_opts.log_level;
+        dispatch(dev_opts, cmd.get());
+    } else {
+        dispatch(renderer_opts, cmd.get());
     }
 }

@@ -53,8 +53,8 @@ if(MSVC)
 endif()
 # TODO: Add optimization flags
 set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA compute capability")
-set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
-set(CMAKE_CUDA_COMPILE_SEPARABLE_COMPILATION ON)
+set(CMAKE_CUDA_SEPARABLE_COMPILATION OFF)
+set(CMAKE_CUDA_COMPILE_SEPARABLE_COMPILATION OFF)
 set(CMAKE_CUDA_STANDARD 20)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_EXTENSIONS OFF)
@@ -68,6 +68,7 @@ add_library(libwacfrac STATIC
     src/wacfrac/viewport.cpp
     src/wacfrac/io.cpp
     src/wacfrac/log.cpp
+    src/wacfrac/renderer_host.cpp
     src/wacfrac/renderer.cu
 )
 set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)

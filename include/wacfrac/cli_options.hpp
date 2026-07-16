@@ -82,9 +82,13 @@ static void parse_palette_string(typename Context::template Buffer<Pixel>& targe
 
 template<typename Context>
 struct RendererOptions : public RendererConfig<Context> {
+    bool use_gpu {false};
     unsigned log_level {2};
 
     void add_parameters(argumentum::ParameterConfig& args) {
+        args.add_parameter(use_gpu, "--use-gpu", "-G")
+            .nargs(0).absent(use_gpu)
+            .help("Use the GPU when possible");
         args.add_parameter(this->resolution, "--resolution", "-r")
             .nargs(2).absent(this->resolution)
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
@@ -114,9 +118,9 @@ struct RendererOptions : public RendererConfig<Context> {
         args.add_parameter(this->iteration_parameters, "--iteration-parameters", "-N")
             .nargs(3).absent(this->iteration_parameters)
             .action(make_nargs3_parser([](auto& target, const std::array<std::string, 3>& parts){
-                std::get<0>(target) = std::stod(parts[0]);
-                std::get<1>(target) = std::stod(parts[1]);
-                std::get<2>(target) = std::stod(parts[2]);
+                target.modifier = std::stod(parts[0]);
+                target.factor = std::stod(parts[1]);
+                target.exponent = std::stod(parts[2]);
             }))
             .help("func max_iterations(mod, fact, exp) = mod + fact * exponential_scale^exp");
         args.add_parameter(log_level, "--log-level")

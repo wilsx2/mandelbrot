@@ -3,11 +3,18 @@
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/color.hpp"
 #include <boost/optional.hpp>
+#include <span>
 
 namespace wacfrac {
 
 enum class NumericType { Auto , Float , Double , DoubleExp };
 enum class RenderType { Auto , Direct , Perturbed , BLA };
+
+struct IterationParameters {
+    double modifier {250.0};
+    double factor {50.0};
+    double exponent {1.5};
+};
 
 template<typename Context>
 struct RendererConfig {
@@ -17,7 +24,7 @@ struct RendererConfig {
     double escape_radius {4.0};
     Context::template Buffer<Pixel> palette {ctx.make_buffer(WF_STD::span(ULTRA))};
     bool discrete_coloring {false};
-    WF_STD::tuple<double, double, double> iteration_parameters {1.5, 50.0, 250.0};
+    IterationParameters iteration_parameters {};
     bla::Config bla_config;
     WF_STD::pair<std::size_t, std::size_t> probe_grid {8, 8};
 };
@@ -44,7 +51,7 @@ struct Renderer {
     Buffer<DoubleExpComplex> pixel_orbits;
 
     Renderer(RendererConfig<Context> config);
-    auto render(const ImageConfig& img_conf) -> WF_STD::span<const Pixel>;
+    auto render(const ImageConfig& img_conf) -> std::span<const Pixel>;
 
     template<typename T>
     auto direct_render_pass(T start, T delta, unsigned max_n) -> void;

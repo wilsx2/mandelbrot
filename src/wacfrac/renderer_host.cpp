@@ -2,6 +2,6 @@
 
 namespace wacfrac {
 
-template struct Renderer<Device>;
+template struct Renderer<Host>;
 
 }

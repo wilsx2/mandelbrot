@@ -1,6 +1,7 @@
 #pragma once
 #include "wacfrac/macros.hpp"
 #include "wacfrac/log.hpp"
+#include <cuda_runtime.h>
 #include <cstring>
 #include <memory>
 #include <ranges>
@@ -151,6 +152,7 @@ __global__ void executeLambda(std::size_t count, F func) {
         func(idx); 
     }
 }
+#endif
 
 class Device : public Context<Device> {
     friend Context<Device>;
@@ -158,6 +160,12 @@ class Device : public Context<Device> {
     static constexpr auto ThreadsPerBlock {256};
 
     // TODO: Support multiple GPUs by specifying device in constructor
+    
+    static auto count() -> int {
+        auto device_count {0};
+        (void) cudaGetDeviceCount(&device_count);
+        return device_count;
+    }
 
     template<typename T>
     auto alloc() -> T* {
@@ -197,6 +205,7 @@ class Device : public Context<Device> {
         cudaMemcpy(dst.data(), src.data(), dst.size() * sizeof(T), cudaMemcpyDefault);
         // TODO: Catch errors
     }
+#if defined(__CUDACC__)
     template <typename F>
     void parallel_for(std::size_t count, F&& func) const {
         auto numBlocks {(count + ThreadsPerBlock - 1) / ThreadsPerBlock};
@@ -211,7 +220,10 @@ class Device : public Context<Device> {
             logging::error("CUDA error: {}", cudaGetErrorString(err));
         }
     }
-};
+#else
+    template <typename F>
+    void parallel_for(std::size_t count, F&& func) const;
 #endif
+};
 
 }
