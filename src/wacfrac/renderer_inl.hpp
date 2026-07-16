@@ -278,7 +278,7 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
                     auto probes {conf.ctx.template make_buffer<T>(conf.probe_grid.first * conf.probe_grid.second)};
                         // WARN: FILTH! NAST! IN GODS NAME FORSAKE THIS WRETCHED ALLOCATION!
                         // WARN: I'm going to be sick.
-                    view.generate_probes<T>(probes.as_span(), conf.probe_grid.first, conf.probe_grid.second);
+                    view.generate_probes<T>(conf.ctx, probes.as_span(), conf.probe_grid.first, conf.probe_grid.second);
                     bla_calculator.compute_search(probes, max_dc, reference, conf.escape_radius);
                 }
                 auto bla = bla_calculator.get_approximator();
