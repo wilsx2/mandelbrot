@@ -200,7 +200,7 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
             return img_conf.render_type;
         }
 
-        if (underflows.template operator()<Complex<double>>(RenderType::Direct)) {
+        if (underflows.template operator()<Complex<float>>(RenderType::Direct)) {
             constexpr auto SIGNIFICANT_ITERATIONS {50'000}; // NOTE: Arbitrarily chosen
             if (max_n >= SIGNIFICANT_ITERATIONS) {
                 return RenderType::BLA;
@@ -279,7 +279,7 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
             } else if (render_type == RenderType::BLA) {
                 using CT = ComplexValueTypeT<T>;
                 auto max_dc {to_complex<T>(view.compute_max_dc(c_ref))};
-                bla::Calculator<Context, T> bla_calculator {conf.bla_config}; // WARN: Filthy Nasty. Throw this an an Arena
+                bla::Calculator<Context, T> bla_calculator {conf.bla_config, arena, conf.ctx};
                 if (img_conf.epsilon != 0.0) {
                     bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), ref, max_dc);
                 } else {

@@ -102,34 +102,3 @@ target_link_libraries(wacfrac PRIVATE
     libwacfrac
     Argumentum::argumentum
 )
-
-#[[ GPU Test
-add_executable(gpu_test src/gpu_test.cpp)
-if(MSVC)
-    set_source_files_properties(src/gpu_test.cpp PROPERTIES
-        COMPILE_DEFINITIONS "NOMINMAX"
-    )
-endif()
-if (MSVC)
-    target_compile_definitions(gpu_test PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:CCCL_IGNORE_MSVC_TRADITIONAL_PREPROCESSOR_WARNING>)
-endif()
-target_link_libraries(gpu_test PRIVATE
-    libwacfrac
-)
-]]
-
-# BLA Test
-add_executable(bla_test src/bla_test.cu)
-set_target_properties(bla_test PROPERTIES LINKER_LANGUAGE CUDA)
-if(MSVC)
-    set_source_files_properties(src/bla_test.cu PROPERTIES
-        COMPILE_DEFINITIONS "NOMINMAX"
-    )
-endif()
-if (MSVC)
-    target_compile_definitions(bla_test PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:CCCL_IGNORE_MSVC_TRADITIONAL_PREPROCESSOR_WARNING>)
-endif()
-target_link_libraries(bla_test PRIVATE
-    libwacfrac
-    CUDA::cudart
-)

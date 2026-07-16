@@ -82,13 +82,13 @@ static void parse_palette_string(typename Context::template Buffer<Pixel>& targe
 
 template<typename Context>
 struct RendererOptions : public RendererConfig<Context> {
-    bool use_gpu {false};
+    bool prefer_cpu {false};
     unsigned log_level {2};
 
     void add_parameters(argumentum::ParameterConfig& args) {
-        args.add_parameter(use_gpu, "--use-gpu", "-G")
-            .nargs(0).absent(use_gpu)
-            .help("Use the GPU when possible");
+        args.add_parameter(prefer_cpu, "--prefer-cpu", "-C")
+            .nargs(0).absent(prefer_cpu)
+            .help("Use the CPU even when the GPU is available");
         args.add_parameter(this->resolution, "--resolution", "-r")
             .nargs(2).absent(this->resolution)
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){

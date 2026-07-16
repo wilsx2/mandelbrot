@@ -151,7 +151,7 @@ int main(int argc, char* argv[])
 
     wacfrac::logging::log_level() = renderer_opts.log_level;
 
-    if (has_gpu() && renderer_opts.use_gpu) {
+    if (has_gpu() && !renderer_opts.prefer_cpu) {
         wacfrac::RendererOptions<wacfrac::Device> dev_opts;
         dev_opts.resolution = renderer_opts.resolution;
         dev_opts.focus = renderer_opts.focus;

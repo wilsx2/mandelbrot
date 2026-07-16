@@ -16,9 +16,9 @@ auto compute_reference(WF_STD::span<T> buffer, MultiComplex c, double escape_rad
     auto max_n {static_cast<unsigned>(buffer.size())};
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={}", c, max_n, escape_radius);
 
-    buffer[0] = to_complex<T>(MultiComplex{0.0, 0.0});
+    buffer[0] = to_complex<T>(MultiComplex{});
 
-    MultiComplex z{0.0, 0.0};
+    MultiComplex z{};
     auto n{0u};
     for (; n < max_n - 1 && !escaped(z, escape_radius);) {
         compute_next_orbit(z, n, c);
@@ -54,8 +54,8 @@ auto compute_reference_iteration(MultiComplex c, unsigned max_n, double escape_r
         return 0;
 
     auto n_1 {1u};
-    MultiComplex z {0.0, 0.0};
-    MultiComplex next_z {0.0, 0.0};
+    MultiComplex z {};
+    MultiComplex next_z {};
     auto running {true};
     auto cr {c.real()};
     auto ci {c.imag()};
@@ -144,7 +144,7 @@ struct ReferenceSet {
 
         _float_ref[0]       = SingleComplex{0.0f, 0.0f};
         _double_ref[0]      = DoubleComplex{0.0, 0.0};
-        _dexp_ref[0]        = to_complex<DoubleExpComplex>(MultiComplex{0.0, 0.0}); // WARN: Seems unecessesary
+        _dexp_ref[0]        = DoubleExpComplex{};
         _size = compute_reference_iteration(c, max_n(), escape_radius, [&](unsigned n, const MultiFloat& r, const MultiFloat& i) {
             if (n >= _float_ref.size()) {
                 std::cerr << "NOOO!!" << n << "/" << max_n() << std::endl;

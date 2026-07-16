@@ -1,4 +1,5 @@
 #include "wacfrac/macros.hpp"
+#include "wacfrac/log.hpp"
 #include <memory>
 #include <utility>
 
@@ -55,14 +56,18 @@ class Buffer {
 struct Arena {
     WF_STD::span<std::byte> memory;
 
+    Arena(const Arena&) = default;
     template<typename T>
     Arena(WF_STD::span<T> memory): memory{reinterpret_cast<std::byte*>(memory.data()), memory.size_bytes()} {};
 
     auto alloc_bytes(std::size_t bytes) -> void* {
-        if (memory.size() < bytes)
+        if (memory.size() < bytes) {
+            logging::error("Arena allocation failed, {} bytes requested", bytes);
             return nullptr;
+        }
         auto ptr {memory.data()};
         memory = {memory.data() + bytes, memory.size() - bytes};
+        logging::debug("Arena allocated {}, {} remaining", bytes, memory.size_bytes());
         return ptr;
     }
     template<typename T>

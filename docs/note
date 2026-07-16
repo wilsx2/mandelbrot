@@ -1,22 +1,10 @@
-    Utilize Arenas for image render (BLA, orbits)
     Integrate Renderer w/ Bench
     Handle really small BLA exponents
     Determine lower and higher exp for BLA search dynamically
 
 July
 - GPU
-    - Features 
-        X Coloring
-        X Direct Escape
-        X Perturbed Escape
-        X Generalize to many types
-            X float
-            X FloatExp
-        - BLA
-            - Escape
-            - Search
     - Benchmark
-    - CLI
 - Distribute / Parallel
     - Docker Container
     - Features 
@@ -28,6 +16,4 @@ July
 - Local Machines
 - Cloud (Amazon EC2, g4dn?)
 
-- Make as many functions/classes as possible compatible with CUDA and C++ code (DRY)
 - ? Tiling (if 4k frames take long enough to benefit from distributed parallelization)
-- ? Analyze for zoom points (if we need a deeper zoom)

@@ -130,14 +130,13 @@ struct Approximator {
 };
 
 struct Config {
-    std::size_t first_level {0};
+    std::size_t first_level {2};
     double lower_exp {-1028};
     double upper_exp {-16};
     double tolerance {1e-8};
     double convergence_radius = 1e-3;
 };
 
-// NOTE: No reason this class cannot be a function
 template <typename Context, ComplexConcept T>
 class Calculator {
     public:
@@ -146,28 +145,29 @@ class Calculator {
     using Buffer = Context::template Buffer<U>;
     template<typename U>
     using Pointer = Context::template Pointer<U>;
-    Calculator(const Config& params, Context ctx = {})
+    Calculator(const Config& params, const Arena& arena, const Context& ctx = {})
         : _ctx{ctx}
         , _params(params)
-        , _max_ref_size{0}
+        , _arena{arena}
         , _last_level{0}
+        , _skipped_atom{nullptr}
+        , _tolerance_failed_atom{nullptr}
     { }
-    auto resize_buffers(std::size_t ref_size) -> void {
-        _max_ref_size = ref_size;
+    auto allocate_buffers(std::size_t ref_size) -> void {
         _last_level = ref_size < 3 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(ref_size)));
         auto max_n {ref_size - 1};
-        _columns         = _ctx.template make_buffer<ColumnInfo>(max_n);
-        _current_working = _ctx.template make_buffer<Bla<T>>(max_n - 1);
-        _next_working    = _ctx.template make_buffer<Bla<T>>(max_n - 1);
+        _columns         = _arena.alloc<ColumnInfo>(max_n);
+        _current_working = _arena.alloc<Bla<T>>(max_n - 1);
+        _next_working    = _arena.alloc<Bla<T>>(max_n - 1);
         initialize_columns(max_n);
         auto last_i {ColumnInfo::compute_start(max_n, _params.first_level, _last_level)};
-        _approximations  = _ctx.template make_buffer<Bla<T>>(last_i);
+        _approximations  = _arena.alloc<Bla<T>>(last_i);
     }
     auto compute_manual(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> void {
         if (ref.size() < 3)
             return;
-        if (ref.size() > _max_ref_size) {
-            resize_buffers(ref.size());
+        if (_last_level == 0) {
+            allocate_buffers(ref.size());
         }
 
         auto level_size {ref.size() - 2};
@@ -227,7 +227,7 @@ class Calculator {
     }
     public: // TODO: Remove from public API. This is a work around to make NVCC happy with our lambda usage in device code
     auto initialize_columns(std::size_t max_n) -> void {
-        auto columns {_columns.as_span()};
+        auto columns {_columns};
         auto first_level {_params.first_level};
         auto last_level {_last_level};
         _ctx.parallel_for(max_n,
@@ -249,7 +249,7 @@ class Calculator {
     auto compute_initial_approximations(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> void {
         auto first_level {_params.first_level};
         auto approximator = get_approximator();
-        auto working = _current_working.as_span();
+        auto working = _current_working;
         _ctx.parallel_for(ref.size() - 2,
             [epsilon,
              ref,
@@ -273,8 +273,8 @@ class Calculator {
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
         if (current_level >= _params.first_level) {
             auto approximator = get_approximator();
-            auto working = _current_working.as_span();
-            auto next_working = _next_working.as_span();
+            auto working = _current_working;
+            auto next_working = _next_working;
             _ctx.parallel_for(level_size / 2,
                 [current_level,
                  max_dc,
@@ -296,8 +296,8 @@ class Calculator {
                 });
         } else {
             auto approximator = get_approximator();
-            auto working = _current_working.as_span();
-            auto next_working = _next_working.as_span();
+            auto working = _current_working;
+            auto next_working = _next_working;
             _ctx.parallel_for(level_size / 2,
                 [max_dc,
                  approximator,
@@ -316,10 +316,10 @@ class Calculator {
     }
     auto compute_probe_escape_time(WF_STD::span<const T> probes, WF_STD::span<const T> ref, double escape_radius) -> void {
         if (probes.size() > _true_escape_times.size()) {
-            _true_escape_times = _ctx.template make_buffer<unsigned>(probes.size());
+            _true_escape_times = _arena.alloc<unsigned>(probes.size());
         }
 
-        auto escape_times = _true_escape_times.as_span();
+        auto escape_times = _true_escape_times;
         _ctx.parallel_for(probes.size(),
             [probes,
              ref,
@@ -337,17 +337,17 @@ class Calculator {
     }
     auto compute_skipped_iterations(WF_STD::span<const T> probes, WF_STD::span<const T> ref, double escape_radius, double tolerance) -> void {
         if (_skipped_atom == nullptr)
-            _skipped_atom = _ctx.template make_pointer<WF_STD::atomic<unsigned>>();
+            _skipped_atom = _arena.alloc<WF_STD::atomic<unsigned>>();
         if (_tolerance_failed_atom == nullptr)
-            _tolerance_failed_atom = _ctx.template make_pointer<WF_STD::atomic<bool>>();
+            _tolerance_failed_atom = _arena.alloc<WF_STD::atomic<bool>>();
 
         _skipped_atom->store(0u);
         _tolerance_failed_atom->store(false);
 
         auto approximator = get_approximator();
-        auto escape_times = _true_escape_times.as_span();
-        auto tolerance_failed = _tolerance_failed_atom.get();
-        auto total_skipped = _skipped_atom.get();
+        auto escape_times = _true_escape_times;
+        auto tolerance_failed = _tolerance_failed_atom;
+        auto total_skipped = _skipped_atom;
         _ctx.parallel_for(probes.size(),
             [probes,
              ref,
@@ -380,15 +380,15 @@ class Calculator {
 
     Context _ctx;
     Config _params;
-    std::size_t _max_ref_size;
+    Arena _arena;
     std::size_t _last_level;
-    Buffer<ColumnInfo> _columns;
-    Buffer<Bla<T>>     _current_working;
-    Buffer<Bla<T>>     _next_working;
-    Buffer<Bla<T>>     _approximations;
-    Buffer<unsigned>   _true_escape_times;
-    Pointer<WF_STD::atomic<unsigned>> _skipped_atom;
-    Pointer<WF_STD::atomic<bool>> _tolerance_failed_atom;
+    WF_STD::span<ColumnInfo> _columns;
+    WF_STD::span<Bla<T>>     _current_working;
+    WF_STD::span<Bla<T>>     _next_working;
+    WF_STD::span<Bla<T>>     _approximations;
+    WF_STD::span<unsigned>   _true_escape_times;
+    WF_STD::atomic<unsigned>* _skipped_atom;
+    WF_STD::atomic<bool>* _tolerance_failed_atom;
 };
 
 template <ComplexConcept T, typename Ref, typename Approx>

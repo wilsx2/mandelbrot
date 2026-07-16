@@ -27,10 +27,58 @@ auto make_viewport(unsigned zoom_exp) {
     return view;
 }
 
+template <wacfrac::ComplexConcept T>
+auto compute_reference_vec(wacfrac::MultiComplex c, unsigned max_iterations) -> std::vector<T> {
+    std::vector<T> buffer(max_iterations);
+    auto n = wacfrac::compute_reference<T>(buffer, c);
+    buffer.resize(n);
+    return buffer;
+}
+
+template <wacfrac::ComplexConcept T>
+auto compute_reference_mt_vec(wacfrac::MultiComplex c, unsigned max_iterations) -> std::vector<T> {
+    std::vector<T> buffer(max_iterations);
+    auto n = wacfrac::compute_reference_mt<T>(buffer, c);
+    buffer.resize(n);
+    return buffer;
+}
+
 auto compute_reference_dec(const wacfrac::Viewport& view, wacfrac::MultiComplex c_ref, unsigned max_iterations) {
     c_ref.precision(static_cast<unsigned>(view.required_precision()));
-    return wacfrac::compute_reference<wacfrac::DoubleExpComplex>(c_ref, max_iterations);
+    return compute_reference_vec<wacfrac::DoubleExpComplex>(c_ref, max_iterations);
 }
+
+template <wacfrac::ComplexConcept T>
+auto sample_c_values(const wacfrac::Viewport& view, const wacfrac::Resolution& res) -> std::vector<T> {
+    auto start = view.get_corner_absolute<T>();
+    auto delta = wacfrac::get_pixel_delta<T>(view.dimensions, res);
+    auto total = res.area();
+    std::vector<T> result(total);
+    for (std::size_t i = 0; i < total; ++i)
+        result[i] = wacfrac::sample_c_value(i, res.width, start, delta);
+    return result;
+}
+
+template <wacfrac::ComplexConcept T>
+auto sample_c_values(const wacfrac::Viewport& view, const wacfrac::Resolution& res, T) -> std::vector<T> {
+    auto start = view.get_corner_relative<T>();
+    auto delta = wacfrac::get_pixel_delta<T>(view.dimensions, res);
+    auto total = res.area();
+    std::vector<T> result(total);
+    for (std::size_t i = 0; i < total; ++i)
+        result[i] = wacfrac::sample_c_value(i, res.width, start, delta);
+    return result;
+}
+
+template <wacfrac::ComplexConcept T>
+auto generate_probes_vec(const wacfrac::Viewport& view, std::size_t cols, std::size_t rows) -> std::vector<T> {
+    wacfrac::Host ctx;
+    auto buf = ctx.make_buffer<T>(cols * rows);
+    view.generate_probes(ctx, buf.as_span(), cols, rows);
+    return std::vector<T>(buf.as_span().begin(), buf.as_span().end());
+}
+
+constexpr auto BENCH_ARENA_SIZE {1'000'000'000ull};
 
 void write_output(const std::string& name, std::span<const wacfrac::Pixel> pixels, const wacfrac::Resolution& res) {
     auto dir {std::filesystem::path("output")};
@@ -93,7 +141,7 @@ static void compute_reference_bench(benchmark::State& state) {
     wacfrac::MultiComplex c {0.0,0.0};
     c.precision(static_cast<unsigned>(wacfrac::required_precision(scale)));
     for (auto _ : state) {
-        auto ref {wacfrac::compute_reference<T>(c, wacfrac::required_iterations(scale))};
+        auto ref {compute_reference_vec<T>(c, wacfrac::required_iterations(scale))};
         benchmark::DoNotOptimize(ref);
     }
 }
@@ -107,7 +155,7 @@ static void compute_reference_mt_bench(benchmark::State& state) {
     wacfrac::MultiComplex c {0.0,0.0};
     c.precision(static_cast<unsigned>(wacfrac::required_precision(scale)));
     for (auto _ : state) {
-        auto ref {wacfrac::compute_reference_mt<T>(c, wacfrac::required_iterations(scale))};
+        auto ref {compute_reference_mt_vec<T>(c, wacfrac::required_iterations(scale))};
         benchmark::DoNotOptimize(ref);
     }
 }
@@ -160,12 +208,19 @@ template<typename T>
 static void compute_bla_coefficients(benchmark::State& state) {
     auto view   {make_viewport(static_cast<unsigned>(state.range(0)))};
     auto c_ref  {view.center};
-    auto ref    {wacfrac::compute_reference<T>(c_ref, view.required_iterations())};
+    auto ref    {compute_reference_vec<T>(c_ref, view.required_iterations())};
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
-    auto probes {view.generate_probes<T>(state.range(1), state.range(1))};
+    auto probes {generate_probes_vec<T>(view, static_cast<std::size_t>(state.range(1)), static_cast<std::size_t>(state.range(1)))};
     for (auto _ : state) {
-        wacfrac::bla::Calculator<T> calculator{0};
-        calculator.compute_search({.lower_exp = -256.0, .upper_exp = 0.0, .tolerance = std::pow(10.0, -state.range(2))}, probes, max_dc, ref);
+        wacfrac::Host ctx;
+        auto arena_buf {ctx.make_buffer<std::byte>(BENCH_ARENA_SIZE)};
+        wacfrac::Arena arena{arena_buf.as_span()};
+        wacfrac::bla::Config config;
+        config.lower_exp = -256.0;
+        config.upper_exp = 0.0;
+        config.tolerance = std::pow(10.0, -state.range(2));
+        wacfrac::bla::Calculator<wacfrac::Host, T> calculator{config, arena, ctx};
+        calculator.compute_search(probes, max_dc, std::span<const T>(ref));
         benchmark::DoNotOptimize(calculator);
     }
 }
@@ -197,7 +252,7 @@ static void render_phase_direct(benchmark::State& state) {
 
     std::vector<wacfrac::Pixel> pixels(res.area());
     for (auto _ : state) {
-        auto cs {wacfrac::sample_c_values<T>(view, res)};
+        auto cs {sample_c_values<T>(view, res)};
         auto escaped_orbits {cs | std::views::transform([&](auto c){
             return wacfrac::escape(c, max_iterations, 2.0);
         })};
@@ -226,7 +281,7 @@ static void render_phase_perturbed(benchmark::State& state) {
 
     std::vector<wacfrac::Pixel> pixels(res.area());
     for (auto _ : state) {
-        auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+        auto dcs {sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
         auto escaped_orbits {dcs | std::views::transform([&](auto dc){
             return wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_iterations, 2.0);
         })};
@@ -254,13 +309,21 @@ static void render_phase_bla(benchmark::State& state) {
     auto last_level {static_cast<std::size_t>(std::log2(ref.size()))};
     auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
-    auto probes {view.generate_probes<T>(3, 3)};
-    wacfrac::bla::Calculator<T> calculator{first_level};
-        calculator.compute_search({.lower_exp = -256.0, .upper_exp = 0.0, .tolerance = 1e-8}, probes, max_dc, ref);
+    auto probes {generate_probes_vec<T>(view, 3, 3)};
+    wacfrac::Host ctx;
+    auto arena_buf {ctx.make_buffer<std::byte>(BENCH_ARENA_SIZE)};
+    wacfrac::Arena arena{arena_buf.as_span()};
+    wacfrac::bla::Config bla_config;
+    bla_config.first_level = first_level;
+    bla_config.lower_exp = -256.0;
+    bla_config.upper_exp = 0.0;
+    bla_config.tolerance = 1e-8;
+    wacfrac::bla::Calculator<wacfrac::Host, T> calculator{bla_config, arena, ctx};
+        calculator.compute_search(probes, max_dc, std::span<const T>(ref));
 
     std::vector<wacfrac::Pixel> pixels(res.area());
     for (auto _ : state) {
-        auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+        auto dcs {sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
         std::vector<std::tuple<wacfrac::Complex<float>, unsigned, unsigned>> escaped_orbits;
         auto bla = calculator.get_approximator();
         for (auto dc : dcs) {
@@ -290,7 +353,7 @@ static void e2e_direct(benchmark::State& state) {
     for (auto _ : state) {
         auto view {make_viewport(zoom_exp)};
         auto max_iterations {view.required_iterations()};
-        auto cs {wacfrac::sample_c_values<T>(view, res)};
+        auto cs {sample_c_values<T>(view, res)};
         auto escaped_orbits {cs | std::views::transform([&](auto c){
             return wacfrac::escape(c, max_iterations, 2.0);
         })};
@@ -302,7 +365,7 @@ static void e2e_direct(benchmark::State& state) {
     auto view {make_viewport(zoom_exp)};
     auto max_iterations {view.required_iterations()};
     std::vector<wacfrac::Pixel> ref_pixels(res.area());
-    auto ref_cs {wacfrac::sample_c_values<T>(view, res)};
+    auto ref_cs {sample_c_values<T>(view, res)};
     auto ref_escaped_orbits {ref_cs | std::views::transform([&](auto c){
         return wacfrac::escape(c, max_iterations, 2.0);
     })};
@@ -327,7 +390,7 @@ static void e2e_perturbed(benchmark::State& state) {
         auto max_iterations {view.required_iterations()};
         auto c_ref {view.center};
         auto ref {compute_reference_dec(view, c_ref, max_iterations)};
-        auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+        auto dcs {sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
         auto escaped_orbits {dcs | std::views::transform([&](auto dc){
             return wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_iterations, 2.0);
         })};
@@ -341,7 +404,7 @@ static void e2e_perturbed(benchmark::State& state) {
     auto c_ref {view.center};
     auto ref {compute_reference_dec(view, c_ref, max_iterations)};
     std::vector<wacfrac::Pixel> ref_pixels(res.area());
-    auto ref_dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+    auto ref_dcs {sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
     auto ref_escaped_orbits {ref_dcs | std::views::transform([&](auto dc){
         return wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_iterations, 2.0);
     })};
@@ -369,10 +432,18 @@ static void e2e_bla(benchmark::State& state) {
         auto last_level {static_cast<std::size_t>(std::log2(ref.size()))};
         auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
         auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
-        auto probes {view.generate_probes<T>(3, 3)};
-        wacfrac::bla::Calculator<T> calculator{first_level};
-        calculator.compute_search({.lower_exp = -256.0, .upper_exp = 0.0, .tolerance = 1e-8}, probes, max_dc, ref);
-        auto dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+        auto probes {generate_probes_vec<T>(view, 3, 3)};
+        wacfrac::Host ctx;
+        auto arena_buf {ctx.make_buffer<std::byte>(BENCH_ARENA_SIZE)};
+        wacfrac::Arena arena{arena_buf.as_span()};
+        wacfrac::bla::Config bla_config;
+        bla_config.first_level = first_level;
+        bla_config.lower_exp = -256.0;
+        bla_config.upper_exp = 0.0;
+        bla_config.tolerance = 1e-8;
+        wacfrac::bla::Calculator<wacfrac::Host, T> calculator{bla_config, arena, ctx};
+        calculator.compute_search(probes, max_dc, std::span<const T>(ref));
+        auto dcs {sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
         std::vector<std::tuple<wacfrac::Complex<float>, unsigned, unsigned>> escaped_orbits;
         auto bla = calculator.get_approximator();
         for (auto dc : dcs) {
@@ -389,7 +460,7 @@ static void e2e_bla(benchmark::State& state) {
     auto c_ref {view.center};
     auto ref {compute_reference_dec(view, c_ref, max_iterations)};
     std::vector<wacfrac::Pixel> ref_pixels(res.area());
-    auto ref_dcs {wacfrac::sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
+    auto ref_dcs {sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
     std::vector<std::pair<wacfrac::Complex<float>, unsigned>> ref_escaped_orbits;
     for (auto dc : ref_dcs) {
         ref_escaped_orbits.push_back(wacfrac::escape_perturbed(dc, std::span<const T>(ref), max_iterations, 2.0));
