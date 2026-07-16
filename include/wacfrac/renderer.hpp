@@ -14,8 +14,8 @@ namespace wacfrac {
 template <typename T>
 struct NumericTypeTag { using type = T; };
 
-enum class NumericType { Auto, Float , Double , DoubleExp };
-enum class RenderType { Auto, Direct , Perturbed , BLA };
+enum class NumericType { Auto , Float , Double , DoubleExp };
+enum class RenderType { Auto , Direct , Perturbed , BLA };
 
 template <typename F>
 decltype(auto) with_numeric_type(NumericType type, F&& f) {
@@ -50,14 +50,6 @@ struct ImageConfig {
     double epsilon {0.0};
 };
 
-struct VideoConfig {
-    double frames_per_second {24.0};
-    std::size_t segment_size {64};
-    MultiFloat initial_scale {0.4};
-    MultiFloat final_scale {1e1};
-    double zoom_per_second {2.0};
-};
-
 template<typename Context>
 struct Renderer {
     template<typename T>
@@ -89,7 +81,7 @@ struct Renderer {
                        conf.bla_config.convergence_radius);
     }
 
-    auto render(const ImageConfig& img_conf) -> Buffer<Pixel> {
+    auto render(const ImageConfig& img_conf) -> WF_STD::span<const Pixel> {
         // Configuration Pass  NOTE: We can easily and likely ought to break this into its own function
         auto max_n {img_conf.max_iterations != 0 
             ? img_conf.max_iterations
@@ -116,14 +108,15 @@ struct Renderer {
             }()};
             auto delta {get_pixel_delta<T>(view.dimensions, conf.resolution)};
             auto next {start + delta};
-            return start.real() - next.real() == 0 || start.imag() - next.imag() == 0;
+            return start.real() - next.real() == 0 || start.imag() - next.imag() == 0; // NOTE: May need a larger tolerance
         }};
 
         auto render_type {[&](){
             if (img_conf.render_type != RenderType::Auto) {
                 return img_conf.render_type;
             }
-            if (underflows.template operator()<Complex<double>>(RenderType::Direct)) { // NOTE: May need a larger tolerance
+
+            if (underflows.template operator()<Complex<double>>(RenderType::Direct)) {
                 constexpr auto SIGNIFICANT_ITERATIONS {50'000}; // NOTE: Arbitrarily chosen
                 if (max_n >= SIGNIFICANT_ITERATIONS) {
                     return RenderType::BLA;
@@ -293,7 +286,7 @@ struct Renderer {
         );
 
         logging::info("Image render took {}ms", elapsed.count());
-        return std::move(pixels);
+        return pixels.as_span();
     }
 };
 

@@ -6,57 +6,66 @@
 #include <string_view>
 
 namespace {
-/*
-void render_video(wacfrac::VideoOptions& opts) {
-    if (!std::filesystem::create_directory(opts.directory)) {
-        wacfrac::logging::error("Directory '{}' failed to create", opts.directory);
-    }
-    std::filesystem::current_path(opts.directory);
 
-    auto max_iterations = wacfrac::required_iterations(opts.final_scale);
-    auto precision = wacfrac::required_precision(opts.final_scale);
+template<typename Context>
+void save_render(wacfrac::Renderer<Context>& renderer, const wacfrac::ImageOptions& img_opts) {
+    if (wacfrac::write_ppm(img_opts.filepath, renderer.conf.resolution, renderer.render(img_opts))) {
+        wacfrac::logging::info("Image written to {}", img_opts.filepath);
+    } else {
+        wacfrac::logging::error("Image write failed");
+    }
+}
+
+template<typename Context>
+void render_video(wacfrac::Renderer<Context>& renderer, wacfrac::VideoOptions& vid_opts) {
+    if (!std::filesystem::create_directory(vid_opts.directory)) {
+        wacfrac::logging::error("Directory '{}' failed to create", vid_opts.directory);
+    }
+    std::filesystem::current_path(vid_opts.directory);
+
+    auto max_iterations = wacfrac::required_iterations(vid_opts.final_scale);
+    auto precision = wacfrac::required_precision(vid_opts.final_scale);
     wacfrac::MultiFloat::default_precision(static_cast<unsigned>(precision));
     wacfrac::MultiComplex::default_precision(static_cast<unsigned>(precision));
-    wacfrac::Viewport final_view {opts.shared->focus, opts.final_scale, opts.shared->resolution};
+    wacfrac::Viewport final_view {renderer.conf.focus, vid_opts.final_scale, renderer.conf.resolution};
 
     auto refs = wacfrac::compute_reference_set(
-        opts.shared->focus,
+        renderer.conf.focus,
         max_iterations,
         std::numeric_limits<double>::infinity());
 
     wacfrac::logging::info(
         "Video pre-compute: final_zoom={} max_iterations={} precision={} ref_size={}",
-        opts.final_scale, max_iterations, precision, refs.double_ref.size());
+        vid_opts.final_scale, max_iterations, precision, refs.double_ref.size());
     auto total_frames {wacfrac::total_frames(
-        opts.initial_scale, opts.final_scale, 
-        opts.zoom_per_second, static_cast<float>(opts.frames_per_second))};
-    auto total_segments {total_frames / opts.segment_size};
+        vid_opts.initial_scale, vid_opts.final_scale, 
+        vid_opts.zoom_per_second, static_cast<float>(vid_opts.frames_per_second))};
+    auto total_segments {total_frames / vid_opts.segment_size};
     auto scales {wacfrac::frame_zooms(
-        opts.initial_scale, opts.final_scale, 
-        opts.zoom_per_second, static_cast<float>(opts.frames_per_second))};
+        vid_opts.initial_scale, vid_opts.final_scale, 
+        vid_opts.zoom_per_second, static_cast<float>(vid_opts.frames_per_second))};
     for (auto&& [frame, scale] : std::views::enumerate(std::move(scales))) {
-        auto segment = frame / opts.segment_size;
-        auto frame_filename {"frame_" + wacfrac::file_suffix(frame % opts.segment_size, opts.segment_size) + ".ppm"};
+        auto segment = frame / vid_opts.segment_size;
+        auto frame_filename {"frame_" + wacfrac::file_suffix(frame % vid_opts.segment_size, vid_opts.segment_size) + ".ppm"};
         auto segment_filename {"segment_" + wacfrac::file_suffix(segment, total_segments) + ".mp4"};
 
         if (!std::filesystem::exists(segment_filename)) {
             if (!std::filesystem::exists(frame_filename)) {
                 wacfrac::logging::info("Frame #{}/{} being rendered", frame, total_frames);
-                wacfrac::ImageOptions frame_opts("");
-                frame_opts.shared = opts.shared;
+                wacfrac::ImageOptions frame_opts {""};
                 frame_opts.ref_set = refs;
-                frame_opts.filepath = "frame_" + wacfrac::file_suffix(frame % opts.segment_size, opts.segment_size) + ".ppm";
+                frame_opts.filepath = "frame_" + wacfrac::file_suffix(frame % vid_opts.segment_size, vid_opts.segment_size) + ".ppm";
                 frame_opts.scale = scale;
-                render_image(frame_opts);
+                save_render(renderer, frame_opts);
             } else {
                 wacfrac::logging::debug( "Frame #{} has already been rendered; skipping", frame);
             }
-            if (frame != 0 && (frame % opts.segment_size == opts.segment_size - 1
+            if (frame != 0 && (frame % vid_opts.segment_size == vid_opts.segment_size - 1
             || static_cast<std::size_t>(frame) == total_frames - 1)) {
                 auto status {wacfrac::concatenate_images(
                     segment_filename,
-                    "frame_%" + wacfrac::file_suffix_format(opts.segment_size) + ".ppm",
-                    static_cast<float>(opts.frames_per_second)
+                    "frame_%" + wacfrac::file_suffix_format(vid_opts.segment_size) + ".ppm",
+                    static_cast<float>(vid_opts.frames_per_second)
                 )};
                 if (status) {
                     for (auto& entry : std::filesystem::directory_iterator("."))
@@ -83,7 +92,6 @@ void render_video(wacfrac::VideoOptions& opts) {
         wacfrac::logging::error("Final video failed to compose");
     }
 }
-*/
 
 } // namespace
 
@@ -99,7 +107,7 @@ int main(int argc, char* argv[])
     renderer_opts.add_parameters(params);
 
     params.add_command<wacfrac::ImageOptions>("image");
-    // params.add_command<wacfrac::VideoOptions>("video");
+    params.add_command<wacfrac::VideoOptions>("video");
 
     auto parse_result = parser.parse_args(argc, argv);
     if (!parse_result)
@@ -118,16 +126,9 @@ int main(int argc, char* argv[])
     wacfrac::Renderer<wacfrac::Host> renderer {std::move(renderer_opts)};
 
     if (auto* img_opts = dynamic_cast<wacfrac::ImageOptions*>(cmd.get())) {
-        if (wacfrac::write_ppm(img_opts->filepath, renderer.conf.resolution, renderer.render(*img_opts))) {
-            wacfrac::logging::info("Image written to {}", img_opts->filepath);
-        } else {
-            wacfrac::logging::error("Image write failed");
-        }
+        save_render(renderer, *img_opts);
     }
-    /*
     if (auto* p = dynamic_cast<wacfrac::VideoOptions*>(cmd.get())) {
-        wacfrac::logging::init(p->shared->log_level);
-        render_video(*p);
+        render_video(renderer, *p);
     }
-    */
 }
