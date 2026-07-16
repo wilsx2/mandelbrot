@@ -1,10 +1,8 @@
-    Integrate Renderer w/ Bench
+    Accelerate GPU usage
     Handle really small BLA exponents
     Determine lower and higher exp for BLA search dynamically
 
 July
-- GPU
-    - Benchmark
 - Distribute / Parallel
     - Docker Container
     - Features 
