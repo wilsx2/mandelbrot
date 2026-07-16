@@ -34,7 +34,7 @@ struct Viewport {
     template<ComplexConcept T>
     auto get_corner_relative() const -> T;
     template<ComplexConcept T>
-    auto generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<T>;
+    auto generate_probes(WF_STD::span<T> buffer, std::size_t cols, std::size_t rows) const -> void;
     template<ComplexConcept T>
     auto find_periodic_reference(unsigned max_n, unsigned find_nucleus_iter) const -> std::pair<MultiComplex, std::vector<T>>;
 };
@@ -59,9 +59,8 @@ auto Viewport::get_corner_relative() const -> T {
 }
 
 template<ComplexConcept T>
-auto Viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std::vector<T> {
+auto Viewport::generate_probes(WF_STD::span<T> buffer, std::size_t cols, std::size_t rows) const -> void {
     using CT = ComplexValueTypeT<T>;
-    std::vector<T> probes; // WARN: Should just fill up a span passed as an argument
     auto delta {get_pixel_delta<T>(dimensions, Resolution{cols, rows})};
     auto corner {get_corner_relative<T>()};
     if (cols % 2)
@@ -70,12 +69,12 @@ auto Viewport::generate_probes(std::size_t cols, std::size_t rows) const -> std:
         corner.imag() += delta.imag() / static_cast<CT>(2.0);
     for (auto col {0u}; col < cols; ++col) { // TODO: Cartesian product view. Parallel for if we're feeling fun
         for (auto row {0u}; row < rows; ++row) {
-            probes.emplace_back(
+            buffer[col+row*cols] = T{
                 corner.real() + delta.real() * static_cast<CT>(col),
-                corner.imag() + delta.imag() * static_cast<CT>(row));
+                corner.imag() + delta.imag() * static_cast<CT>(row)
+            };
         }
     }
-    return probes;
 }
 
 // https://philthompson.me/2023/Faster-Mandelbrot-Set-Rendering-with-BLA-Bivariate-Linear-Approximation.html

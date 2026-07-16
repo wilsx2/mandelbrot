@@ -1,4 +1,5 @@
     Device Renderer
+        Copy reference onto Context::Buffer
     Utilize Arenas for image render (BLA, orbits)
     Integrate Renderer w/ Bench
     Handle really small BLA exponents

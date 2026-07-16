@@ -256,14 +256,15 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
             logging::debug("start, relative: ({}, {})", static_cast<double>(start.real()), static_cast<double>(start.imag()));
 
             auto c_ref {conf.focus};
-            const auto& reference {
+            const auto& reference { // WARN: Memory allocation
                 img_conf.ref_set.has_value()
                 ? img_conf.ref_set->select<T>()
                 : compute_reference_mt<T>(
                     c_ref, max_n, 
                     std::numeric_limits<double>::infinity())
             };
-            auto ref {WF_STD::span(reference)}; // NOTE: When reference becomes a buffer type we will have to change this 
+            auto ref_buf {conf.ctx.make_buffer(WF_STD::span(reference))}; // WARN: Memory allocation. Bad. Put in arena.
+            WF_STD::span<const T> ref {ref_buf.as_span()};
 
             if (render_type == RenderType::Perturbed) {
                 perturbed_render_pass(start, delta, ref, max_n);
@@ -274,9 +275,11 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
                 if (img_conf.epsilon != 0.0) {
                     bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), reference, max_dc);
                 } else {
-                    bla_calculator.compute_search(
-                        view.generate_probes<T>(conf.probe_grid.first, conf.probe_grid.second),
-                        max_dc, reference, conf.escape_radius);
+                    auto probes {conf.ctx.template make_buffer<T>(conf.probe_grid.first * conf.probe_grid.second)};
+                        // WARN: FILTH! NAST! IN GODS NAME FORSAKE THIS WRETCHED ALLOCATION!
+                        // WARN: I'm going to be sick.
+                    view.generate_probes<T>(probes.as_span(), conf.probe_grid.first, conf.probe_grid.second);
+                    bla_calculator.compute_search(probes, max_dc, reference, conf.escape_radius);
                 }
                 auto bla = bla_calculator.get_approximator();
                 bla_render_pass(start, delta, ref, bla, max_n);
