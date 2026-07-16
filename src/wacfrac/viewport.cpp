@@ -67,7 +67,7 @@ auto Viewport::required_precision() const -> std::size_t {
 }
 
 auto Viewport::required_iterations(double modifier, double factor, double exponent) const -> unsigned {
-    return wacfrac::required_iterations(dimensions.real(), modifier, factor, exponent);
+    return wacfrac::required_iterations(1.0 / dimensions.real(), modifier, factor, exponent);
 }
 
 template auto Viewport::generate_probes<SingleComplex>(std::size_t cols, std::size_t rows) const -> std::vector<SingleComplex>;
@@ -87,7 +87,7 @@ auto required_precision(MultiFloat zoom) -> std::size_t {
 auto required_iterations(MultiFloat zoom, double modifier, double factor, double exponent) -> unsigned {
     if (zoom < 1.0)
         return static_cast<unsigned>(modifier);
-    return static_cast<unsigned>(modifier + factor * std::pow(static_cast<double>(boost::multiprecision::log10(zoom)), exponent));
+    return static_cast<unsigned>(modifier + factor * WF_STD::pow(static_cast<double>(boost::multiprecision::log10(zoom)), exponent));
 }
 
 }   // namespace wacfrac

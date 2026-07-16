@@ -1,5 +1,7 @@
 #include "wacfrac/cli_options.hpp"
 #include "wacfrac/context.hpp"
+#include "wacfrac/viewport.hpp"
+#include "wacfrac/reference.hpp"
 #include "wacfrac/io.hpp"
 #include "wacfrac/log.hpp"
 #include <cstdlib>
@@ -23,7 +25,11 @@ void render_video(wacfrac::Renderer<Context>& renderer, wacfrac::VideoOptions& v
     }
     std::filesystem::current_path(vid_opts.directory);
 
-    auto max_iterations = wacfrac::required_iterations(vid_opts.final_scale);
+    auto max_iterations = wacfrac::required_iterations(
+        vid_opts.final_scale,
+        WF_STD::get<0>(renderer.conf.iteration_parameters),
+        WF_STD::get<1>(renderer.conf.iteration_parameters),
+        WF_STD::get<2>(renderer.conf.iteration_parameters));
     auto precision = wacfrac::required_precision(vid_opts.final_scale);
     wacfrac::MultiFloat::default_precision(static_cast<unsigned>(precision));
     wacfrac::MultiComplex::default_precision(static_cast<unsigned>(precision));

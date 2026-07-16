@@ -1,11 +1,8 @@
-    Reimplement video rendering
-    Move BLA impl into .cpp for host and .cu for Device
     Device Renderer
     Utilize Arenas for image render (BLA, orbits)
     Integrate Renderer w/ Bench
-    Determine lower and higher exp for BLA search dynamically
     Handle really small BLA exponents
-    Fix wrong probe grid being produced
+    Determine lower and higher exp for BLA search dynamically
 
 July
 - GPU
@@ -32,13 +29,6 @@ July
 - Local Machines
 - Cloud (Amazon EC2, g4dn?)
 
-- Do away with z param for escape_generic and derivatives
-- Type traits for float type -> complex conversion
-- Move most things to headers to allow for inlining optimizations
 - Make as many functions/classes as possible compatible with CUDA and C++ code (DRY)
-- ? Cache BLAs coefficients (if BLA calculation becomes a bottleneck)
-  ? Fix glitch (if existence becomes evident)
-- ? Use periods (if above)
-- ? Adapt threshholds to per-pixel dc rather than zoom depth (if inconsistent behavior between resolutions)
 - ? Tiling (if 4k frames take long enough to benefit from distributed parallelization)
 - ? Analyze for zoom points (if we need a deeper zoom)

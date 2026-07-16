@@ -165,6 +165,7 @@ class Device : public Context<Device> {
         auto err {cudaMallocManaged(&raw, sizeof(T))};
         if (err != cudaSuccess) {
             logging::error("CUDA error: {}", cudaGetErrorString(err));
+            return nullptr;
         }
         return static_cast<T*>(raw);
     }
@@ -174,6 +175,7 @@ class Device : public Context<Device> {
         auto err {cudaMallocManaged(&raw, sizeof(T) * count)};
         if (err != cudaSuccess) {
             logging::error("CUDA error: {}", cudaGetErrorString(err));
+            return nullptr;
         }
         return static_cast<T*>(raw);
     }
@@ -192,7 +194,7 @@ class Device : public Context<Device> {
     template<typename T>
     auto memcpy(WF_STD::span<T> dst, WF_STD::span<const T> src) -> void {
         // TODO: Assert sizes are the same
-        cudaMemcpy(dst, src, dst.size());
+        cudaMemcpy(dst.data(), src.data(), dst.size() * sizeof(T), cudaMemcpyDefault);
         // TODO: Catch errors
     }
     template <typename F>
