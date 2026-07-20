@@ -1,6 +1,7 @@
 #pragma once
 #include "wacfrac/color.hpp"
 #include "wacfrac/resolution.hpp"
+#include <cstddef>
 #include "wacfrac/viewport.hpp"
 #include <memory>
 

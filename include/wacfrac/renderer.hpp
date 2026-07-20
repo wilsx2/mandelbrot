@@ -1,4 +1,6 @@
+#pragma once
 #include "wacfrac/bla.hpp"
+#include <cstddef>
 #include "wacfrac/reference.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/resolution.hpp"

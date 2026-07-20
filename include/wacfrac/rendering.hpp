@@ -2,6 +2,7 @@
 
 #include "wacfrac/bla.hpp"
 #include "wacfrac/complex_concept.hpp"
+#include <cstddef>
 #include "wacfrac/types.hpp"
 #include <wacfrac/color.hpp>
 #include <wacfrac/log.hpp>

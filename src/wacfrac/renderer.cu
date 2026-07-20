@@ -1,3 +1,4 @@
+#include <cstddef>
 #include "renderer_inl.hpp"
 
 namespace wacfrac {

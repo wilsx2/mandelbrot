@@ -59,7 +59,7 @@ auto Viewport::get_corner_relative() const -> T {
 template<ComplexConcept T, typename Context>
 auto Viewport::generate_probes(const Context& ctx, WF_STD::span<T> buffer, std::size_t cols, std::size_t rows) const -> void {
     using CT = ComplexValueTypeT<T>;
-    auto delta {get_pixel_delta<T>(dimensions, Resolution{cols - 1, rows - 1})};
+    auto delta {get_pixel_delta<T>(dimensions, Resolution{cols, rows})};
     auto corner {get_corner_relative<T>()};
     if (cols % 2)
         corner.real() += delta.real() / static_cast<CT>(2.0);

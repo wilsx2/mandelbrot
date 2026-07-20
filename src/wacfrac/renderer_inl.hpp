@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include "wacfrac/bla.hpp"
 #include "wacfrac/renderer.hpp"
 #include "wacfrac/complex_concept.hpp"
@@ -184,6 +185,7 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
     view.precision(precision);
 
     auto underflows {[&]<typename T>(RenderType rt){
+        using CT = ComplexValueTypeT<T>;
         auto start {[&](){
             if (rt == RenderType::Direct) {
                 return view.get_corner_absolute<T>();
@@ -191,8 +193,9 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
             return view.get_corner_relative<T>();
         }()};
         auto delta {get_pixel_delta<T>(view.dimensions, conf.resolution)};
-        auto next {start + delta};
-        return start.real() - next.real() == 0 || start.imag() - next.imag() == 0; // NOTE: May need a larger tolerance
+        volatile CT next_real {static_cast<CT>(start.real() + delta.real())};
+        volatile CT next_imag {static_cast<CT>(start.imag() + delta.imag())};
+        return start.real() - next_real == 0.0 || start.imag() - next_imag == 0.0;
     }};
 
     auto render_type {[&](){
@@ -201,7 +204,7 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
         }
 
         if (underflows.template operator()<Complex<float>>(RenderType::Direct)) {
-            constexpr auto SIGNIFICANT_ITERATIONS {50'000}; // NOTE: Arbitrarily chosen
+            constexpr auto SIGNIFICANT_ITERATIONS {50'000}; // TODO: Make a param
             if (max_n >= SIGNIFICANT_ITERATIONS) {
                 return RenderType::BLA;
             }

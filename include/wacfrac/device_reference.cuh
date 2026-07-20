@@ -2,6 +2,7 @@
 
 #include "wacfrac/complex_adapter.hpp"
 #include "wacfrac/types.hpp"
+#include <cstddef>
 #include <cccl/cuda/__container/buffer.h>
 #include <cccl/cuda/__device/device_ref.h>
 #include <cccl/cuda/__stream/stream.h>

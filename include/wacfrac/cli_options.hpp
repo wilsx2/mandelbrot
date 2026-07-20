@@ -127,7 +127,7 @@ struct RendererOptions : public RendererConfig<Context> {
             .nargs(1).absent(log_level)
             .help("Log level: 0=Trace, 1=Debug, 2=Info, 3=Warning, 4=Error, 5=Fatal");
 
-        args.add_parameter(this->probe_grid, "--probes")
+        args.add_parameter(this->probe_grid, "--probes", "-P")
             .nargs(2).absent(this->probe_grid)
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
                 target.first = std::stoul(parts[0]);

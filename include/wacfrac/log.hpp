@@ -4,6 +4,7 @@
 #include <boost/log/sources/record_ostream.hpp>
 
 #include <atomic>
+#include <cstddef>
 #include <string>
 #include <sstream>
 

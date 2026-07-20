@@ -3,6 +3,7 @@
 #include "wacfrac/color.hpp"
 #include "wacfrac/log.hpp"
 #include "wacfrac/resolution.hpp"
+#include <cstddef>
 #include "wacfrac/types.hpp"
 #include <algorithm>
 #include <generator>

@@ -2,6 +2,7 @@
 
 #include "wacfrac/bla.hpp"
 #include "wacfrac/complex_concept.hpp"
+#include <cstddef>
 #include "wacfrac/orbit.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/log.hpp"

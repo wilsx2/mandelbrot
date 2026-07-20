@@ -3,6 +3,12 @@ project(wacfrac LANGUAGES C CXX CUDA)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include(ProcessorCount)
+ProcessorCount(N_CORES)
+if(N_CORES GREATER 0)
+    set(CMAKE_BUILD_PARALLEL_LEVEL ${N_CORES})
+endif()
+
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -42,17 +48,48 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
-add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda>)
-add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-diag-suppress=20014>) # Boost host-only warnings in CUDA compilation
-if(MSVC)
-    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>)
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/Zc:preprocessor>)
-    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:alignedNew->)
-    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "Embedded")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr --extended-lambda -diag-suppress=20014") # Boost host-only warnings in CUDA compilation
+# Release / RelWithDebInfo optimization flags
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    # C++ (GCC/Clang)
+    if(NOT MSVC)
+        add_compile_options(
+            $<$<COMPILE_LANGUAGE:CXX>:-O3>
+            $<$<COMPILE_LANGUAGE:CXX>:-march=native>
+            $<$<COMPILE_LANGUAGE:CXX>:-mtune=native>
+            $<$<COMPILE_LANGUAGE:CXX>:-funroll-loops>
+            $<$<COMPILE_LANGUAGE:CXX>:-ffast-math>
+        )
+        string(APPEND CMAKE_CUDA_FLAGS_RELEASE " -Xcompiler=-O3,-march=native,-mtune=native,-funroll-loops,-ffast-math")
+        string(APPEND CMAKE_CUDA_FLAGS_RELWITHDEBINFO " -Xcompiler=-O3,-march=native,-mtune=native,-funroll-loops,-ffast-math")
+    endif()
+
+    # CUDA
+    set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math -lineinfo")
+    set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} --use_fast_math -lineinfo")
+
+    # MSVC
+    if(MSVC)
+        add_compile_options(
+            $<$<COMPILE_LANGUAGE:CXX>:/Ox>
+            $<$<COMPILE_LANGUAGE:CXX>:/Oi>
+            $<$<COMPILE_LANGUAGE:CXX>:/Ot>
+            $<$<COMPILE_LANGUAGE:CXX>:/GL>
+            $<$<COMPILE_LANGUAGE:CXX>:/fp:fast>
+            $<$<COMPILE_LANGUAGE:CXX>:/arch:AVX2> # WARN: Hardcoded, not portable
+        )
+        string(APPEND CMAKE_CUDA_FLAGS_RELEASE " -Xcompiler=/Ox,/Oi,/Ot,/GL,/fp:fast,/arch:AVX2")
+        string(APPEND CMAKE_CUDA_FLAGS_RELWITHDEBINFO " -Xcompiler=/Ox,/Oi,/Ot,/GL,/fp:fast,/arch:AVX2")
+        add_link_options(/LTCG)
+    endif()
 endif()
-# TODO: Add optimization flags
-set(CMAKE_CUDA_ARCHITECTURES "86" CACHE STRING "CUDA compute capability")
+
+# CUDA architecture
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES OR CMAKE_CUDA_ARCHITECTURES STREQUAL "")
+    set(CMAKE_CUDA_ARCHITECTURES 86) # WARN: Hardcoded, barely portable
+endif()
+message(STATUS "CUDA architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+set(CMAKE_CUDA_SEPARABLE_COMPILATION OFF)
 set(CMAKE_CUDA_SEPARABLE_COMPILATION OFF)
 set(CMAKE_CUDA_COMPILE_SEPARABLE_COMPILATION OFF)
 set(CMAKE_CUDA_STANDARD 20)
@@ -91,6 +128,7 @@ target_link_libraries(libwacfrac PUBLIC
 
 # Benchmarks
 add_executable(benchmark src/benchmark.cpp)
+set_property(TARGET benchmark PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(benchmark PRIVATE
     libwacfrac
     benchmark::benchmark_main
@@ -98,6 +136,7 @@ target_link_libraries(benchmark PRIVATE
 
 # Application
 add_executable(wacfrac src/main.cpp)
+set_property(TARGET wacfrac PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(wacfrac PRIVATE
     libwacfrac
     Argumentum::argumentum

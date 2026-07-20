@@ -165,10 +165,9 @@ class Device : public Context<Device> {
     public:
     template<typename T>
     auto memcpy(WF_STD::span<T> dst, WF_STD::span<const T> src) -> void {
-        auto err {cudaMemcpy(dst.data(), src.data(), dst.size() * sizeof(T), cudaMemcpyDefault)};
-        if (err != cudaSuccess) {
-            logging::error("CUDA memcpy error: {}", cudaGetErrorString(err));
-        }
+        // TODO: Assert sizes are the same
+        cudaMemcpy(dst.data(), src.data(), dst.size() * sizeof(T), cudaMemcpyDefault);
+        // TODO: Catch errors
     }
 #if defined(__CUDACC__)
     template <typename F>
@@ -176,9 +175,13 @@ class Device : public Context<Device> {
         auto numBlocks {(count + ThreadsPerBlock - 1) / ThreadsPerBlock};
         executeLambda<<<numBlocks, ThreadsPerBlock>>>(count, func);
 
-        auto err {cudaDeviceSynchronize()};
+        auto err {cudaDeviceSynchronize()}; // TODO: Refactor into free func
         if (err != cudaSuccess) {
-            logging::error("CUDA kernel error: {}", cudaGetErrorString(err));
+            logging::error("CUDA error: {}", cudaGetErrorString(err));
+        }
+        err = cudaGetLastError();
+        if (err != cudaSuccess) {
+            logging::error("CUDA error: {}", cudaGetErrorString(err));
         }
     }
 #else
