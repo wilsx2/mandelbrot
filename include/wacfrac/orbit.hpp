@@ -75,7 +75,7 @@ WF_HD
 auto escape_perturbed(const T& dc, WF_STD::span<const T> ref, unsigned max_n, double escape_radius) -> WF_STD::pair<Complex<float>, unsigned> {
     unsigned ref_n {0u};
     T dz {0.0};
-    T z {ref[ref_n] + dz};
+    T z {0.0};
 
     return escape_generic<T>(ref[ref_n] + dz, max_n, escape_radius,
         [&](T& z, unsigned& n){

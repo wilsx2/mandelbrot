@@ -145,7 +145,7 @@ class Calculator {
     using Buffer = Context::template Buffer<U>;
     template<typename U>
     using Pointer = Context::template Pointer<U>;
-    Calculator(const Config& params, const Arena& arena, const Context& ctx = {})
+    Calculator(const Config& params, Arena& arena, const Context& ctx = {})
         : _ctx{ctx}
         , _params(params)
         , _arena{arena}
@@ -184,6 +184,16 @@ class Calculator {
                       _params.tolerance, probes.size(), _params.lower_exp, _params.upper_exp);
 
         compute_probe_escape_time(probes, ref, escape_radius);
+        logging::trace("BLA search true escape times:");
+        for (std::size_t i {0}; i < probes.size(); ++i) {
+            logging::trace("  probe[{}]: ({}, {}) = {}", i,
+                static_cast<double>(probes[i].real()),
+                static_cast<double>(probes[i].imag()),
+                _true_escape_times[i]);
+        }
+        logging::trace("BLA search max_dc = ({}, {})",
+            static_cast<double>(max_dc.real()),
+            static_cast<double>(max_dc.imag()));
         auto prev_avg_skipped {-1.0};
         CT prev_exp;
         auto lower_exp {_params.lower_exp};
@@ -344,6 +354,11 @@ class Calculator {
         _skipped_atom->store(0u);
         _tolerance_failed_atom->store(false);
 
+        constexpr std::size_t DIAG_BUF_SIZE {16};
+        auto diag_count {_arena.alloc<WF_STD::atomic<unsigned>>()};
+        auto diag_buf  {_arena.alloc<int>(DIAG_BUF_SIZE * 4)};
+        diag_count->store(0u);
+
         auto approximator = get_approximator();
         auto escape_times = _true_escape_times;
         auto tolerance_failed = _tolerance_failed_atom;
@@ -356,7 +371,9 @@ class Calculator {
              escape_times,
              tolerance_failed,
              total_skipped,
-             approximator]
+             approximator,
+             diag_count,
+             diag_buf]
             WF_HD
             (int tid){
                 if (tid >= probes.size())
@@ -372,15 +389,39 @@ class Calculator {
                 using std::abs;
                 if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(escape_times[tid]) - 1.0) > tolerance) {
                     tolerance_failed->store(true, WF_STD::memory_order_seq_cst); // TODO: Pick a good setting
+                    auto idx {diag_count->fetch_add(1u, WF_STD::memory_order_relaxed)};
+                    if (idx < DIAG_BUF_SIZE) {
+                        diag_buf[idx * 4 + 0] = tid;
+                        diag_buf[idx * 4 + 1] = static_cast<int>(escape_times[tid]);
+                        diag_buf[idx * 4 + 2] = static_cast<int>(approx_escape_time);
+                        diag_buf[idx * 4 + 3] = static_cast<int>(skipped);
+                    }
                     return;
                 }
                 total_skipped->fetch_add(skipped, WF_STD::memory_order_seq_cst);
             });
+        auto fail_count {diag_count->load()};
+        if (fail_count > 0) {
+            for (std::size_t i {0}; i < std::min<std::size_t>(fail_count, DIAG_BUF_SIZE); ++i) {
+                auto tid     {diag_buf[i * 4 + 0]};
+                auto true_n  {diag_buf[i * 4 + 1]};
+                auto approx_n{diag_buf[i * 4 + 2]};
+                auto skipped {diag_buf[i * 4 + 3]};
+                auto rel_err {true_n > 0
+                    ? std::abs(static_cast<double>(approx_n) / static_cast<double>(true_n) - 1.0)
+                    : (approx_n == 0 ? 0.0 : 999.0)};
+                logging::trace("  Tolerance failed: probe={} true={} approx={} skipped={} rel_error={}",
+                               tid, true_n, approx_n, skipped, rel_err);
+            }
+            if (fail_count > DIAG_BUF_SIZE) {
+                logging::trace("  ... and {} more failures", fail_count - DIAG_BUF_SIZE);
+            }
+        }
     }
 
     Context _ctx;
     Config _params;
-    Arena _arena;
+    Arena& _arena;
     std::size_t _last_level;
     WF_STD::span<ColumnInfo> _columns;
     WF_STD::span<Bla<T>>     _current_working;
@@ -398,7 +439,7 @@ auto escape_approximate(const T& dc, Ref ref, unsigned max_n, double escape_radi
                         -> std::tuple<Complex<float>, unsigned, unsigned> {
     unsigned ref_n {0u};
     unsigned skipped {0u};
-    T dz {0.0, 0.0};
+    T dz {0.0};
     auto [z, n] = escape_generic(T{}, max_n, escape_radius,
         [&](T& z, unsigned& n){
             auto approximation {approximator.approximate_dzn(dz, ref_n, dc)};
