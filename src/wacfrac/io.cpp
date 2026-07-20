@@ -14,7 +14,11 @@ namespace wacfrac
 {
 
 auto write_ppm(std::filesystem::path filename, Resolution res, std::span<const Pixel> pixels) -> bool {
-    logging::info( "Writing {}x{} image to {} ({} bytes)", res.width, res.height, filename, pixels.size_bytes());
+    logging::info( "Writing {}x{} image to {} ({} bytes) ptr={} first=({},{},{})",
+        res.width, res.height, filename, pixels.size_bytes(), (void*)pixels.data(),
+        pixels.size() > 0 ? static_cast<int>(pixels[0].r) : 0,
+        pixels.size() > 0 ? static_cast<int>(pixels[0].g) : 0,
+        pixels.size() > 0 ? static_cast<int>(pixels[0].b) : 0);
 
     std::ofstream file(filename, std::ios::binary);
     if (!file.is_open()) {

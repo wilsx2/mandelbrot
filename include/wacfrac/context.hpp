@@ -116,6 +116,14 @@ __global__ void executeLambda(std::size_t count, F func) {
         func(idx); 
     }
 }
+
+template <typename T>
+__global__ void testWriteKernel(std::size_t count, T* ptr, T val) {
+    auto idx {blockIdx.x * blockDim.x + threadIdx.x};
+    if (idx < count) {
+        ptr[idx] = val;
+    }
+}
 #endif
 
 class Device : public Context<Device> {
@@ -179,6 +187,17 @@ class Device : public Context<Device> {
         auto err {cudaDeviceSynchronize()};
         if (err != cudaSuccess) {
             logging::error("CUDA kernel error: {}", cudaGetErrorString(err));
+        }
+    }
+    template <typename T>
+    void debug_check_managed(T* ptr, std::size_t count, const char* label) const {
+        if (ptr && count > 0) {
+            auto val = ptr[0];
+            logging::info("[DEBUG {}] ptr={} first_pixel=({},{},{})",
+                label, (void*)ptr,
+                static_cast<int>(val.r), static_cast<int>(val.g), static_cast<int>(val.b));
+        } else {
+            logging::info("[DEBUG {}] ptr={} count={}", label, (void*)ptr, count);
         }
     }
 #else

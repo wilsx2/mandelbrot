@@ -45,6 +45,9 @@ auto Renderer<Context>::direct_render_pass(T start, T delta, unsigned max_n) -> 
     auto row_width {conf.resolution.width};
     auto escape_radius {conf.escape_radius};
 
+    logging::info("[DEBUG direct_render] screen_ptr={} screen_size={} palette_ptr={} palette_size={} row_width={}",
+        (void*)screen.data(), screen.size(), (void*)palette.data(), palette.size(), row_width);
+
     Colorizer colorize {discrete, palette, max_n};
     conf.ctx.parallel_for(screen.size(),
         [screen,
@@ -66,6 +69,9 @@ auto Renderer<Context>::direct_render_pass(T start, T delta, unsigned max_n) -> 
                 escape_radius);
             screen[tid] = colorize.colorize(z, n);
         });
+
+    logging::info("[DEBUG direct_render AFTER kernel] first=({},{},{})",
+        static_cast<int>(screen[0].r), static_cast<int>(screen[0].g), static_cast<int>(screen[0].b));
 }
 template<typename Context>
 template<typename T>
@@ -300,7 +306,11 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
     );
 
     logging::info("Image render took {}ms", elapsed.count());
-    return pixels.as_span();
+    auto result = pixels.as_span();
+    logging::info("[DEBUG render return] ptr={} size={} first=({},{},{})",
+        (void*)result.data(), result.size(),
+        static_cast<int>(result[0].r), static_cast<int>(result[0].g), static_cast<int>(result[0].b));
+    return result;
 }
 
 }
