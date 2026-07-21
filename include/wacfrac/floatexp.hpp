@@ -32,7 +32,8 @@ struct FloatExp {
     M val;
     E exp;
 
-    FloatExp() = default;
+    WF_HD
+    FloatExp() noexcept : val(0), exp(EXP_MIN) {}
     FloatExp(const FloatExp&) = default;
     FloatExp(FloatExp&&) = default;
     FloatExp& operator=(const FloatExp&) = default;
