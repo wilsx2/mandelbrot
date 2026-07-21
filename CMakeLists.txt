@@ -48,40 +48,19 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr --extended-lambda -diag-suppress=20014") # Boost host-only warnings in CUDA compilation
+if(CMAKE_CUDA_COMPILER_ID STREQUAL "NVIDIA")
+    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -diag-suppress=20014") # Boost host-only warnings in CUDA compilation
+endif()
 # Release / RelWithDebInfo optimization flags
 if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    # C++ (GCC/Clang)
-    if(NOT MSVC)
-        add_compile_options(
-            $<$<COMPILE_LANGUAGE:CXX>:-O3>
-            $<$<COMPILE_LANGUAGE:CXX>:-march=native>
-            $<$<COMPILE_LANGUAGE:CXX>:-mtune=native>
-            $<$<COMPILE_LANGUAGE:CXX>:-funroll-loops>
-            $<$<COMPILE_LANGUAGE:CXX>:-ffast-math>
-        )
-        string(APPEND CMAKE_CUDA_FLAGS_RELEASE " -Xcompiler=-O3,-march=native,-mtune=native,-funroll-loops,-ffast-math")
-        string(APPEND CMAKE_CUDA_FLAGS_RELWITHDEBINFO " -Xcompiler=-O3,-march=native,-mtune=native,-funroll-loops,-ffast-math")
-    endif()
-
-    # CUDA
-    set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math -lineinfo")
-    set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO "${CMAKE_CUDA_FLAGS_RELWITHDEBINFO} --use_fast_math -lineinfo")
-
-    # MSVC
-    if(MSVC)
-        add_compile_options(
-            $<$<COMPILE_LANGUAGE:CXX>:/Ox>
-            $<$<COMPILE_LANGUAGE:CXX>:/Oi>
-            $<$<COMPILE_LANGUAGE:CXX>:/Ot>
-            $<$<COMPILE_LANGUAGE:CXX>:/GL>
-            $<$<COMPILE_LANGUAGE:CXX>:/fp:fast>
-            $<$<COMPILE_LANGUAGE:CXX>:/arch:AVX2> # WARN: Hardcoded, not portable
-        )
-        string(APPEND CMAKE_CUDA_FLAGS_RELEASE " -Xcompiler=/Ox,/Oi,/Ot,/GL,/fp:fast,/arch:AVX2")
-        string(APPEND CMAKE_CUDA_FLAGS_RELWITHDEBINFO " -Xcompiler=/Ox,/Oi,/Ot,/GL,/fp:fast,/arch:AVX2")
-        add_link_options(/LTCG)
-    endif()
+    # Clang assumed for both C++ and CUDA
+    add_compile_options(
+        $<$<COMPILE_LANGUAGE:CXX,CUDA>:-O3>
+        $<$<COMPILE_LANGUAGE:CXX,CUDA>:-funroll-loops>
+        $<$<COMPILE_LANGUAGE:CXX,CUDA>:-ffast-math>
+        $<$<COMPILE_LANGUAGE:CXX>:-march=native>
+        $<$<COMPILE_LANGUAGE:CXX>:-mtune=native>
+    )
 endif()
 
 # CUDA architecture
@@ -112,9 +91,6 @@ set_target_properties(libwacfrac PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libwacfrac PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-if(MSVC)
-    target_compile_definitions(libwacfrac PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:CCCL_IGNORE_MSVC_TRADITIONAL_PREPROCESSOR_WARNING>)
-endif()
 target_link_libraries(libwacfrac PUBLIC
     Boost::headers
     Boost::log
@@ -124,6 +100,11 @@ target_link_libraries(libwacfrac PUBLIC
     MPFR::mpfr
     GMP::gmp
     CUDA::cudart
+)
+
+add_compile_definitions(NOMINMAX)
+target_compile_options(libwacfrac PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-include "${CMAKE_CURRENT_SOURCE_DIR}/include/wacfrac/cuda_crt_stub.h">
 )
 
 # Benchmarks
@@ -136,7 +117,6 @@ target_link_libraries(benchmark PRIVATE
 
 # Application
 add_executable(wacfrac src/main.cpp)
-set_property(TARGET wacfrac PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(wacfrac PRIVATE
     libwacfrac
     Argumentum::argumentum
