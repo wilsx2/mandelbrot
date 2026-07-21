@@ -1,7 +1,5 @@
-Windows/GPU comp
-BLA fails with Dexp
+PU comp
 Fix video render
-Fix slow startup
 Cleanup code unused
 GPU vs non-GPU benchmarks
 
