@@ -17,14 +17,15 @@ namespace wacfrac
 // Numeric Types
 using SingleExp = FloatExp<float,  int64_t>;
 using DoubleExp = FloatExp<double, int64_t>;
-using MultiFloat   = boost::multiprecision::mpfr_float;
 
 // Complex Types
 using SingleComplex = Complex<float>;
 using DoubleComplex = Complex<double>;
-using MultiComplex  = boost::multiprecision::mpc_complex;
 using SingleExpComplex = Complex<SingleExp>;
 using DoubleExpComplex = Complex<DoubleExp>;
+
+using MultiFloat   = boost::multiprecision::mpfr_float;
+using MultiComplex  = boost::multiprecision::mpc_complex;
 
 template <typename Real>
 auto to_real(const MultiFloat& val) -> Real {

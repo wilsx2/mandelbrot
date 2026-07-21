@@ -1,1 +1,56 @@
-build/compile_commands.json
+[
+{
+  "directory": "/home/wilsx2/Code/mandelbrot",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DNOMINMAX -I/home/wilsx2/Code/mandelbrot/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=c++23 -fPIC -O3 -funroll-loops -ffast-math -march=native -mtune=native -o CMakeFiles/libwacfrac.dir/src/wacfrac/analysis.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/analysis.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/analysis.cpp",
+  "output": "/home/wilsx2/Code/mandelbrot/CMakeFiles/libwacfrac.dir/src/wacfrac/analysis.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DNOMINMAX -I/home/wilsx2/Code/mandelbrot/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=c++23 -fPIC -O3 -funroll-loops -ffast-math -march=native -mtune=native -o CMakeFiles/libwacfrac.dir/src/wacfrac/color.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/color.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/color.cpp",
+  "output": "/home/wilsx2/Code/mandelbrot/CMakeFiles/libwacfrac.dir/src/wacfrac/color.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DNOMINMAX -I/home/wilsx2/Code/mandelbrot/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=c++23 -fPIC -O3 -funroll-loops -ffast-math -march=native -mtune=native -o CMakeFiles/libwacfrac.dir/src/wacfrac/viewport.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/viewport.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/viewport.cpp",
+  "output": "/home/wilsx2/Code/mandelbrot/CMakeFiles/libwacfrac.dir/src/wacfrac/viewport.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DNOMINMAX -I/home/wilsx2/Code/mandelbrot/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=c++23 -fPIC -O3 -funroll-loops -ffast-math -march=native -mtune=native -o CMakeFiles/libwacfrac.dir/src/wacfrac/io.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/io.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/io.cpp",
+  "output": "/home/wilsx2/Code/mandelbrot/CMakeFiles/libwacfrac.dir/src/wacfrac/io.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DNOMINMAX -I/home/wilsx2/Code/mandelbrot/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=c++23 -fPIC -O3 -funroll-loops -ffast-math -march=native -mtune=native -o CMakeFiles/libwacfrac.dir/src/wacfrac/log.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/log.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/log.cpp",
+  "output": "/home/wilsx2/Code/mandelbrot/CMakeFiles/libwacfrac.dir/src/wacfrac/log.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DNOMINMAX -I/home/wilsx2/Code/mandelbrot/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=c++23 -fPIC -O3 -funroll-loops -ffast-math -march=native -mtune=native -o CMakeFiles/libwacfrac.dir/src/wacfrac/renderer_host.cpp.o -c /home/wilsx2/Code/mandelbrot/src/wacfrac/renderer_host.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/renderer_host.cpp",
+  "output": "/home/wilsx2/Code/mandelbrot/CMakeFiles/libwacfrac.dir/src/wacfrac/renderer_host.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot",
+  "command": "/opt/cuda/bin/nvcc -forward-unknown-to-host-compiler -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DNOMINMAX -I/home/wilsx2/Code/mandelbrot/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl  -diag-suppress=20014 -O3 -DNDEBUG -std=c++20 \"--generate-code=arch=compute_75,code=[compute_75,sm_75]\" -Xcompiler=-fPIC -O3 -funroll-loops -ffast-math -include /home/wilsx2/Code/mandelbrot/include/wacfrac/cuda_crt_stub.h -x cu -c /home/wilsx2/Code/mandelbrot/src/wacfrac/renderer.cu -o CMakeFiles/libwacfrac.dir/src/wacfrac/renderer.cu.o",
+  "file": "/home/wilsx2/Code/mandelbrot/src/wacfrac/renderer.cu",
+  "output": "/home/wilsx2/Code/mandelbrot/CMakeFiles/libwacfrac.dir/src/wacfrac/renderer.cu.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DNOMINMAX -I/home/wilsx2/Code/mandelbrot/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=c++23 -flto=auto -fno-fat-lto-objects -O3 -funroll-loops -ffast-math -march=native -mtune=native -o CMakeFiles/benchmark.dir/src/benchmark.cpp.o -c /home/wilsx2/Code/mandelbrot/src/benchmark.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/benchmark.cpp",
+  "output": "/home/wilsx2/Code/mandelbrot/CMakeFiles/benchmark.dir/src/benchmark.cpp.o"
+},
+{
+  "directory": "/home/wilsx2/Code/mandelbrot",
+  "command": "/usr/bin/c++ -DBOOST_ATOMIC_DYN_LINK -DBOOST_ATOMIC_NO_LIB -DBOOST_CHRONO_DYN_LINK -DBOOST_CHRONO_NO_LIB -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DBOOST_FILESYSTEM_DYN_LINK -DBOOST_FILESYSTEM_NO_LIB -DBOOST_LOG_DYN_LINK -DBOOST_LOG_NO_LIB -DBOOST_LOG_SETUP_DYN_LINK -DBOOST_LOG_SETUP_NO_LIB -DBOOST_REGEX_DYN_LINK -DBOOST_REGEX_NO_LIB -DBOOST_SERIALIZATION_DYN_LINK -DBOOST_SERIALIZATION_NO_LIB -DBOOST_THREAD_DYN_LINK -DBOOST_THREAD_NO_LIB -DNOMINMAX -I/home/wilsx2/Code/mandelbrot/include -isystem /opt/cuda/targets/x86_64-linux/include -isystem /opt/cuda/targets/x86_64-linux/include/cccl -O3 -DNDEBUG -std=c++23 -O3 -funroll-loops -ffast-math -march=native -mtune=native -o CMakeFiles/wacfrac.dir/src/main.cpp.o -c /home/wilsx2/Code/mandelbrot/src/main.cpp",
+  "file": "/home/wilsx2/Code/mandelbrot/src/main.cpp",
+  "output": "/home/wilsx2/Code/mandelbrot/CMakeFiles/wacfrac.dir/src/main.cpp.o"
+}
+]

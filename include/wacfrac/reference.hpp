@@ -40,9 +40,6 @@ auto compute_reference_mt(WF_STD::span<T> buffer, MultiComplex c, double escape_
     buffer[0] = T{0.0, 0.0};
     using CT = ComplexValueTypeT<T>;
     auto count {compute_reference_iteration(c, max_n, escape_radius, [&](unsigned n, const MultiFloat& r, const MultiFloat& i) {
-        if (n >= buffer.size()) {
-            std::cerr << "NOOO!!" << n << "/" << buffer.size() << std::endl;
-        }
         buffer[n] = T{to_real<CT>(r), to_real<CT>(i)};
     })};
     logging::debug( "Reference orbit computed: {} points (max_n={})", count, max_n);
@@ -147,9 +144,6 @@ struct ReferenceSet {
         _double_ref[0]      = DoubleComplex{0.0, 0.0};
         _dexp_ref[0]        = DoubleExpComplex{};
         _size = compute_reference_iteration(c, max_n(), escape_radius, [&](unsigned n, const MultiFloat& r, const MultiFloat& i) {
-            if (n >= _float_ref.size()) {
-                std::cerr << "NOOO!!" << n << "/" << max_n() << std::endl;
-            }
             _float_ref[n]       = SingleComplex{to_real<float>(r), to_real<float>(i)};
             _double_ref[n]      = DoubleComplex{to_real<double>(r), to_real<double>(i)};
             _dexp_ref[n]        = DoubleExpComplex{to_real<DoubleExp>(r), to_real<DoubleExp>(i)};

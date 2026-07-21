@@ -1,15 +1,18 @@
 {
-  "name": "wacfrac",
-  "version": "0.1.0",
-  "description": "High-performance Mandelbrot set renderer",
-  "builtin-baseline": "fab1c6dc7a944372a90a1e19ab5e8e32cd658fc2",
-  "dependencies": [
-    "boost-log",
-    "boost-multiprecision",
-    "benchmark",
-    "gmp",
-    "mpfr",
-    "mpc",
-    "tbb"
-  ]
+    "name": "wacfrac",
+    "version": "0.1.0",
+    "description": "High-performance Mandelbrot set renderer",
+    "builtin-baseline": "fab1c6dc7a944372a90a1e19ab5e8e32cd658fc2",
+    "dependencies": [
+        "boost-log",
+        "boost-multiprecision",
+        "benchmark",
+        "gmp",
+        "mpfr",
+        "mpc",
+        "tbb"
+    ],
+    "overrides": [
+        { "name": "boost-math", "version": "1.86.0" }
+    ]
 }

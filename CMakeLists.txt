@@ -102,7 +102,9 @@ target_link_libraries(libwacfrac PUBLIC
     CUDA::cudart
 )
 
-add_compile_definitions(NOMINMAX)
+add_compile_definitions(
+    NOMINMAX
+)
 target_compile_options(libwacfrac PRIVATE
     $<$<COMPILE_LANGUAGE:CUDA>:-include "${CMAKE_CURRENT_SOURCE_DIR}/include/wacfrac/cuda_crt_stub.h">
 )

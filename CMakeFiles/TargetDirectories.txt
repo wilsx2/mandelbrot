@@ -1,0 +1,5 @@
+/home/wilsx2/Code/mandelbrot/CMakeFiles/libwacfrac.dir
+/home/wilsx2/Code/mandelbrot/CMakeFiles/benchmark.dir
+/home/wilsx2/Code/mandelbrot/CMakeFiles/wacfrac.dir
+/home/wilsx2/Code/mandelbrot/CMakeFiles/edit_cache.dir
+/home/wilsx2/Code/mandelbrot/CMakeFiles/rebuild_cache.dir

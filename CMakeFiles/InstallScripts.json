@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/wilsx2/Code/mandelbrot/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

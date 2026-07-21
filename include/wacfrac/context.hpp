@@ -21,9 +21,6 @@ template <typename Derived>
 class Context {
     private:
     template<typename T>
-    using Deallocator = decltype(std::declval<Derived&>().template deallocator<T>());
-
-    template<typename T>
     auto alloc() -> T* {
         logging::debug("Allocating {} bytes", sizeof(T));
         return static_cast<Derived&>(*this).template alloc<T>();
@@ -33,16 +30,16 @@ class Context {
         logging::debug("Allocating {} bytes", sizeof(T)*count);
         return static_cast<Derived&>(*this).template alloc<T>(count);
     }
-    template<typename T>
-    auto deallocator() -> Deallocator<T> {
+    template<typename T, typename D = Derived>
+    auto deallocator() -> decltype(std::declval<D&>().template deallocator<T>()) {
         return static_cast<Derived&>(*this).template deallocator<T>();
     }
 
     public:
-    template<typename T>
-    using Buffer = Buffer<T, Deallocator<T>>; 
-    template<typename T>
-    using Pointer = std::unique_ptr<T, Deallocator<T>>;
+    template<typename T, typename D = Derived>
+    using Buffer = Buffer<T, decltype(std::declval<D&>().template deallocator<T>())>; 
+    template<typename T, typename D = Derived>
+    using Pointer = std::unique_ptr<T, decltype(std::declval<D&>().template deallocator<T>())>; 
 
     template<typename T>
     auto make_buffer(std::size_t count) {
