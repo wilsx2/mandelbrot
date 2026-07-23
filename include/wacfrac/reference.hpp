@@ -22,8 +22,12 @@ auto compute_reference(std::span<T> buffer, MultiComplex c, double escape_radius
 
     MultiComplex z{};
     auto n{0u};
-    for (; n < max_n - 1 && !escaped(z, escape_radius);) {
-        compute_next_orbit(z, n, c);
+    // We cannot use orbit.hpp functions because they are marked SYCL_EXTERNAL
+    for (; n < max_n - 1; ) {
+        if (static_cast<double>(norm(z)) > escape_radius * escape_radius)
+            break;
+        z = z * z + c;
+        ++n;
         buffer[n] = to_complex<T>(z);
     }
 
@@ -64,7 +68,7 @@ auto compute_reference_iteration(MultiComplex c, unsigned max_n, double escape_r
     std::barrier sync (2, [&]() noexcept {
         store_at_n(n_1, computed_re, computed_im);
         ++n_1;
-        if (n_1 >= max_n || escaped(next_z, escape_radius))
+        if (n_1 >= max_n || static_cast<double>(norm(next_z)) > escape_radius * escape_radius)
             running = false;
         else
             std::swap(z, next_z);

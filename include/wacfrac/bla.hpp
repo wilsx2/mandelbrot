@@ -1,6 +1,5 @@
 #pragma once
 
-#include "wacfrac/macros.hpp"
 #include "wacfrac/context.hpp"
 #include "wacfrac/complex_concept.hpp"
 #include <wacfrac/orbit.hpp>
@@ -19,7 +18,7 @@ struct ColumnInfo {
     std::size_t start;
     std::size_t count;
 
-    WF_HD
+    SYCL_EXTERNAL
     static auto compute_start(unsigned m, std::size_t first_level, std::size_t last_level) -> std::size_t {
         auto start {0ull};
         if (m > 1u && first_level <= last_level) {
@@ -31,7 +30,7 @@ struct ColumnInfo {
         }
         return start;
     }
-    WF_HD
+    SYCL_EXTERNAL
     static auto compute_count(std::size_t m, std::size_t first_level, std::size_t last_level) -> std::size_t {
         auto val {m - 1};
         unsigned cz {0};
@@ -53,9 +52,9 @@ struct Bla {
     T a, b;
     CT r;
     Bla() = default;
-    WF_HD
+    SYCL_EXTERNAL
     Bla(T a, T b, CT r) : a(a), b(b), r(r) {}
-    WF_HD
+    SYCL_EXTERNAL
     Bla(CT epsilon, std::span<const T> ref, T max_dc, unsigned m, unsigned n) {
         using std::abs;
         auto l {n - m};
@@ -66,16 +65,16 @@ struct Bla {
             ? (epsilon * abs(ref[n]) - abs(b) * abs(max_dc)) / denom
             : -abs(max_dc);
     }
-    WF_HD
+    SYCL_EXTERNAL
     auto is_valid(T dzm) const -> bool {
         using std::norm;
         return r > CT{} && norm(dzm) < r*r;
     }
-    WF_HD
+    SYCL_EXTERNAL
     auto approximate_dzn(T dzm, T dc) const -> T {
         return a*dzm + b*dc;
     }
-    WF_HD
+    SYCL_EXTERNAL
     static auto merge(const T& max_dc, const Bla& x, const Bla& y) -> Bla {
         using std::abs;
         auto a {x.a * y.a};
@@ -96,17 +95,17 @@ struct Approximator {
     std::span<const ColumnInfo> columns;
     std::span<Bla<T>> approximations;
 
-    WF_HD
+    SYCL_EXTERNAL
     auto approximation_exists(unsigned m, std::size_t level) const -> bool {
         return level >= first_level && m > 0 && m - 1 < columns.size() && level - first_level < columns[m - 1].count;
     }
-    WF_HD
+    SYCL_EXTERNAL
     auto approximation_at(unsigned m, std::size_t level) const -> Bla<T>* {
         if (approximation_exists(m, level))
             return &approximations[columns[m - 1].start + level - first_level];
         return nullptr;
     }
-    WF_HD
+    SYCL_EXTERNAL
     auto approximate_dzn(T dzm, unsigned m, T dc) const -> std::optional<std::pair<T, unsigned>> {
         auto bla {approximation_at(m, first_level)};
         if (!bla || !bla->is_valid(dzm))
@@ -238,7 +237,6 @@ class Calculator {
              first_level,
              last_level,
              columns]
-            WF_HD
             (int tid){
                 auto m {tid + 1};
                 if (m > max_n)
@@ -260,7 +258,6 @@ class Calculator {
              first_level,
              approximator,
              working]
-            WF_HD
             (int tid){
                 if (tid + 2 >= ref.size())
                     return;
@@ -284,7 +281,6 @@ class Calculator {
                  approximator,
                  working,
                  next_working]
-                WF_HD
                 (int tid){
                     auto k {tid * 2};
                     if (k >= working.size())
@@ -306,7 +302,6 @@ class Calculator {
                  approximator,
                  working,
                  next_working]
-                WF_HD
                 (int tid){
                     auto k {tid * 2};
                     if (k >= working.size())
@@ -328,7 +323,6 @@ class Calculator {
              ref,
              escape_radius,
              escape_times]
-            WF_HD
             (int tid){
                 if (tid >= probes.size())
                     return;
@@ -360,7 +354,6 @@ class Calculator {
              tolerance_failed,
              total_skipped,
              approximator]
-            WF_HD
             (int tid){
                 if (tid >= probes.size())
                     return;
@@ -395,7 +388,7 @@ class Calculator {
 };
 
 template <ComplexConcept T, typename Ref, typename Approx>
-WF_HD
+SYCL_EXTERNAL
 auto escape_approximate(const T& dc, Ref ref, unsigned max_n, double escape_radius,
                         const Approx& approximator)
                         -> std::tuple<Complex<float>, unsigned, unsigned> {

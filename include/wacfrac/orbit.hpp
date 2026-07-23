@@ -13,14 +13,14 @@ namespace wacfrac
 {
 
 template <ComplexConcept T>
-WF_HD
+SYCL_EXTERNAL
 inline void compute_next_orbit(T& z, unsigned& n, const T& c) {
     z = z*z + c;
     ++n;
 }
 
 template <ComplexConcept T = DoubleComplex>
-WF_HD
+SYCL_EXTERNAL
 inline void compute_next_perturbation(T& z, T& dz, unsigned& n, const T& dc, std::span<const T> ref, unsigned& ref_n) {
     dz = static_cast<ComplexValueTypeT<T>>(2.0) * dz * ref[ref_n] + dz * dz + dc;
     ++ref_n;
@@ -28,7 +28,7 @@ inline void compute_next_perturbation(T& z, T& dz, unsigned& n, const T& dc, std
 }
 
 template <ComplexConcept T = DoubleComplex>
-WF_HD
+SYCL_EXTERNAL
 inline void rebase_perturbation(T& z, T& dz, std::span<const T> ref, unsigned& ref_n) {
     if (ref_n >= ref.size()) {
         dz = z;
@@ -46,13 +46,13 @@ inline void rebase_perturbation(T& z, T& dz, std::span<const T> ref, unsigned& r
 }
 
 template <ComplexConcept T>
-WF_HD
+SYCL_EXTERNAL
 inline auto escaped(const T& z, double escape_radius) -> bool {
     return static_cast<double>(norm(z)) > escape_radius*escape_radius;
 }
 
 template <ComplexConcept T, std::invocable<T&, unsigned&> F>
-WF_HD
+SYCL_EXTERNAL
 auto escape_generic(T z, unsigned max_n, double escape_radius, F&& next_orbit) -> std::pair<Complex<float>, unsigned> {
     unsigned n {0u};
     while (n < max_n && !escaped(z, escape_radius))
@@ -62,7 +62,7 @@ auto escape_generic(T z, unsigned max_n, double escape_radius, F&& next_orbit) -
 }
 
 template <ComplexConcept T>
-WF_HD
+SYCL_EXTERNAL
 auto escape(const T& c, unsigned max_n, double escape_radius) -> std::pair<Complex<float>, unsigned> {
     return escape_generic<T>(0.0, max_n, escape_radius,
         [&c](T& z, unsigned& n){
@@ -71,7 +71,7 @@ auto escape(const T& c, unsigned max_n, double escape_radius) -> std::pair<Compl
 }
 
 template <ComplexConcept T>
-WF_HD
+SYCL_EXTERNAL
 auto escape_perturbed(const T& dc, std::span<const T> ref, unsigned max_n, double escape_radius) -> std::pair<Complex<float>, unsigned> {
     unsigned ref_n {0u};
     T dz {0.0};

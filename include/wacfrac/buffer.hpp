@@ -1,5 +1,4 @@
 #pragma once
-#include "wacfrac/macros.hpp"
 #include "wacfrac/log.hpp"
 #include <cstddef>
 #include <memory>

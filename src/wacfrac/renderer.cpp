@@ -4,6 +4,7 @@
 #include "wacfrac/orbit.hpp"
 #include "wacfrac/rendering.hpp"
 #include "wacfrac/viewport.hpp"
+#include <sycl/access/access.hpp>
 
 namespace wacfrac {
 
@@ -13,7 +14,7 @@ struct Colorizer {
     unsigned max_n;
 
     template<typename Z, typename N>
-    WF_HD
+    SYCL_EXTERNAL
     auto colorize(Z z, N n) const -> Pixel {
         if (discrete)
             return colorize_discrete(n, max_n, palette);
@@ -37,32 +38,26 @@ decltype(auto) with_numeric_type(NumericType type, F&& f) {
 template<typename T>
 auto Renderer::direct_render_pass(T start, T delta, unsigned max_n) -> void {
     auto discrete {conf.discrete_coloring};
-    auto palette {conf.palette.as_span()};
-    auto screen {pixels.as_span()};
-    auto row_width {conf.resolution.width};
+    sycl::buffer<Pixel, 1> palette {conf.palette.data(), sycl::range(conf.palette.size())};
+    sycl::buffer<Pixel, 2> screen {pixels.data(), sycl::range(conf.resolution.width, conf.resolution.height)};
     auto escape_radius {conf.escape_radius};
 
-    Colorizer colorize {discrete, palette, max_n};
-    conf.ctx.parallel_for(screen.size(),
-        [screen,
-        row_width,
-        start,
-        delta,
-        max_n,
-        escape_radius,
-        colorize]
-        WF_HD
-        (int tid) -> void {
+    conf.queue.submit([&](sycl::handler& h) {
+        sycl::accessor screen_acc(screen, h, sycl::write_only);
+        sycl::accessor palette_acc(palette, h, sycl::read_only);
+
+        h.parallel_for(screen_acc.get_range(), [=](sycl::id<2> id) {
             auto [z, n] = escape(
-                sample_c_value(
-                    tid,
-                    row_width,
-                    start,
-                    delta),
+                sample_c_value(id, start, delta),
                 max_n,
                 escape_radius);
-            screen[tid] = colorize.colorize(z, n);
+            screen_acc[id] = [&](){
+                if (discrete)
+                    return colorize_discrete(n, max_n, palette_acc);
+                return colorize_continuous(z, n, max_n, palette_acc);
+            }();
         });
+    });
 }
 template<typename T>
 auto Renderer::perturbed_render_pass(T start, T delta, std::span<const T> ref, unsigned max_n) -> void {
@@ -82,7 +77,6 @@ auto Renderer::perturbed_render_pass(T start, T delta, std::span<const T> ref, u
         max_n,
         escape_radius,
         colorize]
-        WF_HD
         (int tid) -> void {
             auto [z, n] = escape_perturbed(
                 sample_c_value(
@@ -114,7 +108,6 @@ auto Renderer::bla_render_pass(T start, T delta, std::span<const T> ref, bla::Ap
         escape_radius,
         colorize,
         bla]
-        WF_HD
         (int tid) -> void {
             auto [z, n, _skipped] = bla::escape_approximate(
                 sample_c_value(

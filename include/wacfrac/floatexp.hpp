@@ -1,6 +1,5 @@
 #pragma once
 
-#include "wacfrac/macros.hpp"
 #include <cmath>
 #include <concepts>
 #include <climits>
@@ -28,7 +27,7 @@ struct FloatExp {
     M val;
     E exp;
 
-    WF_HD
+    SYCL_EXTERNAL
     FloatExp() noexcept : val(0), exp(EXP_MIN) {}
     FloatExp(const FloatExp&) = default;
     FloatExp(FloatExp&&) = default;
@@ -49,10 +48,10 @@ struct FloatExp {
     static constexpr E EXP_MAX = -EXP_MIN;
 
     private:
-    WF_HD
+    SYCL_EXTERNAL
     inline void align() noexcept {
         E val_i;
-        WF_STD::memcpy(&val_i, &val, sizeof(val_i));
+        std::memcpy(&val_i, &val, sizeof(val_i));
         const E e = val_i & EXPONENT_MASK;
 
         if (e == 0) [[unlikely]] {
@@ -61,28 +60,28 @@ struct FloatExp {
         } else {
             exp += (e >> EXPONENT_SHIFT) - EXPONENT_BIAS;
             val_i = (val_i & EXPONENT_UNMASK) | EXPONENT_SET;
-            WF_STD::memcpy(&val, &val_i, sizeof(val));
+            std::memcpy(&val, &val_i, sizeof(val));
         }
     }
 
     public:
-    WF_HD
+    SYCL_EXTERNAL
     static inline M set_exp(M val, E exp) noexcept {
         E val_i;
-        WF_STD::memcpy(&val_i, &val, sizeof(val_i));
+        std::memcpy(&val_i, &val, sizeof(val_i));
         val_i = (val_i & EXPONENT_UNMASK) | ((exp  + EXPONENT_BIAS) << EXPONENT_SHIFT);
-        WF_STD::memcpy(&val, &val_i, sizeof(val));
+        std::memcpy(&val, &val_i, sizeof(val));
         return val;
     }
 
     template<std::integral I>
-    WF_HD
+    SYCL_EXTERNAL
     FloatExp(I a) noexcept : val(a), exp(0) {
         align();
     }
 
     template<std::floating_point F>
-    WF_HD
+    SYCL_EXTERNAL
     FloatExp(F a) noexcept {
         using std::frexp;
         auto e {0};
@@ -92,16 +91,16 @@ struct FloatExp {
         align();
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     FloatExp(M a, E e) noexcept : val(a), exp(e) {
         align();
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     FloatExp(M a, E e, int) noexcept : val(a), exp(e) {}
 
     template<std::floating_point M2, std::integral E2>
-    WF_HD
+    SYCL_EXTERNAL
     FloatExp(const FloatExp<M2, E2>& a) noexcept {
         using std::max;
         using std::min;
@@ -113,7 +112,7 @@ struct FloatExp {
         align();
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp& operator *=(const FloatExp& a) noexcept {
         val *= a.val;
         exp += a.exp;
@@ -121,7 +120,7 @@ struct FloatExp {
         return *this;
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp& operator /=(const FloatExp& a) noexcept {
         val /= a.val;
         exp -= a.exp;
@@ -129,29 +128,29 @@ struct FloatExp {
         return *this;
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp& operator +=(const FloatExp& a) noexcept {
         *this = *this + a;
         return *this;
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp& operator -=(const FloatExp& a) noexcept {
         *this = *this - a;
         return *this;
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp operator *(const FloatExp& a) const noexcept {
         return FloatExp(*this) *= a;
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp operator /(const FloatExp& a) const noexcept {
         return FloatExp(*this) /= a;
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp operator +(const FloatExp& a) const noexcept {
         FloatExp r;
         E diff;
@@ -178,7 +177,7 @@ struct FloatExp {
         return r;
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp operator -(const FloatExp& a) const noexcept {
         FloatExp r;
         E diff;
@@ -205,20 +204,20 @@ struct FloatExp {
         return r;
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp operator -() const noexcept {
         FloatExp r = *this;
         r.val = -r.val;
         return r;
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp operator +() const noexcept {
         return *this;
     }
 
     [[nodiscard]]
-    WF_HD
+    SYCL_EXTERNAL
     inline FloatExp mul2() const noexcept {
         FloatExp r;
         r.val = val;
@@ -227,7 +226,7 @@ struct FloatExp {
     }
 
     private:
-    WF_HD
+    SYCL_EXTERNAL
     inline int compare(const FloatExp& a) const noexcept {
         if (val > 0) {
             if (a.val < 0) return 1;
@@ -243,7 +242,7 @@ struct FloatExp {
     }
 
     public:
-    WF_HD
+    SYCL_EXTERNAL
     inline bool operator ==(const FloatExp& a) const noexcept {
         using std::isinf;
         if (val != 0 && !isinf(val) && exp != a.exp)
@@ -251,21 +250,21 @@ struct FloatExp {
         return val == a.val;
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline bool operator !=(const FloatExp& a) const noexcept {
         return !(*this == a);
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline bool operator >(const FloatExp& a) const noexcept { return compare(a) > 0; }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline bool operator <(const FloatExp& a) const noexcept { return compare(a) < 0; }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline bool operator >=(const FloatExp& a) const noexcept { return compare(a) >= 0; }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline bool operator <=(const FloatExp& a) const noexcept { return compare(a) <= 0; }
 
 #if defined(__cpp_impl_three_way_comparison) && __has_include(<compare>)
@@ -280,7 +279,7 @@ struct FloatExp {
     }
 #endif
 
-    WF_HD
+    SYCL_EXTERNAL
     inline operator float() const noexcept {
         using std::ldexp;
         if (exp > E(INT_MAX))
@@ -290,7 +289,7 @@ struct FloatExp {
         return ldexp(float(val), int(exp));
     }
 
-    WF_HD
+    SYCL_EXTERNAL
     inline operator double() const noexcept {
         using std::ldexp;
         if (exp > E(INT_MAX))
@@ -317,41 +316,49 @@ struct FloatExp {
 };
 
 template<std::floating_point M, std::integral E>
+SYCL_EXTERNAL
 inline FloatExp<M, E> operator *(M a, const FloatExp<M, E>& b) noexcept {
     return FloatExp<M, E>(a) * b;
 }
 
 template<std::floating_point M, std::integral E>
+SYCL_EXTERNAL
 inline FloatExp<M, E> operator *(const FloatExp<M, E>& b, M a) noexcept {
     return b * FloatExp<M, E>(a);
 }
 
 template<std::floating_point M, std::integral E>
+SYCL_EXTERNAL
 inline FloatExp<M, E> operator /(M a, const FloatExp<M, E>& b) noexcept {
     return FloatExp<M, E>(a) / b;
 }
 
 template<std::floating_point M, std::integral E>
+SYCL_EXTERNAL
 inline FloatExp<M, E> operator /(const FloatExp<M, E>& b, M a) noexcept {
     return b / FloatExp<M, E>(a);
 }
 
 template<std::floating_point M, std::integral E>
+SYCL_EXTERNAL
 inline FloatExp<M, E> operator +(M a, const FloatExp<M, E>& b) noexcept {
     return FloatExp<M, E>(a) + b;
 }
 
 template<std::floating_point M, std::integral E>
+SYCL_EXTERNAL
 inline FloatExp<M, E> operator +(const FloatExp<M, E>& b, M a) noexcept {
     return FloatExp<M, E>(a) + b;
 }
 
 template<std::floating_point M, std::integral E>
+SYCL_EXTERNAL
 inline FloatExp<M, E> operator -(M a, const FloatExp<M, E>& b) noexcept {
     return FloatExp<M, E>(a) - b;
 }
 
 template<std::floating_point M, std::integral E>
+SYCL_EXTERNAL
 inline FloatExp<M, E> operator -(const FloatExp<M, E>& b, M a) noexcept {
     return b - FloatExp<M, E>(a);
 }
@@ -362,13 +369,13 @@ inline std::ostream& operator <<(std::ostream& os, const FloatExp<M, E>& b) noex
 }
 
 template<std::floating_point M, std::integral E>
-WF_HD
+SYCL_EXTERNAL
 inline FloatExp<M, E> abs(FloatExp<M, E> a) noexcept {
     return a.val < 0 ? -a : a;
 }
 
 template<std::floating_point M, std::integral E>
-WF_HD
+SYCL_EXTERNAL
 inline FloatExp<M, E> sqrt(FloatExp<M, E> a) noexcept {
     using std::sqrt;
     return FloatExp<M, E>(
@@ -378,13 +385,13 @@ inline FloatExp<M, E> sqrt(FloatExp<M, E> a) noexcept {
 }
 
 template<std::floating_point M, std::integral E>
-WF_HD
+SYCL_EXTERNAL
 inline FloatExp<M, E> sqr(FloatExp<M, E> a) noexcept {
     return a * a;
 }
 
 template<typename T>
-WF_HD
+SYCL_EXTERNAL
 inline T pow(T x, uint64_t n) noexcept {
     switch (n) {
         case 0: return T(1);
@@ -409,7 +416,7 @@ inline T pow(T x, uint64_t n) noexcept {
 }
 
 template<std::floating_point M, std::integral E>
-WF_HD
+SYCL_EXTERNAL
 inline FloatExp<M, E> nextafter(FloatExp<M, E> a, FloatExp<M, E> b) noexcept {
     using std::nextafter;
     if (a == b) return b;
