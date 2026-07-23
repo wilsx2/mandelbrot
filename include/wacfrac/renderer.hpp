@@ -5,6 +5,7 @@
 #include "wacfrac/types.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/color.hpp"
+#include <sycl/sycl.hpp>
 #include <boost/optional.hpp>
 #include <span>
 
@@ -20,6 +21,7 @@ struct IterationParameters {
 };
 
 struct RendererConfig {
+    sycl::queue queue {sycl::default_selector_v};
     ProcessingContext ctx {};
     Resolution resolution {500, 500};
     MultiComplex focus {-0.5, 0.0};

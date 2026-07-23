@@ -87,12 +87,12 @@ target_compile_options(libwacfrac PRIVATE -fsycl)
 target_link_options(libwacfrac PRIVATE -fsycl)
 
 # Benchmarks
-add_executable(benchmark src/benchmark.cpp)
-set_property(TARGET benchmark PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-target_link_libraries(benchmark PRIVATE
-    libwacfrac
-    benchmark::benchmark_main
-)
+# add_executable(benchmark src/benchmark.cpp)
+# set_property(TARGET benchmark PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+# target_link_libraries(benchmark PRIVATE
+#     libwacfrac
+#     benchmark::benchmark_main
+# )
 
 # Application
 add_executable(wacfrac src/main.cpp)

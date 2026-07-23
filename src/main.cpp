@@ -106,15 +106,6 @@ int main(int argc, char* argv[])
 {
     wacfrac::logging::init(0);
 
-    // SYCL debug
-    {
-        std::println("Debuggin'");
-        auto devices = sycl::device::get_devices(sycl::info::device_type::gpu);
-        for (auto &dev : devices) {
-            std::println("    Device: {}, GPU?: {}", dev.get_info<sycl::info::device::name>(), dev.is_gpu());
-        }
-    }
-
     auto parser = argumentum::argument_parser{};
     auto params = parser.params();
     parser.config().program(argv[0]).description("Mandelbrot Set Plotter");
@@ -140,7 +131,6 @@ int main(int argc, char* argv[])
 
     wacfrac::logging::log_level() = renderer_opts.log_level;
 
-    wacfrac::logging::info("Using CPU rendering");
     wacfrac::Renderer renderer {std::move(renderer_opts)};
     if (auto* img_opts = dynamic_cast<wacfrac::ImageOptions*>(cmd.get())) {
         save_render(renderer, *img_opts);
