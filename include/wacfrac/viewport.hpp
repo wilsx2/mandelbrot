@@ -6,8 +6,8 @@
 #include <wacfrac/resolution.hpp>
 #include <wacfrac/complex_concept.hpp>
 #include <wacfrac/log.hpp>
+#include "wacfrac/context.hpp"
 #include <wacfrac/reference.hpp>
-#include <wacfrac/analysis.hpp>
 #include <boost/multiprecision/detail/default_ops.hpp>
 #include <cstddef>
 #include <limits>
@@ -33,8 +33,8 @@ struct Viewport {
     auto get_corner_absolute() const -> T;
     template<ComplexConcept T>
     auto get_corner_relative() const -> T;
-    template<ComplexConcept T, typename Context>
-    auto generate_probes(const Context& ctx, WF_STD::span<T> buffer, std::size_t cols, std::size_t rows) const -> void;
+    template<ComplexConcept T>
+    auto generate_probes(ProcessingContext& ctx, std::span<T> buffer, std::size_t cols, std::size_t rows) const -> void;
 };
 auto required_precision(MultiFloat zoom_factor) -> std::size_t;
 auto required_iterations(MultiFloat zoom_factor, double modifier = 250.0, double factor = 50.0, double exponent = 1.5) -> unsigned;
@@ -56,8 +56,8 @@ auto Viewport::get_corner_relative() const -> T {
     };
 }
 
-template<ComplexConcept T, typename Context>
-auto Viewport::generate_probes(const Context& ctx, WF_STD::span<T> buffer, std::size_t cols, std::size_t rows) const -> void {
+template<ComplexConcept T>
+auto Viewport::generate_probes(ProcessingContext& ctx, std::span<T> buffer, std::size_t cols, std::size_t rows) const -> void {
     using CT = ComplexValueTypeT<T>;
     auto delta {get_pixel_delta<T>(dimensions, Resolution{cols, rows})};
     auto corner {get_corner_relative<T>()};

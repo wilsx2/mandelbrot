@@ -11,7 +11,7 @@ namespace wacfrac {
 
 struct Colorizer {
     bool discrete;
-    WF_STD::span<const Pixel> palette;
+    std::span<const Pixel> palette;
     unsigned max_n;
 
     template<typename Z, typename N>
@@ -36,17 +36,13 @@ decltype(auto) with_numeric_type(NumericType type, F&& f) {
     }
 }
 
-template<typename Context>
 template<typename T>
-auto Renderer<Context>::direct_render_pass(T start, T delta, unsigned max_n) -> void {
+auto Renderer::direct_render_pass(T start, T delta, unsigned max_n) -> void {
     auto discrete {conf.discrete_coloring};
     auto palette {conf.palette.as_span()};
     auto screen {pixels.as_span()};
     auto row_width {conf.resolution.width};
     auto escape_radius {conf.escape_radius};
-
-    logging::info("[DEBUG direct_render] screen_ptr={} screen_size={} palette_ptr={} palette_size={} row_width={}",
-        (void*)screen.data(), screen.size(), (void*)palette.data(), palette.size(), row_width);
 
     Colorizer colorize {discrete, palette, max_n};
     conf.ctx.parallel_for(screen.size(),
@@ -69,13 +65,9 @@ auto Renderer<Context>::direct_render_pass(T start, T delta, unsigned max_n) -> 
                 escape_radius);
             screen[tid] = colorize.colorize(z, n);
         });
-
-    logging::info("[DEBUG direct_render AFTER kernel] first=({},{},{})",
-        static_cast<int>(screen[0].r), static_cast<int>(screen[0].g), static_cast<int>(screen[0].b));
 }
-template<typename Context>
 template<typename T>
-auto Renderer<Context>::perturbed_render_pass(T start, T delta, WF_STD::span<const T> ref, unsigned max_n) -> void {
+auto Renderer::perturbed_render_pass(T start, T delta, std::span<const T> ref, unsigned max_n) -> void {
     auto discrete {conf.discrete_coloring};
     auto palette {conf.palette.as_span()};
     auto screen {pixels.as_span()};
@@ -106,9 +98,8 @@ auto Renderer<Context>::perturbed_render_pass(T start, T delta, WF_STD::span<con
             screen[tid] = colorize.colorize(z, n);
         });
 }
-template<typename Context>
 template<typename T>
-auto Renderer<Context>::bla_render_pass(T start, T delta, WF_STD::span<const T> ref, bla::Approximator<T> bla, unsigned max_n) -> void {
+auto Renderer::bla_render_pass(T start, T delta, std::span<const T> ref, bla::Approximator<T> bla, unsigned max_n) -> void {
     auto discrete {conf.discrete_coloring};
     auto palette {conf.palette.as_span()};
     auto screen {pixels.as_span()};
@@ -144,44 +135,39 @@ auto Renderer<Context>::bla_render_pass(T start, T delta, WF_STD::span<const T> 
 
 constexpr auto A_GIGABYTE {1'000'000'000ull};
 constexpr auto ARENA_SIZE {A_GIGABYTE};
-template <typename Context>
-Renderer<Context>::Renderer(RendererConfig<Context> config)
+Renderer::Renderer(RendererConfig config)
     : conf(std::move(config))
     , pixels(this->conf.ctx.template make_buffer<Pixel>(this->conf.resolution.area()))
     , arena_buffer(this->conf.ctx.template make_buffer<std::byte>(ARENA_SIZE))
 {
     if (conf.palette.size() == 0) {
-        conf.palette = conf.ctx.make_buffer(WF_STD::span(ULTRA));
+        conf.palette = conf.ctx.make_buffer(std::span(ULTRA));
     }
 
-    // NOTE: Jesus Christ!
     logging::info("Renderer Config: resolution={}x{} focus={}x{} escape_radius={} palette size={}\
                     discrete={} iteration_params={} + {} * exp^{} first_bla_level={},\
                     epsilon_range=10^{}-10^{} epsilon_tolerance={} epsilon_convergence_rad={}",
                     conf.resolution.width, conf.resolution.height, conf.focus.real(), conf.focus.imag(),
                     conf.escape_radius, conf.palette.as_span().size(), conf.discrete_coloring,
                     conf.iteration_parameters.modifier, conf.iteration_parameters.factor,
-                    conf.iteration_parameters.exponent, conf.bla_config.first_level, 
+                    conf.iteration_parameters.exponent, conf.bla_config.first_level,
                     conf.bla_config.lower_exp, conf.bla_config.upper_exp, conf.bla_config.tolerance,
                     conf.bla_config.convergence_radius);
 }
 
-template<typename Context>
- auto Renderer<Context>::cache_references(ReferenceSet<Context>&& refs) -> void {
+auto Renderer::cache_references(ReferenceSet&& refs) -> void {
     ref_cache = std::move(refs);
 }
 
-template<typename Context>
-auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
-    // Configuration Pass  NOTE: We can easily and likely ought to break this into its own function
-    auto max_n {img_conf.max_iterations != 0 
+auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
+    auto max_n {img_conf.max_iterations != 0
         ? img_conf.max_iterations
         : required_iterations(
             img_conf.scale,
             conf.iteration_parameters.modifier,
             conf.iteration_parameters.factor,
             conf.iteration_parameters.exponent)};
-    auto precision {img_conf.precision != 0 
+    auto precision {img_conf.precision != 0
         ? img_conf.precision
         : required_precision(img_conf.scale)};
     MultiFloat::default_precision(static_cast<unsigned>(precision));
@@ -210,7 +196,7 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
         }
 
         if (underflows.template operator()<Complex<float>>(RenderType::Direct)) {
-            constexpr auto SIGNIFICANT_ITERATIONS {50'000}; // TODO: Make a param
+            constexpr auto SIGNIFICANT_ITERATIONS {50'000};
             if (max_n >= SIGNIFICANT_ITERATIONS) {
                 return RenderType::BLA;
             }
@@ -255,8 +241,7 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
             return "???";
         }());
 
-    // Render Pass
-    auto start = std::chrono::steady_clock::now(); // NOTE: Unnecessary if log level > info
+    auto start = std::chrono::steady_clock::now();
     with_numeric_type(num_type, [&]<typename T>(NumericTypeTag<T>){
         using CT = ComplexValueTypeT<T>;
 
@@ -275,11 +260,11 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
             logging::debug("start, relative: ({}, {})", static_cast<double>(start.real()), static_cast<double>(start.imag()));
 
             auto c_ref {conf.focus};
-            WF_STD::span<const T> ref {[&](){
+            std::span<const T> ref {[&](){
                 if (ref_cache.max_n() >= max_n)
                     return ref_cache.template select<T>();
-                auto buf {arena.alloc<T>(max_n)}; // NOTE: We may be able to give some memory back
-                auto n {compute_reference_mt<T>(buf, c_ref, conf.escape_radius)}; 
+                auto buf {arena.alloc<T>(max_n)};
+                auto n {compute_reference_mt<T>(buf, c_ref, conf.escape_radius)};
                 return buf.subspan(0, n);
             }()};
 
@@ -288,7 +273,7 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
             } else if (render_type == RenderType::BLA) {
                 using CT = ComplexValueTypeT<T>;
                 auto max_dc {to_complex<T>(view.compute_max_dc(c_ref))};
-                bla::Calculator<Context, T> bla_calculator {conf.bla_config, arena, conf.ctx};
+                bla::Calculator<T> bla_calculator {conf.bla_config, arena, conf.ctx};
                 if (img_conf.epsilon != 0.0) {
                     bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), ref, max_dc);
                 } else {
@@ -301,16 +286,12 @@ auto Renderer<Context>::render(const ImageConfig& img_conf) -> std::span<const P
             }
         }
     });
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>( // NOTE: Unnecessary if log level > info
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - start
     );
 
     logging::info("Image render took {}ms", elapsed.count());
-    auto result = pixels.as_span();
-    logging::info("[DEBUG render return] ptr={} size={} first=({},{},{})",
-        (void*)result.data(), result.size(),
-        static_cast<int>(result[0].r), static_cast<int>(result[0].g), static_cast<int>(result[0].b));
-    return result;
+    return pixels.as_span();
 }
 
 }

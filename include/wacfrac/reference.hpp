@@ -9,11 +9,12 @@
 #include <vector>
 #include <barrier>
 #include <thread>
+#include <span>
 
 namespace wacfrac {
 
 template <ComplexConcept T = DoubleComplex>
-auto compute_reference(WF_STD::span<T> buffer, MultiComplex c, double escape_radius = 4.0) -> unsigned {
+auto compute_reference(std::span<T> buffer, MultiComplex c, double escape_radius = 4.0) -> unsigned {
     auto max_n {static_cast<unsigned>(buffer.size())};
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={}", c, max_n, escape_radius);
 
@@ -31,7 +32,7 @@ auto compute_reference(WF_STD::span<T> buffer, MultiComplex c, double escape_rad
 }
 
 template <ComplexConcept T = DoubleComplex>
-auto compute_reference_mt(WF_STD::span<T> buffer, MultiComplex c, double escape_radius = 4.0) -> std::size_t {
+auto compute_reference_mt(std::span<T> buffer, MultiComplex c, double escape_radius = 4.0) -> std::size_t {
     auto max_n {static_cast<unsigned>(buffer.size())};
     logging::debug( "Computing reference orbit at ({}) max_n={} escape_radius={} (parallel)", c, max_n, escape_radius);
     if (max_n == 0)
@@ -89,19 +90,18 @@ auto compute_reference_iteration(MultiComplex c, unsigned max_n, double escape_r
     return n_1;
 }
 
-template<typename Context>
 struct ReferenceSet {
     public:
     ReferenceSet() = default;
-    ReferenceSet(Context ctx, unsigned max_n)
+    ReferenceSet(ProcessingContext& ctx, unsigned max_n)
         : _float_ref {ctx.template make_buffer<SingleComplex>(max_n)}
         , _double_ref{ctx.template make_buffer<DoubleComplex>(max_n)}
         , _dexp_ref  {ctx.template make_buffer<DoubleExpComplex>(max_n)}
         , _size      {0u}
     {}
-    ReferenceSet& operator=(ReferenceSet&& other) = default; 
+    ReferenceSet& operator=(ReferenceSet&& other) = default;
 
-    void make(Context ctx, unsigned max_n) {
+    void make(ProcessingContext& ctx, unsigned max_n) {
         _float_ref   = ctx.template make_buffer<SingleComplex>(max_n);
         _double_ref  = ctx.template make_buffer<DoubleComplex>(max_n);
         _dexp_ref    = ctx.template make_buffer<DoubleExpComplex>(max_n);
@@ -117,7 +117,7 @@ struct ReferenceSet {
     }
 
     template <typename T>
-    auto select() const -> WF_STD::span<const T> {
+    auto select() const -> std::span<const T> {
         if constexpr (std::is_same_v<T, SingleComplex>)
             return _float_ref.as_span().subspan(0, _size);
         else if constexpr (std::is_same_v<T, DoubleComplex>)
@@ -127,7 +127,7 @@ struct ReferenceSet {
     }
 
     template <typename T>
-    auto select() -> WF_STD::span<T> {
+    auto select() -> std::span<T> {
         if constexpr (std::is_same_v<T, SingleComplex>)
             return _float_ref.as_span().subspan(0, _size);
         else if constexpr (std::is_same_v<T, DoubleComplex>)
@@ -153,9 +153,9 @@ struct ReferenceSet {
     }
 
     private:
-    Context::template Buffer<SingleComplex> _float_ref;
-    Context::template Buffer<DoubleComplex> _double_ref;
-    Context::template Buffer<DoubleExpComplex> _dexp_ref;
+    Buffer<SingleComplex> _float_ref;
+    Buffer<DoubleComplex> _double_ref;
+    Buffer<DoubleExpComplex> _dexp_ref;
     unsigned _size;
 };
 

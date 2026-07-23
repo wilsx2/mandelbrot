@@ -6,18 +6,14 @@
 #include <climits>
 #include <cstdint>
 #include <limits>
-#if defined(__CUDACC__)
-    #include <cuda/std/cstring>
-#else
-    #include <cstring>
-    #include <iomanip>
-    #include <sstream>
-    #if defined(__cpp_impl_three_way_comparison) && __has_include(<compare>)
-        #include <compare>
-    #endif
-    #if defined(__cpp_lib_format)
-        #include <format>
-    #endif
+#include <cstring>
+#include <iomanip>
+#include <sstream>
+#if defined(__cpp_impl_three_way_comparison) && __has_include(<compare>)
+    #include <compare>
+#endif
+#if defined(__cpp_lib_format)
+    #include <format>
 #endif
 
 namespace wacfrac {
@@ -304,7 +300,6 @@ struct FloatExp {
         return ldexp(double(val), int(exp));
     }
 
-#if !defined(__CUDACC__)
     inline std::string toString(int digits = 0) const noexcept {
         using namespace std;
         using std::abs;
@@ -319,7 +314,6 @@ struct FloatExp {
            << std::fixed << d10 << 'E' << e10;
         return os.str();
     }
-#endif
 };
 
 template<std::floating_point M, std::integral E>
@@ -362,12 +356,10 @@ inline FloatExp<M, E> operator -(const FloatExp<M, E>& b, M a) noexcept {
     return b - FloatExp<M, E>(a);
 }
 
-#if !defined(__CUDACC__)
 template<std::floating_point M, std::integral E>
 inline std::ostream& operator <<(std::ostream& os, const FloatExp<M, E>& b) noexcept {
     return os << b.toString();
 }
-#endif
 
 template<std::floating_point M, std::integral E>
 WF_HD
@@ -431,7 +423,7 @@ inline FloatExp<M, E> nextafter(FloatExp<M, E> a, FloatExp<M, E> b) noexcept {
 
 } // namespace wacfrac
 
-#if !defined(__CUDACC__) && defined(__cpp_lib_format)
+#if defined(__cpp_lib_format)
 template<std::floating_point M, std::integral E>
 struct std::formatter<wacfrac::FloatExp<M, E>> : std::formatter<double> {
     auto format(const wacfrac::FloatExp<M, E>& v, std::format_context& ctx) const {

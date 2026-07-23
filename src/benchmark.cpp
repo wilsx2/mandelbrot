@@ -72,7 +72,7 @@ auto sample_c_values(const wacfrac::Viewport& view, const wacfrac::Resolution& r
 
 template <wacfrac::ComplexConcept T>
 auto generate_probes_vec(const wacfrac::Viewport& view, std::size_t cols, std::size_t rows) -> std::vector<T> {
-    wacfrac::Host ctx;
+    wacfrac::ProcessingContext ctx;
     auto buf = ctx.make_buffer<T>(cols * rows);
     view.generate_probes(ctx, buf.as_span(), cols, rows);
     return std::vector<T>(buf.as_span().begin(), buf.as_span().end());
@@ -212,14 +212,14 @@ static void compute_bla_coefficients(benchmark::State& state) {
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
     auto probes {generate_probes_vec<T>(view, static_cast<std::size_t>(state.range(1)), static_cast<std::size_t>(state.range(1)))};
     for (auto _ : state) {
-        wacfrac::Host ctx;
+        wacfrac::ProcessingContext ctx;
         auto arena_buf {ctx.make_buffer<std::byte>(BENCH_ARENA_SIZE)};
         wacfrac::Arena arena{arena_buf.as_span()};
         wacfrac::bla::Config config;
         config.lower_exp = -256.0;
         config.upper_exp = 0.0;
         config.tolerance = std::pow(10.0, -state.range(2));
-        wacfrac::bla::Calculator<wacfrac::Host, T> calculator{config, arena, ctx};
+        wacfrac::bla::Calculator<T> calculator{config, arena, ctx};
         calculator.compute_search(probes, max_dc, std::span<const T>(ref));
         benchmark::DoNotOptimize(calculator);
     }
@@ -310,7 +310,7 @@ static void render_phase_bla(benchmark::State& state) {
     auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
     auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
     auto probes {generate_probes_vec<T>(view, 3, 3)};
-    wacfrac::Host ctx;
+    wacfrac::ProcessingContext ctx;
     auto arena_buf {ctx.make_buffer<std::byte>(BENCH_ARENA_SIZE)};
     wacfrac::Arena arena{arena_buf.as_span()};
     wacfrac::bla::Config bla_config;
@@ -318,7 +318,7 @@ static void render_phase_bla(benchmark::State& state) {
     bla_config.lower_exp = -256.0;
     bla_config.upper_exp = 0.0;
     bla_config.tolerance = 1e-8;
-    wacfrac::bla::Calculator<wacfrac::Host, T> calculator{bla_config, arena, ctx};
+    wacfrac::bla::Calculator<T> calculator{bla_config, arena, ctx};
         calculator.compute_search(probes, max_dc, std::span<const T>(ref));
 
     std::vector<wacfrac::Pixel> pixels(res.area());
@@ -433,7 +433,7 @@ static void e2e_bla(benchmark::State& state) {
         auto first_level {std::max(0uz, last_level > 9 ? last_level - 9 : 0uz)};
         auto max_dc {wacfrac::to_complex<T>(view.compute_max_dc(c_ref))};
         auto probes {generate_probes_vec<T>(view, 3, 3)};
-        wacfrac::Host ctx;
+        wacfrac::ProcessingContext ctx;
         auto arena_buf {ctx.make_buffer<std::byte>(BENCH_ARENA_SIZE)};
         wacfrac::Arena arena{arena_buf.as_span()};
         wacfrac::bla::Config bla_config;
@@ -441,7 +441,7 @@ static void e2e_bla(benchmark::State& state) {
         bla_config.lower_exp = -256.0;
         bla_config.upper_exp = 0.0;
         bla_config.tolerance = 1e-8;
-        wacfrac::bla::Calculator<wacfrac::Host, T> calculator{bla_config, arena, ctx};
+        wacfrac::bla::Calculator<T> calculator{bla_config, arena, ctx};
         calculator.compute_search(probes, max_dc, std::span<const T>(ref));
         auto dcs {sample_c_values<T>(view, res, wacfrac::to_complex<T>(c_ref))};
         std::vector<std::tuple<wacfrac::Complex<float>, unsigned, unsigned>> escaped_orbits;

@@ -10,11 +10,8 @@
 #include <ranges>
 #include <cmath>
 #include <cstddef>
-
-#if defined(__CUDACC__)
-#include <cuda/std/span>
-#include <cuda/std/atomic>
-#endif
+#include <span>
+#include <atomic>
 
 namespace wacfrac::bla {
 
@@ -27,7 +24,7 @@ struct ColumnInfo {
         auto start {0ull};
         if (m > 1u && first_level <= last_level) {
             auto n {m - 2};
-            start = last_level - first_level + 1; 
+            start = last_level - first_level + 1;
             for (auto l {first_level}; l <= last_level; ++l) {
                 start += (n >> l);
             }
@@ -59,7 +56,7 @@ struct Bla {
     WF_HD
     Bla(T a, T b, CT r) : a(a), b(b), r(r) {}
     WF_HD
-    Bla(CT epsilon, WF_STD::span<const T> ref, T max_dc, unsigned m, unsigned n) {
+    Bla(CT epsilon, std::span<const T> ref, T max_dc, unsigned m, unsigned n) {
         using std::abs;
         auto l {n - m};
         a = T{2.0, 0.0} * ref[m] * static_cast<CT>(l);
@@ -96,8 +93,8 @@ struct Approximator {
     using CT = ComplexValueTypeT<T>;
     std::size_t first_level;
     std::size_t last_level;
-    WF_STD::span<const ColumnInfo> columns;
-    WF_STD::span<Bla<T>> approximations;
+    std::span<const ColumnInfo> columns;
+    std::span<Bla<T>> approximations;
 
     WF_HD
     auto approximation_exists(unsigned m, std::size_t level) const -> bool {
@@ -132,20 +129,16 @@ struct Approximator {
 struct Config {
     std::size_t first_level {2};
     double lower_exp {-1028};
-    double upper_exp {-16};
+    double upper_exp {-1};
     double tolerance {1e-8};
-    double convergence_radius = 1e-3;
+    double convergence_radius = 1e-6;
 };
 
-template <typename Context, ComplexConcept T>
+template <ComplexConcept T>
 class Calculator {
     public:
     using CT = ComplexValueTypeT<T>;
-    template<typename U>
-    using Buffer = Context::template Buffer<U>;
-    template<typename U>
-    using Pointer = Context::template Pointer<U>;
-    Calculator(const Config& params, Arena& arena, const Context& ctx = {})
+    Calculator(const Config& params, Arena& arena, ProcessingContext& ctx)
         : _ctx{ctx}
         , _params(params)
         , _arena{arena}
@@ -163,7 +156,7 @@ class Calculator {
         auto last_i {ColumnInfo::compute_start(max_n, _params.first_level, _last_level)};
         _approximations  = _arena.alloc<Bla<T>>(last_i);
     }
-    auto compute_manual(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> void {
+    auto compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> void {
         if (ref.size() < 3)
             return;
         if (_last_level == 0) {
@@ -175,11 +168,11 @@ class Calculator {
         for (auto i {1ull}; level_size >= 2; ++i) {
             auto even_size {level_size & ~1ull};
             merge_approximations(i, even_size, max_dc);
-            swap(_current_working, _next_working);
+            std::swap(_current_working, _next_working);
             level_size /= 2;
         }
     }
-    auto compute_search(WF_STD::span<const T> probes, T max_dc, WF_STD::span<const T> ref, double escape_radius = 2.0) -> void {
+    auto compute_search(std::span<const T> probes, T max_dc, std::span<const T> ref, double escape_radius = 2.0) -> void {
         logging::info( "Searching for optimal BLA epsilon: tolerance={} probes={} range=10^[{}, {}]",
                       _params.tolerance, probes.size(), _params.lower_exp, _params.upper_exp);
 
@@ -220,7 +213,7 @@ class Calculator {
             if (avg_skipped >= prev_avg_skipped) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} avg_skipped={} (improving)", iter, middle, avg_skipped);
                 prev_exp = epsilon;
-                lower_exp = middle; 
+                lower_exp = middle;
             } else {
                 logging::trace( "BLA search iter {}: epsilon=10^{} avg_skipped={} (found max)", iter, middle, avg_skipped);
                 compute_manual(prev_exp, ref, max_dc);
@@ -256,7 +249,7 @@ class Calculator {
                 };
             });
     }
-    auto compute_initial_approximations(CT epsilon, WF_STD::span<const T> ref, T max_dc) -> void {
+    auto compute_initial_approximations(CT epsilon, std::span<const T> ref, T max_dc) -> void {
         auto first_level {_params.first_level};
         auto approximator = get_approximator();
         auto working = _current_working;
@@ -324,7 +317,7 @@ class Calculator {
                 });
         }
     }
-    auto compute_probe_escape_time(WF_STD::span<const T> probes, WF_STD::span<const T> ref, double escape_radius) -> void {
+    auto compute_probe_escape_time(std::span<const T> probes, std::span<const T> ref, double escape_radius) -> void {
         if (probes.size() > _true_escape_times.size()) {
             _true_escape_times = _arena.alloc<unsigned>(probes.size());
         }
@@ -340,24 +333,19 @@ class Calculator {
                 if (tid >= probes.size())
                     return;
                 escape_times[tid] = escape_perturbed<T>(
-                    probes[tid], ref, 
-                    static_cast<unsigned>(ref.size()), 
+                    probes[tid], ref,
+                    static_cast<unsigned>(ref.size()),
                     escape_radius).second;
             });
     }
-    auto compute_skipped_iterations(WF_STD::span<const T> probes, WF_STD::span<const T> ref, double escape_radius, double tolerance) -> void {
+    auto compute_skipped_iterations(std::span<const T> probes, std::span<const T> ref, double escape_radius, double tolerance) -> void {
         if (_skipped_atom == nullptr)
-            _skipped_atom = _arena.alloc<WF_STD::atomic<unsigned>>();
+            _skipped_atom = _arena.alloc<std::atomic<unsigned>>();
         if (_tolerance_failed_atom == nullptr)
-            _tolerance_failed_atom = _arena.alloc<WF_STD::atomic<bool>>();
+            _tolerance_failed_atom = _arena.alloc<std::atomic<bool>>();
 
         _skipped_atom->store(0u);
         _tolerance_failed_atom->store(false);
-
-        constexpr std::size_t DIAG_BUF_SIZE {16};
-        auto diag_count {_arena.alloc<WF_STD::atomic<unsigned>>()};
-        auto diag_buf  {_arena.alloc<int>(DIAG_BUF_SIZE * 4)};
-        diag_count->store(0u);
 
         auto approximator = get_approximator();
         auto escape_times = _true_escape_times;
@@ -371,65 +359,39 @@ class Calculator {
              escape_times,
              tolerance_failed,
              total_skipped,
-             approximator,
-             diag_count,
-             diag_buf]
+             approximator]
             WF_HD
             (int tid){
                 if (tid >= probes.size())
                     return;
                 auto [_, approx_escape_time, skipped] =
                     escape_approximate(
-                        probes[tid], 
-                        WF_STD::span<const T>(ref), 
+                        probes[tid],
+                        std::span<const T>(ref),
                         static_cast<unsigned>(ref.size()),
                         escape_radius,
                         approximator);
 
                 using std::abs;
                 if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(escape_times[tid]) - 1.0) > tolerance) {
-                    tolerance_failed->store(true, WF_STD::memory_order_seq_cst); // TODO: Pick a good setting
-                    auto idx {diag_count->fetch_add(1u, WF_STD::memory_order_relaxed)};
-                    if (idx < DIAG_BUF_SIZE) {
-                        diag_buf[idx * 4 + 0] = tid;
-                        diag_buf[idx * 4 + 1] = static_cast<int>(escape_times[tid]);
-                        diag_buf[idx * 4 + 2] = static_cast<int>(approx_escape_time);
-                        diag_buf[idx * 4 + 3] = static_cast<int>(skipped);
-                    }
+                    tolerance_failed->store(true, std::memory_order_seq_cst);
                     return;
                 }
-                total_skipped->fetch_add(skipped, WF_STD::memory_order_seq_cst);
+                total_skipped->fetch_add(skipped, std::memory_order_seq_cst);
             });
-        auto fail_count {diag_count->load()};
-        if (fail_count > 0) {
-            for (std::size_t i {0}; i < std::min<std::size_t>(fail_count, DIAG_BUF_SIZE); ++i) {
-                auto tid     {diag_buf[i * 4 + 0]};
-                auto true_n  {diag_buf[i * 4 + 1]};
-                auto approx_n{diag_buf[i * 4 + 2]};
-                auto skipped {diag_buf[i * 4 + 3]};
-                auto rel_err {true_n > 0
-                    ? std::abs(static_cast<double>(approx_n) / static_cast<double>(true_n) - 1.0)
-                    : (approx_n == 0 ? 0.0 : 999.0)};
-                logging::trace("  Tolerance failed: probe={} true={} approx={} skipped={} rel_error={}",
-                               tid, true_n, approx_n, skipped, rel_err);
-            }
-            if (fail_count > DIAG_BUF_SIZE) {
-                logging::trace("  ... and {} more failures", fail_count - DIAG_BUF_SIZE);
-            }
-        }
     }
 
-    Context _ctx;
+    ProcessingContext _ctx;
     Config _params;
     Arena& _arena;
     std::size_t _last_level;
-    WF_STD::span<ColumnInfo> _columns;
-    WF_STD::span<Bla<T>>     _current_working;
-    WF_STD::span<Bla<T>>     _next_working;
-    WF_STD::span<Bla<T>>     _approximations;
-    WF_STD::span<unsigned>   _true_escape_times;
-    WF_STD::atomic<unsigned>* _skipped_atom;
-    WF_STD::atomic<bool>* _tolerance_failed_atom;
+    std::span<ColumnInfo> _columns;
+    std::span<Bla<T>>     _current_working;
+    std::span<Bla<T>>     _next_working;
+    std::span<Bla<T>>     _approximations;
+    std::span<unsigned>   _true_escape_times;
+    std::atomic<unsigned>* _skipped_atom;
+    std::atomic<bool>* _tolerance_failed_atom;
 };
 
 template <ComplexConcept T, typename Ref, typename Approx>

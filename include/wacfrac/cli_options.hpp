@@ -65,30 +65,25 @@ static void parse_multicomplex(MultiComplex& target, const std::string& value){
     target = MultiComplex(real, imag, DEFAULT_MP_PRECISION);
 }
 
-template<typename Context>
-static void parse_palette_string(typename Context::template Buffer<Pixel>& target, const std::string& value) {
-    Context ctx {}; // WARN: Should be an arg
+static void parse_palette_string(Buffer<Pixel>& target, const std::string& value) {
+    ProcessingContext ctx;
     std::string normalized(value);
     std::transform(normalized.begin(), normalized.end(), normalized.begin(),
         [](unsigned char c) { return std::isspace(c) ? ' ' : c; });
     auto view {normalized | std::views::split(' ') | std::views::transform([](auto subrange) {
             return parse_color(std::string_view(&*subrange.begin(), subrange.size()));
         }) | std::views::enumerate};
-    target = ctx.template make_buffer<Pixel>(std::ranges::distance(view));
+    target = ctx.make_buffer<Pixel>(std::ranges::distance(view));
     for (auto&& [idx, pixel] : view) {
         target.as_span()[idx] = pixel;
     }
 }
 
-template<typename Context>
-struct RendererOptions : public RendererConfig<Context> {
+struct RendererOptions : public RendererConfig {
     bool prefer_cpu {false};
     unsigned log_level {2};
 
     void add_parameters(argumentum::ParameterConfig& args) {
-        args.add_parameter(prefer_cpu, "--prefer-cpu", "-C")
-            .nargs(0).absent(prefer_cpu)
-            .help("Use the CPU even when the GPU is available");
         args.add_parameter(this->resolution, "--resolution", "-r")
             .nargs(2).absent(this->resolution)
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
@@ -106,11 +101,8 @@ struct RendererOptions : public RendererConfig<Context> {
             .nargs(1).absent(this->escape_radius)
             .help("Escape radius");
         args.add_parameter(this->palette, "--color-palette", "-c")
-            .nargs(1) /*  NOTE: Argumentum requires .absent to take a const&, and without absent 
-                       *        will zero initialize the parameter. Buffer cannot be
-                       *        copied, so the default value is reinitialized in Renderer.
-                       *        I hate argumentum. */
-            .action(parse_palette_string<Context>)
+            .nargs(1)
+            .action(parse_palette_string)
             .help("Hex formatted colors mapped to escape time");
         args.add_parameter(this->discrete_coloring, "--discrete-coloring", "-d")
             .nargs(0).absent(this->discrete_coloring)
@@ -189,7 +181,7 @@ struct ImageOptions : public ImageConfig, public argumentum::CommandOptions {
                 }();
             })
             .help("Number type: auto, float, double, dexp");
-        args.add_parameter(this->render_type, "--render-type", "-R") // WARN: Above
+        args.add_parameter(this->render_type, "--render-type", "-R")
             .nargs(1).absent(this->render_type)
             .action([](auto& target, const std::string& value){
                 target = [&](){

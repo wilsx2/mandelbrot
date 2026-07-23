@@ -9,14 +9,7 @@
 
 namespace {
 
-bool has_gpu() {
-    int count = 0;
-    auto err = cudaGetDeviceCount(&count);
-    return err == cudaSuccess && count > 0;
-}
-
-template<typename Context>
-void save_render(wacfrac::Renderer<Context>& renderer, const wacfrac::ImageOptions& img_opts) {
+void save_render(wacfrac::Renderer& renderer, const wacfrac::ImageOptions& img_opts) {
     if (wacfrac::write_ppm(img_opts.filepath, renderer.conf.resolution, renderer.render(img_opts))) {
         wacfrac::logging::info("Image written to {}", img_opts.filepath);
     } else {
@@ -24,9 +17,8 @@ void save_render(wacfrac::Renderer<Context>& renderer, const wacfrac::ImageOptio
     }
 }
 
-template<typename Context>
-void render_video(wacfrac::Renderer<Context>& renderer, wacfrac::VideoOptions& vid_opts) {
-    Context ctx {};
+void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) {
+    wacfrac::ProcessingContext ctx;
 
     if (!std::filesystem::create_directory(vid_opts.directory)) {
         wacfrac::logging::error("Directory '{}' failed to create", vid_opts.directory);
@@ -53,11 +45,11 @@ void render_video(wacfrac::Renderer<Context>& renderer, wacfrac::VideoOptions& v
         "Video pre-compute: final_zoom={} max_iterations={} precision={} ref_size={}",
         vid_opts.final_scale, max_iterations, precision, renderer.ref_cache.size());
     auto total_frames {wacfrac::total_frames(
-        vid_opts.initial_scale, vid_opts.final_scale, 
+        vid_opts.initial_scale, vid_opts.final_scale,
         vid_opts.zoom_per_second, static_cast<float>(vid_opts.frames_per_second))};
     auto total_segments {total_frames / vid_opts.segment_size};
     auto scales {wacfrac::frame_zooms(
-        vid_opts.initial_scale, vid_opts.final_scale, 
+        vid_opts.initial_scale, vid_opts.final_scale,
         vid_opts.zoom_per_second, static_cast<float>(vid_opts.frames_per_second))};
     for (auto&& [frame, scale] : std::views::enumerate(std::move(scales))) {
         auto segment = frame / vid_opts.segment_size;
@@ -107,19 +99,6 @@ void render_video(wacfrac::Renderer<Context>& renderer, wacfrac::VideoOptions& v
     }
 }
 
-template<typename Context>
-void dispatch(wacfrac::RendererOptions<Context>& opts, argumentum::CommandOptions* cmd) {
-    wacfrac::logging::info("Using {} rendering",
-        std::is_same_v<Context, wacfrac::Device> ? "GPU" : "CPU");
-    wacfrac::Renderer<Context> renderer {std::move(opts)};
-    if (auto* img_opts = dynamic_cast<wacfrac::ImageOptions*>(cmd)) {
-        save_render(renderer, *img_opts);
-    }
-    if (auto* vid_opts = dynamic_cast<wacfrac::VideoOptions*>(cmd)) {
-        render_video(renderer, *vid_opts);
-    }
-}
-
 } // namespace
 
 int main(int argc, char* argv[])
@@ -130,7 +109,7 @@ int main(int argc, char* argv[])
     auto params = parser.params();
     parser.config().program(argv[0]).description("Mandelbrot Set Plotter");
 
-    wacfrac::RendererOptions<wacfrac::Host> renderer_opts;
+    wacfrac::RendererOptions renderer_opts;
     renderer_opts.add_parameters(params);
 
     params.add_command<wacfrac::ImageOptions>("image");
@@ -151,21 +130,12 @@ int main(int argc, char* argv[])
 
     wacfrac::logging::log_level() = renderer_opts.log_level;
 
-    if (has_gpu() && !renderer_opts.prefer_cpu) {
-        wacfrac::RendererOptions<wacfrac::Device> dev_opts;
-        dev_opts.resolution = renderer_opts.resolution;
-        dev_opts.focus = renderer_opts.focus;
-        dev_opts.escape_radius = renderer_opts.escape_radius;
-        dev_opts.discrete_coloring = renderer_opts.discrete_coloring;
-        dev_opts.iteration_parameters = renderer_opts.iteration_parameters; // WARN: It seems like the iteration parameters get flipped. TODO: Make a struct
-        dev_opts.bla_config = renderer_opts.bla_config;
-        dev_opts.probe_grid = renderer_opts.probe_grid;
-        if (renderer_opts.palette.size() > 0) {
-            dev_opts.palette = dev_opts.ctx.make_buffer(renderer_opts.palette.as_span());
-        }
-        dev_opts.log_level = renderer_opts.log_level;
-        dispatch(dev_opts, cmd.get());
-    } else {
-        dispatch(renderer_opts, cmd.get());
+    wacfrac::logging::info("Using CPU rendering");
+    wacfrac::Renderer renderer {std::move(renderer_opts)};
+    if (auto* img_opts = dynamic_cast<wacfrac::ImageOptions*>(cmd.get())) {
+        save_render(renderer, *img_opts);
+    }
+    if (auto* vid_opts = dynamic_cast<wacfrac::VideoOptions*>(cmd.get())) {
+        render_video(renderer, *vid_opts);
     }
 }

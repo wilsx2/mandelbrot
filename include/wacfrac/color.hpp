@@ -5,12 +5,7 @@
 #include <cstddef>
 #include <initializer_list>
 #include <vector>
-
-#if defined(__CUDACC__)
-    #include <cuda/std/span>
-#else 
-    #include <span>
-#endif
+#include <span>
 
 namespace wacfrac
 {

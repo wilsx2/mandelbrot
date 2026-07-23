@@ -3,95 +3,39 @@
 #include "wacfrac/buffer.hpp"
 #include "wacfrac/log.hpp"
 #include <cstddef>
-#include <cuda_runtime.h>
 #include <cstring>
 #include <memory>
 #include <ranges>
 #include <algorithm>
 #include <execution>
 #include <utility>
-
-#if defined(__CUDACC__)
-#include <cuda/std/span>
-#endif
+#include <span>
 
 namespace wacfrac {
 
-template <typename Derived>
-class Context {
-    private:
-    template<typename T>
-    auto alloc() -> T* {
-        logging::debug("Allocating {} bytes", sizeof(T));
-        return static_cast<Derived&>(*this).template alloc<T>();
-    }
-    template<typename T>
-    auto alloc(std::size_t count) -> T* {
-        logging::debug("Allocating {} bytes", sizeof(T)*count);
-        return static_cast<Derived&>(*this).template alloc<T>(count);
-    }
-    template<typename T, typename D = Derived>
-    auto deallocator() -> decltype(std::declval<D&>().template deallocator<T>()) {
-        return static_cast<Derived&>(*this).template deallocator<T>();
-    }
-
+class ProcessingContext {
     public:
-    template<typename T, typename D = Derived>
-    using Buffer = Buffer<T, decltype(std::declval<D&>().template deallocator<T>())>; 
-    template<typename T, typename D = Derived>
-    using Pointer = std::unique_ptr<T, decltype(std::declval<D&>().template deallocator<T>())>; 
+    template<typename T>
+    using Buffer = Buffer<T>;
 
     template<typename T>
     auto make_buffer(std::size_t count) {
-        return Buffer<T>(alloc<T>(count), count, deallocator<T>());
+        return Buffer<T>(alloc<T>(count), count);
     }
     template<typename T>
-    auto make_buffer(WF_STD::span<T> src) {
-        auto buf {Buffer<T>(alloc<T>(src.size()), src.size(), deallocator<T>())};
-        Context<Derived>::memcpy<T>(buf.as_span(), src);
+    auto make_buffer(std::span<T> src) {
+        auto buf {Buffer<T>(alloc<T>(src.size()), src.size())};
+        memcpy<T>(buf.as_span(), src);
         return buf;
     }
     template<typename T>
-    auto make_buffer(WF_STD::span<const T> src) {
-        auto buf {Buffer<T>(alloc<T>(src.size()), src.size(), deallocator<T>())};
-        Context<Derived>::memcpy<T>(buf.as_span(), src);
+    auto make_buffer(std::span<const T> src) {
+        auto buf {Buffer<T>(alloc<T>(src.size()), src.size())};
+        memcpy<T>(buf.as_span(), src);
         return buf;
     }
     template<typename T>
-    auto make_pointer() {
-        return Pointer<T>(alloc<T>(), deallocator<T>());
-    }
-    template<typename T>
-    auto memcpy(WF_STD::span<T> dst, WF_STD::span<const T> src) -> void {
-        return static_cast<Derived&>(*this).memcpy(dst, src);
-    }
-    template <typename F>
-    void parallel_for(std::size_t count, F&& func) const {
-        return static_cast<Derived&>(*this).parallel_for(count, std::forward(func));
-    }
-};
-
-struct Host : public Context<Host> {
-    friend Context<Host>;
-
-    private:
-    template<typename T>
-    auto alloc() -> T* {
-       return new T;
-    }
-    template<typename T>
-    auto alloc(std::size_t count) -> T* {
-       return new T[count]();
-    }
-    template<typename T>
-    auto deallocator() -> std::default_delete<T> {
-        return {};
-    }
-
-    public:
-    template<typename T>
-    auto memcpy(WF_STD::span<T> dst, WF_STD::span<const T> src) -> void {
-        // TODO: Assert sizes are the same
+    auto memcpy(std::span<T> dst, std::span<const T> src) -> void {
         std::memcpy(dst.data(), src.data(), dst.size() * sizeof(T));
     }
     template <typename F>
@@ -103,104 +47,12 @@ struct Host : public Context<Host> {
             range.end(),
             func);
     }
-};
 
-#if defined(__CUDACC__)
-template <typename F>
-__global__ void executeLambda(std::size_t count, F func) {
-    auto idx {blockIdx.x * blockDim.x + threadIdx.x};
-    if (idx < count) {
-        func(idx); 
-    }
-}
-
-template <typename T>
-__global__ void testWriteKernel(std::size_t count, T* ptr, T val) {
-    auto idx {blockIdx.x * blockDim.x + threadIdx.x};
-    if (idx < count) {
-        ptr[idx] = val;
-    }
-}
-#endif
-
-class Device : public Context<Device> {
-    friend Context<Device>;
-    
-    static constexpr auto ThreadsPerBlock {256};
-
-    // TODO: Support multiple GPUs by specifying device in constructor
-    
-    static auto count() -> int {
-        auto device_count {0};
-        (void) cudaGetDeviceCount(&device_count);
-        return device_count;
-    }
-
-    template<typename T>
-    auto alloc() -> T* {
-        void* raw;
-        auto err {cudaMallocManaged(&raw, sizeof(T))};
-        if (err != cudaSuccess) {
-            logging::error("CUDA error: {}", cudaGetErrorString(err));
-            return nullptr;
-        }
-        return static_cast<T*>(raw);
-    }
+    private:
     template<typename T>
     auto alloc(std::size_t count) -> T* {
-        void* raw;
-        auto err {cudaMallocManaged(&raw, sizeof(T) * count)};
-        if (err != cudaSuccess) {
-            logging::error("CUDA error: {}", cudaGetErrorString(err));
-            return nullptr;
-        }
-        return static_cast<T*>(raw);
+       return new T[count]();
     }
-    template<typename T>
-    struct Deallocator {
-        auto operator()(T* ptr) -> void {
-            cudaFree(ptr);
-        }
-    };
-    template<typename T>
-    auto deallocator() -> Deallocator<T> {
-        return {};
-    }
-
-    public:
-    template<typename T>
-    auto memcpy(WF_STD::span<T> dst, WF_STD::span<const T> src) -> void {
-        auto err {cudaMemcpy(dst.data(), src.data(), dst.size() * sizeof(T), cudaMemcpyDefault)};
-        if (err != cudaSuccess) {
-            logging::error("CUDA memcpy error: {}", cudaGetErrorString(err));
-        }
-    }
-#if defined(__CUDACC__)
-    template <typename F>
-    void parallel_for(std::size_t count, F&& func) const {
-        auto numBlocks {(count + ThreadsPerBlock - 1) / ThreadsPerBlock};
-        executeLambda<<<numBlocks, ThreadsPerBlock>>>(count, func);
-
-        auto err {cudaDeviceSynchronize()};
-        if (err != cudaSuccess) {
-            logging::error("CUDA kernel error: {}", cudaGetErrorString(err));
-        }
-    }
-    template <typename T>
-    void debug_check_managed(T* ptr, std::size_t count, const char* label) const {
-        if (ptr && count > 0) {
-            auto val = ptr[0];
-            logging::info("[DEBUG {}] ptr={} first_pixel=({},{},{})",
-                label, (void*)ptr,
-                static_cast<int>(val.r), static_cast<int>(val.g), static_cast<int>(val.b));
-        } else {
-            logging::info("[DEBUG {}] ptr={} count={}", label, (void*)ptr, count);
-        }
-    }
-#else
-    template <typename F>
-    void parallel_for(std::size_t count, F&& func) const;
-#endif
 };
 
 }
