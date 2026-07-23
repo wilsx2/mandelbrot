@@ -83,10 +83,8 @@ target_link_libraries(libwacfrac PUBLIC
     MPFR::mpfr
     GMP::gmp
 )
-
-add_compile_definitions(
-    NOMINMAX
-)
+target_compile_options(libwacfrac PRIVATE -fsycl)
+target_link_options(libwacfrac PRIVATE -fsycl)
 
 # Benchmarks
 add_executable(benchmark src/benchmark.cpp)
@@ -102,3 +100,5 @@ target_link_libraries(wacfrac PRIVATE
     libwacfrac
     Argumentum::argumentum
 )
+target_compile_options(wacfrac PRIVATE -fsycl)
+target_link_options(wacfrac PRIVATE -fsycl)

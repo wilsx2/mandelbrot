@@ -4,6 +4,8 @@
 #include "wacfrac/reference.hpp"
 #include "wacfrac/io.hpp"
 #include "wacfrac/log.hpp"
+#include <sycl/sycl.hpp>
+#include <print>
 #include <cstdlib>
 #include <string_view>
 
@@ -100,10 +102,18 @@ void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) 
 }
 
 } // namespace
-
 int main(int argc, char* argv[])
 {
     wacfrac::logging::init(0);
+
+    // SYCL debug
+    {
+        std::println("Debuggin'");
+        auto devices = sycl::device::get_devices(sycl::info::device_type::gpu);
+        for (auto &dev : devices) {
+            std::println("    Device: {}, GPU?: {}", dev.get_info<sycl::info::device::name>(), dev.is_gpu());
+        }
+    }
 
     auto parser = argumentum::argument_parser{};
     auto params = parser.params();
