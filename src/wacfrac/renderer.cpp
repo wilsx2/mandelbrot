@@ -38,9 +38,9 @@ decltype(auto) with_numeric_type(NumericType type, F&& f) {
 template<typename T>
 auto Renderer::direct_render_pass(T start, T delta, unsigned max_n) -> void {
     auto discrete {conf.discrete_coloring};
+    auto escape_radius {conf.escape_radius};
     sycl::buffer<Pixel, 1> palette {conf.palette.data(), sycl::range(conf.palette.size())};
     sycl::buffer<Pixel, 2> screen {pixels.data(), sycl::range(conf.resolution.width, conf.resolution.height)};
-    auto escape_radius {conf.escape_radius};
 
     conf.queue.submit([&](sycl::handler& h) {
         sycl::accessor screen_acc(screen, h, sycl::write_only);
@@ -62,33 +62,29 @@ auto Renderer::direct_render_pass(T start, T delta, unsigned max_n) -> void {
 template<typename T>
 auto Renderer::perturbed_render_pass(T start, T delta, std::span<const T> ref, unsigned max_n) -> void {
     auto discrete {conf.discrete_coloring};
-    auto palette {conf.palette.as_span()};
-    auto screen {pixels.as_span()};
-    auto row_width {conf.resolution.width};
     auto escape_radius {conf.escape_radius};
+    sycl::buffer<Pixel, 1> palette {conf.palette.data(), sycl::range(conf.palette.size())};
+    sycl::buffer<Pixel, 2> screen {pixels.data(), sycl::range(conf.resolution.width, conf.resolution.height)};
+    sycl::buffer<T, 1> reference {ref.data(), sycl::range(ref.size())};
 
-    Colorizer colorize {discrete, palette, max_n};
-    conf.ctx.parallel_for(screen.size(),
-        [screen,
-        row_width,
-        start,
-        delta,
-        ref,
-        max_n,
-        escape_radius,
-        colorize]
-        (int tid) -> void {
+    conf.queue.submit([&](sycl::handler& h) {
+        sycl::accessor screen_acc(screen, h, sycl::write_only);
+        sycl::accessor palette_acc(palette, h, sycl::read_only);
+        sycl::accessor reference_acc(reference, h, sycl::read_only);
+
+        h.parallel_for(screen_acc.get_range(), [=](sycl::id<2> id) {
             auto [z, n] = escape_perturbed(
-                sample_c_value(
-                    tid,
-                    row_width,
-                    start,
-                    delta),
-                ref,
+                reference_acc,
+                sample_c_value(id, start, delta),
                 max_n,
                 escape_radius);
-            screen[tid] = colorize.colorize(z, n);
+            screen_acc[id] = [&](){
+                if (discrete)
+                    return colorize_discrete(n, max_n, palette_acc);
+                return colorize_continuous(z, n, max_n, palette_acc);
+            }();
         });
+    });
 }
 template<typename T>
 auto Renderer::bla_render_pass(T start, T delta, std::span<const T> ref, bla::Approximator<T> bla, unsigned max_n) -> void {
