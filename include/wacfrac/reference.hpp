@@ -6,6 +6,7 @@
 #include "wacfrac/orbit.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/log.hpp"
+#include <sycl/queue.hpp>
 #include <vector>
 #include <barrier>
 #include <thread>
@@ -94,23 +95,16 @@ auto compute_reference_iteration(MultiComplex c, unsigned max_n, double escape_r
     return n_1;
 }
 
-struct ReferenceSet {
+class ReferenceSet {
     public:
     ReferenceSet() = default;
-    ReferenceSet(ProcessingContext& ctx, unsigned max_n)
-        : _float_ref {ctx.template make_buffer<SingleComplex>(max_n)}
-        , _double_ref{ctx.template make_buffer<DoubleComplex>(max_n)}
-        , _dexp_ref  {ctx.template make_buffer<DoubleExpComplex>(max_n)}
+    ReferenceSet(sycl::queue& q, unsigned max_n)
+        : _float_ref {q, max_n}
+        , _double_ref{q, max_n}
+        , _dexp_ref  {q, max_n}
         , _size      {0u}
     {}
     ReferenceSet& operator=(ReferenceSet&& other) = default;
-
-    void make(ProcessingContext& ctx, unsigned max_n) {
-        _float_ref   = ctx.template make_buffer<SingleComplex>(max_n);
-        _double_ref  = ctx.template make_buffer<DoubleComplex>(max_n);
-        _dexp_ref    = ctx.template make_buffer<DoubleExpComplex>(max_n);
-        _size        = 0u;
-    }
 
     auto max_n() const -> unsigned {
         return _float_ref.size();
@@ -157,9 +151,9 @@ struct ReferenceSet {
     }
 
     private:
-    Buffer<SingleComplex> _float_ref;
-    Buffer<DoubleComplex> _double_ref;
-    Buffer<DoubleExpComplex> _dexp_ref;
+    DeviceBuffer<SingleComplex> _float_ref;
+    DeviceBuffer<DoubleComplex> _double_ref;
+    DeviceBuffer<DoubleExpComplex> _dexp_ref;
     unsigned _size;
 };
 

@@ -38,7 +38,7 @@ void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) 
     wacfrac::Viewport final_view {renderer.conf.focus, vid_opts.final_scale, renderer.conf.resolution};
 
     {
-        wacfrac::ReferenceSet refs {ctx, max_iterations};
+        wacfrac::ReferenceSet refs {renderer.conf.queue, max_iterations};
         refs.compute(final_view.center, renderer.conf.escape_radius);
         renderer.cache_references(std::move(refs));
     }

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <memory>
 #include <sycl/usm.hpp>
+#include <sycl/usm/usm_enums.hpp>
 #include <utility>
 #include <span>
 
@@ -78,23 +79,81 @@ struct Arena {
     }
 };
 
+template<typename T>
+class DeviceBuffer {
+    public:
+    DeviceBuffer() = default;
+    DeviceBuffer(sycl::queue& q, std::size_t count, sycl::usm::alloc kind = sycl::usm::alloc::host)
+        : _queue{&q}
+        , _data(sycl::malloc<T>(count, q, kind))
+        , _size(count)
+    {}
+    DeviceBuffer(const DeviceBuffer&) = delete;
+    DeviceBuffer& operator=(const DeviceBuffer&) = delete;
+    DeviceBuffer(DeviceBuffer&& other)
+        : _queue(std::exchange(other._queue, nullptr))
+        , _data(std::exchange(other._data, nullptr))
+        , _size(std::exchange(other._size, 0)) 
+    {}
+    DeviceBuffer& operator= (DeviceBuffer&& other){
+        _queue = std::exchange(other._queue, nullptr);
+        _data = std::exchange(other._data, nullptr);
+        _size = std::exchange(other._size, 0);
+        return *this;
+    }
+    ~DeviceBuffer() {
+        if (_data && _queue) {
+            sycl::free(_data, *_queue);
+        }
+    }
+    auto as_span() const { return std::span<T>(_data, _size); }
+    auto data() const {
+        return _data;
+    }
+    auto size() const {
+        return _size;
+    }
+    decltype(auto) operator[](std::size_t idx) const {
+        return _data[idx]; // WARN: Permits out of bounds access with no exception
+    }
+    decltype(auto) operator[](std::size_t idx) {
+        return _data[idx];
+    }
+    operator std::span<T>() const requires (!std::is_const_v<T>) { return {_data, _size}; }
+    operator std::span<const T>() const { return {_data, _size}; }
+    friend void swap(DeviceBuffer& lhs, DeviceBuffer& rhs) {
+        std::swap(lhs._queue, rhs._queue);
+        std::swap(lhs._data, rhs._data);
+        std::swap(lhs._size, rhs._size);
+    }
+
+    private:
+    sycl::queue* _queue = nullptr;
+    T* _data = nullptr; // NOTE: Raw pointer. No unique_ptr with a custom deleter for this guy; I'm a rebel.
+    std::size_t _size = 0;
+};
+
 class DeviceArena {
     public:
-    DeviceArena() = delete;
+    DeviceArena() = default;
     DeviceArena(sycl::queue& q, std::size_t size, sycl::usm::alloc kind = sycl::usm::alloc::shared)
-        : _queue{q}
-        , _head{static_cast<std::byte*>(sycl::malloc(size, q, kind))}
+        : _queue{&q}
+        , _data{static_cast<std::byte*>(sycl::malloc(size, q, kind))}
         , _capacity{size}
         , _used{0}
     {}
     ~DeviceArena() {
-        if (_head) {
-            sycl::free(_head, _queue);
+        if (_data && _queue) {
+            sycl::free(_data, *_queue);
         }
     }
     DeviceArena(DeviceArena&) = delete;
-    DeviceArena(DeviceArena&&) = delete; // NOTE: Feasible. No need.
-    
+    DeviceArena(DeviceArena&& other)
+        : _queue{std::exchange(other._queue, nullptr)}
+        , _data{std::exchange(other._data, nullptr)}
+        , _capacity{std::exchange(other._capacity, 0)}
+        , _used{std::exchange(other._used, 0)}
+    {}
     void reset() { _used = 0; }
     auto capacity() const { return _capacity; }
     auto used() const { return _used; }
@@ -107,7 +166,7 @@ class DeviceArena {
             return nullptr;
         }
  
-        auto ptr {_head + aligned_offset};
+        auto ptr {_data + aligned_offset};
         _used = aligned_offset + bytes;
 
         logging::debug("Arena allocated {}, {} remaining", bytes, remaining());
@@ -129,8 +188,8 @@ class DeviceArena {
         return (n + alignment - 1) & ~(alignment - 1);
     }
 
-    sycl::queue& _queue;
-    std::byte* _head = nullptr;
+    sycl::queue* _queue = nullptr;
+    std::byte* _data = nullptr;
     std::size_t _capacity = 0;
     std::size_t _used = 0;
 };
