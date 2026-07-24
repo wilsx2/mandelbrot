@@ -27,7 +27,7 @@ struct RendererConfig {
     Resolution resolution {500, 500};
     MultiComplex focus {-0.5, 0.0};
     double escape_radius {4.0};
-    Buffer<Pixel> palette {ctx.make_buffer(std::span(ULTRA))};
+    DeviceBuffer<Pixel> palette {queue, std::span(wacfrac::ULTRA)};
     bool discrete_coloring {false};
     IterationParameters iteration_parameters {};
     bla::Config bla_config;
@@ -49,8 +49,7 @@ struct Renderer {
 
     RendererConfig conf;
     ReferenceSet ref_cache;
-    Buffer<Pixel> pixels;
-    Buffer<DoubleExpComplex> pixel_orbits;
+    DeviceBuffer<Pixel> pixels;
     DeviceArena arena;
 
     Renderer(RendererConfig config);

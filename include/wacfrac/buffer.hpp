@@ -1,5 +1,6 @@
 #pragma once
 #include "wacfrac/log.hpp"
+#include <sycl/detail/common.hpp>
 #include <sycl/sycl.hpp>
 #include <cstddef>
 #include <memory>
@@ -83,11 +84,18 @@ template<typename T>
 class DeviceBuffer {
     public:
     DeviceBuffer() = default;
-    DeviceBuffer(sycl::queue& q, std::size_t count, sycl::usm::alloc kind = sycl::usm::alloc::host)
+    DeviceBuffer(sycl::queue& q, std::size_t count, sycl::usm::alloc kind = sycl::usm::alloc::shared)
         : _queue{&q}
         , _data(sycl::malloc<T>(count, q, kind))
         , _size(count)
     {}
+    DeviceBuffer(sycl::queue& q, std::span<const T> data, sycl::usm::alloc kind = sycl::usm::alloc::shared)
+        : _queue{&q}
+        , _data(sycl::malloc<T>(data.size(), q, kind))
+        , _size(data.size())
+    {
+        q.memcpy(_data, data.data(), data.size_bytes());
+    }
     DeviceBuffer(const DeviceBuffer&) = delete;
     DeviceBuffer& operator=(const DeviceBuffer&) = delete;
     DeviceBuffer(DeviceBuffer&& other)
@@ -112,6 +120,9 @@ class DeviceBuffer {
     }
     auto size() const {
         return _size;
+    }
+    auto get_queue() {
+        return _queue;
     }
     decltype(auto) operator[](std::size_t idx) const {
         return _data[idx]; // WARN: Permits out of bounds access with no exception

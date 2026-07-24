@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sycl/sycl.hpp>
 #include <cstddef>
 #include <ranges>
 
@@ -18,6 +19,9 @@ struct Resolution {
         );
     }
 #endif
+    inline auto range() const {
+        return sycl::range(width, height);
+    }
 };
 
 } // namespace wacfrac

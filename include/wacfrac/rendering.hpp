@@ -42,8 +42,8 @@ auto sample_c_value(sycl::id<2> id,
                     T delta) -> T {
     using CT = ComplexValueTypeT<T>;
     return T {
-        start.real() + delta.real() * static_cast<CT>(id.get(1)), // col 
-        start.imag() + delta.imag() * static_cast<CT>(id.get(0))  // row
+        start.real() + delta.real() * static_cast<CT>(id.get(0)),
+        start.imag() + delta.imag() * static_cast<CT>(id.get(1))
     };
 }
 

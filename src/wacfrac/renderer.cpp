@@ -5,6 +5,7 @@
 #include "wacfrac/rendering.hpp"
 #include "wacfrac/viewport.hpp"
 #include <sycl/access/access.hpp>
+#include <sycl/accessor.hpp>
 
 namespace wacfrac {
 
@@ -39,96 +40,75 @@ template<typename T>
 auto Renderer::direct_render_pass(T start, T delta, unsigned max_n) -> void {
     auto discrete {conf.discrete_coloring};
     auto escape_radius {conf.escape_radius};
-    sycl::buffer<Pixel, 1> palette {conf.palette.data(), sycl::range(conf.palette.size())};
-    sycl::buffer<Pixel, 2> screen {pixels.data(), sycl::range(conf.resolution.width, conf.resolution.height)};
+    auto cols {conf.resolution.width};
+    auto screen_span {pixels.as_span()};
+    auto palette_span {conf.palette.as_span()};
 
-    conf.queue.submit([&](sycl::handler& h) {
-        sycl::accessor screen_acc(screen, h, sycl::write_only);
-        sycl::accessor palette_acc(palette, h, sycl::read_only);
-
-        h.parallel_for(screen_acc.get_range(), [=](sycl::id<2> id) {
-            auto [z, n] = escape(
-                sample_c_value(id, start, delta),
-                max_n,
-                escape_radius);
-            screen_acc[id] = [&](){
-                if (discrete)
-                    return colorize_discrete(n, max_n, palette_acc);
-                return colorize_continuous(z, n, max_n, palette_acc);
-            }();
-        });
-    });
+    conf.queue.parallel_for(conf.resolution.range(), [=](sycl::id<2> id) {
+        auto [z, n] = escape(
+            sample_c_value(id, start, delta),
+            max_n,
+            escape_radius);
+        screen_span[id.get(1) * cols + id.get(0)] = [&](){
+            if (discrete) [[unlikely]]
+                return colorize_discrete(n, max_n, palette_span);
+            return colorize_continuous(z, n, max_n, palette_span);
+        }();
+    }).wait();
 }
 template<typename T>
 auto Renderer::perturbed_render_pass(T start, T delta, std::span<const T> ref, unsigned max_n) -> void {
     auto discrete {conf.discrete_coloring};
     auto escape_radius {conf.escape_radius};
-    sycl::buffer<Pixel, 1> palette {conf.palette.data(), sycl::range(conf.palette.size())};
-    sycl::buffer<Pixel, 2> screen {pixels.data(), sycl::range(conf.resolution.width, conf.resolution.height)};
-    sycl::buffer<T, 1> reference {ref.data(), sycl::range(ref.size())};
+    auto cols {conf.resolution.width};
+    auto screen_span {pixels.as_span()};
+    auto palette_span {conf.palette.as_span()};
 
-    conf.queue.submit([&](sycl::handler& h) {
-        sycl::accessor screen_acc(screen, h, sycl::write_only);
-        sycl::accessor palette_acc(palette, h, sycl::read_only);
-        sycl::accessor reference_acc(reference, h, sycl::read_only);
-
-        h.parallel_for(screen_acc.get_range(), [=](sycl::id<2> id) {
-            auto [z, n] = escape_perturbed(
-                reference_acc,
-                sample_c_value(id, start, delta),
-                max_n,
-                escape_radius);
-            screen_acc[id] = [&](){
-                if (discrete)
-                    return colorize_discrete(n, max_n, palette_acc);
-                return colorize_continuous(z, n, max_n, palette_acc);
-            }();
-        });
-    });
+    conf.queue.parallel_for(conf.resolution.range(), [=](sycl::id<2> id) {
+        auto [z, n] = escape_perturbed(
+            sample_c_value(id, start, delta),
+            ref,
+            max_n,
+            escape_radius);
+        screen_span[id.get(1) * cols + id.get(0)] = [&](){
+            if (discrete) [[unlikely]]
+                return colorize_discrete(n, max_n, palette_span);
+            return colorize_continuous(z, n, max_n, palette_span);
+        }();
+    }).wait();
 }
 template<typename T>
 auto Renderer::bla_render_pass(T start, T delta, std::span<const T> ref, bla::Approximator<T> bla, unsigned max_n) -> void {
     auto discrete {conf.discrete_coloring};
-    auto palette {conf.palette.as_span()};
-    auto screen {pixels.as_span()};
-    auto row_width {conf.resolution.width};
     auto escape_radius {conf.escape_radius};
-    Colorizer colorize {discrete, palette, max_n};
-    conf.ctx.parallel_for(screen.size(),
-        [screen,
-        row_width,
-        start,
-        delta,
-        ref,
-        max_n,
-        escape_radius,
-        colorize,
-        bla]
-        (int tid) -> void {
-            auto [z, n, _skipped] = bla::escape_approximate(
-                sample_c_value(
-                    tid,
-                    row_width,
-                    start,
-                    delta),
-                ref,
-                max_n,
-                escape_radius,
-                bla);
-            screen[tid] = colorize.colorize(z, n);
-        });
+    auto cols {conf.resolution.width};
+    auto screen_span {pixels.as_span()};
+    auto palette_span {conf.palette.as_span()};
 
+    conf.queue.parallel_for(conf.resolution.range(), [=](sycl::id<2> id) {
+        auto [z, n, _] = bla::escape_approximate(
+            sample_c_value(id, start, delta),
+            ref,
+            max_n,
+            escape_radius,
+            bla);
+        screen_span[id.get(1) * cols + id.get(0)] = [&](){
+            if (discrete) [[unlikely]]
+                return colorize_discrete(n, max_n, palette_span);
+            return colorize_continuous(z, n, max_n, palette_span);
+        }();
+    }).wait();
 }
 
 constexpr auto A_GIGABYTE {1'000'000'000ull};
 constexpr auto ARENA_SIZE {A_GIGABYTE};
 Renderer::Renderer(RendererConfig config)
     : conf {std::move(config)} // WARN: Bad. Pass by copy first? Why?
-    , pixels {this->conf.ctx.template make_buffer<Pixel>(this->conf.resolution.area())}
-    , arena {this->conf.queue, ARENA_SIZE} // WARN: We can trivially compute ideal arena size. Hint: Its under a Gig
+    , pixels {conf.queue, conf.resolution.area()}
+    , arena {conf.queue, ARENA_SIZE} // WARN: We can trivially compute ideal arena size. Hint: Its under a Gig
 {
     if (conf.palette.size() == 0) {
-        conf.palette = conf.ctx.make_buffer(std::span(ULTRA));
+        conf.palette = {conf.queue, std::span(ULTRA)};
     }
 
     logging::info("Renderer Config: device={} resolution={}x{} focus={}x{} escape_radius={} palette size={}\
@@ -259,15 +239,12 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
             } else if (render_type == RenderType::BLA) {
                 using CT = ComplexValueTypeT<T>;
                 auto max_dc {to_complex<T>(view.compute_max_dc(c_ref))};
-                bla::Calculator<T> bla_calculator {conf.bla_config, arena, conf.ctx};
+                bla::Calculator<T> bla_calculator {conf.queue, arena, conf.bla_config};
                 if (img_conf.epsilon != 0.0) {
                     bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), ref, max_dc);
                 } else {
                     auto probes {arena.allocate<T>(conf.probe_grid.first * conf.probe_grid.second)};
-                    {
-                        auto buff {sycl::buffer<T, 2>(probes.data(), sycl::range(conf.probe_grid.first, conf.probe_grid.second))};
-                        view.generate_probes<T>(conf.queue, buff);
-                    }
+                    view.generate_probes<T>(conf.queue, probes, sycl::range(conf.probe_grid.first, conf.probe_grid.second));
                     bla_calculator.compute_search(probes, max_dc, ref, conf.escape_radius);
                 }
                 auto bla = bla_calculator.get_approximator();

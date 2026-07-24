@@ -2,6 +2,8 @@
 
 #include "wacfrac/context.hpp"
 #include "wacfrac/complex_concept.hpp"
+#include <sycl/memory_enums.hpp>
+#include <sycl/queue.hpp>
 #include <wacfrac/orbit.hpp>
 #include <wacfrac/types.hpp>
 #include <wacfrac/log.hpp>
@@ -137,8 +139,8 @@ template <ComplexConcept T>
 class Calculator {
     public:
     using CT = ComplexValueTypeT<T>;
-    Calculator(const Config& params, DeviceArena& arena, ProcessingContext& ctx)
-        : _ctx{ctx}
+    Calculator(sycl::queue& queue, DeviceArena& arena, const Config& params)
+        : _queue{queue}
         , _params(params)
         , _arena{arena}
         , _last_level{0}
@@ -227,90 +229,52 @@ class Calculator {
     auto get_approximator() -> Approximator<T> {
         return {_params.first_level, _last_level, _columns, _approximations};
     }
-    public: // TODO: Remove from public API. This is a work around to make NVCC happy with our lambda usage in device code
+    private:
     auto initialize_columns(std::size_t max_n) -> void {
         auto columns {_columns};
         auto first_level {_params.first_level};
         auto last_level {_last_level};
-        _ctx.parallel_for(max_n,
-            [max_n,
-             first_level,
-             last_level,
-             columns]
-            (int tid){
-                auto m {tid + 1};
-                if (m > max_n)
-                    return;
-                columns[m - 1] = {
-                    ColumnInfo::compute_start(m, first_level, last_level),
-                    ColumnInfo::compute_count(m, first_level, last_level)
-                };
-            });
+
+       _queue.parallel_for(max_n, [=](sycl::id<1> id) {
+            auto m {id + 1};
+            columns[id] = {
+                ColumnInfo::compute_start(m, first_level, last_level),
+                ColumnInfo::compute_count(m, first_level, last_level)
+            };
+        }).wait();
     }
     auto compute_initial_approximations(CT epsilon, std::span<const T> ref, T max_dc) -> void {
         auto first_level {_params.first_level};
         auto approximator = get_approximator();
         auto working = _current_working;
-        _ctx.parallel_for(ref.size() - 2,
-            [epsilon,
-             ref,
-             max_dc,
-             first_level,
-             approximator,
-             working]
-            (int tid){
-                if (tid + 2 >= ref.size())
-                    return;
-                auto m {tid + 1};
-                Bla<T> bla {epsilon, ref, max_dc, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
-                working[m - 1] = bla;
-                if (0 == first_level) {
-                    auto* ptr {approximator.approximation_at(m, 0)};
-                    if (ptr) { *ptr = bla; }
-                }
-            });
+
+       _queue.parallel_for(ref.size() - 2, [=](sycl::id<1> id){
+            auto m {id + 1};
+            Bla<T> bla {epsilon, ref, max_dc, static_cast<unsigned>(m), static_cast<unsigned>(m + 1)};
+            working[m - 1] = bla;
+            if (0 == first_level) {
+                auto* ptr {approximator.approximation_at(m, 0)};
+                if (ptr) { *ptr = bla; }
+            }
+        }).wait();
     }
     auto merge_approximations(std::size_t current_level, std::size_t level_size, T max_dc) -> void {
-        if (current_level >= _params.first_level) {
-            auto approximator = get_approximator();
-            auto working = _current_working;
-            auto next_working = _next_working;
-            _ctx.parallel_for(level_size / 2,
-                [current_level,
-                 max_dc,
-                 approximator,
-                 working,
-                 next_working]
-                (int tid){
-                    auto k {tid * 2};
-                    if (k >= working.size())
-                        return;
+        auto approximator = get_approximator();
+        auto working = _current_working;
+        auto next_working = _next_working;
+        auto first_level = _params.first_level;
 
-                    auto bla {Bla<T>::merge(max_dc, working[k], working[k+1])};
-                    next_working[k/2] = bla;
+        _queue.parallel_for(level_size / 2, [=](sycl::id<1> id){
+            auto k {id * 2};
+            auto bla {Bla<T>::merge(max_dc, working[k], working[k+1])};
+            next_working[k/2] = bla;
 
-                    auto m {1 + (k / 2) * (1ull << current_level)};
-                    auto* ptr {approximator.approximation_at(m, current_level)};
-                    if (ptr) { *ptr = bla; }
-                });
-        } else {
-            auto approximator = get_approximator();
-            auto working = _current_working;
-            auto next_working = _next_working;
-            _ctx.parallel_for(level_size / 2,
-                [max_dc,
-                 approximator,
-                 working,
-                 next_working]
-                (int tid){
-                    auto k {tid * 2};
-                    if (k >= working.size())
-                        return;
-
-                    auto bla {Bla<T>::merge(max_dc, working[k], working[k+1])};
-                    next_working[k/2] = bla;
-                });
-        }
+            if (current_level >= first_level) [[likely]] {
+                auto m {1 + (k / 2) * (1ull << current_level)};
+                auto* ptr {approximator.approximation_at(m, current_level)};
+                if (ptr) { *ptr = bla; }
+            }
+        }).wait();
     }
     auto compute_probe_escape_time(std::span<const T> probes, std::span<const T> ref, double escape_radius) -> void {
         if (probes.size() > _true_escape_times.size()) {
@@ -318,65 +282,58 @@ class Calculator {
         }
 
         auto escape_times = _true_escape_times;
-        _ctx.parallel_for(probes.size(),
-            [probes,
-             ref,
-             escape_radius,
-             escape_times]
-            (int tid){
-                if (tid >= probes.size())
-                    return;
-                escape_times[tid] = escape_perturbed<T>(
-                    probes[tid], ref,
-                    static_cast<unsigned>(ref.size()),
-                    escape_radius).second;
-            });
+
+       _queue.parallel_for(probes.size(), [=](sycl::id<1> id){
+            escape_times[id] = escape_perturbed<T>(
+                probes[id], ref,
+                static_cast<unsigned>(ref.size()),
+                escape_radius).second;
+        }).wait();
     }
     auto compute_skipped_iterations(std::span<const T> probes, std::span<const T> ref, double escape_radius, double tolerance) -> void {
         if (_total_skipped == nullptr)
             _total_skipped = _arena.allocate<unsigned>();
         if (_tolerence_failed == nullptr)
-            _tolerence_failed = _arena.allocate<bool>();
+            _tolerence_failed = _arena.allocate<unsigned>();
 
         *_total_skipped = 0u;
-        *_tolerence_failed = false;
+        *_tolerence_failed = 0u;
 
         auto approximator {get_approximator()};
         auto escape_times {_true_escape_times};
-        std::atomic_ref tolerance_atom {*_tolerence_failed};
-        std::atomic_ref skipped_atom {*_total_skipped};
-        _ctx.parallel_for(probes.size(),
-            [probes,
-             ref,
-             escape_radius,
-             tolerance,
-             escape_times,
-             tolerance_atom,
-             skipped_atom,
-             approximator]
-            (int tid){
-                if (tid >= probes.size())
-                    return;
-                auto [_, approx_escape_time, skipped] =
-                    escape_approximate(
-                        probes[tid],
-                        std::span<const T>(ref),
-                        static_cast<unsigned>(ref.size()),
-                        escape_radius,
-                        approximator);
+        auto skipped {_total_skipped};
+        auto tolerence_failed {_tolerence_failed};
 
-                using std::abs;
-                if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(escape_times[tid]) - 1.0) > tolerance) {
-                    tolerance_atom.store(true, std::memory_order_seq_cst);
-                    return;
-                }
-                skipped_atom.fetch_add(skipped, std::memory_order_seq_cst);
-            });
+       _queue.parallel_for(probes.size(), [=](sycl::id<1> id){
+            sycl::atomic_ref<unsigned,
+                            sycl::memory_order_relaxed,
+                            sycl::memory_scope_work_group>
+                skipped_atom {*skipped};
+            sycl::atomic_ref<unsigned,
+                            sycl::memory_order_relaxed,
+                            sycl::memory_scope_work_group>
+                tolerance_atom {*tolerence_failed};
+
+            auto [_, approx_escape_time, skipped] =
+                escape_approximate(
+                    probes[id],
+                    std::span<const T>(ref),
+                    static_cast<unsigned>(ref.size()),
+                    escape_radius,
+                    approximator);
+
+            using std::abs;
+            if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(escape_times[id]) - 1.0) > tolerance) {
+                tolerance_atom.store(1);
+                return;
+            }
+            skipped_atom.fetch_add(skipped);
+        }).wait();
     }
 
-    ProcessingContext _ctx;
-    Config _params;
+    sycl::queue& _queue;
     DeviceArena& _arena;
+    Config _params;
     std::size_t _last_level;
     std::span<ColumnInfo> _columns;
     std::span<Bla<T>>     _current_working;
@@ -384,7 +341,7 @@ class Calculator {
     std::span<Bla<T>>     _approximations;
     std::span<unsigned>   _true_escape_times;
     unsigned* _total_skipped;
-    bool* _tolerence_failed;
+    unsigned* _tolerence_failed; // NOTE: Used as a bool. Bool atomic_refs are invalid with SYCL
 };
 
 template <ComplexConcept T, typename Ref, typename Approx>

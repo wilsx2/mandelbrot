@@ -65,7 +65,7 @@ static void parse_multicomplex(MultiComplex& target, const std::string& value){
     target = MultiComplex(real, imag, DEFAULT_MP_PRECISION);
 }
 
-static void parse_palette_string(Buffer<Pixel>& target, const std::string& value) {
+static void parse_palette_string(DeviceBuffer<Pixel>& target, const std::string& value) {
     ProcessingContext ctx;
     std::string normalized(value);
     std::transform(normalized.begin(), normalized.end(), normalized.begin(),
@@ -73,9 +73,10 @@ static void parse_palette_string(Buffer<Pixel>& target, const std::string& value
     auto view {normalized | std::views::split(' ') | std::views::transform([](auto subrange) {
             return parse_color(std::string_view(&*subrange.begin(), subrange.size()));
         }) | std::views::enumerate};
-    target = ctx.make_buffer<Pixel>(std::ranges::distance(view));
+    // WARN: Possible deref of null ptr
+    target = {*target.get_queue(), static_cast<std::size_t>(std::ranges::distance(view))};
     for (auto&& [idx, pixel] : view) {
-        target.as_span()[idx] = pixel;
+        target[idx] = pixel;
     }
 }
 

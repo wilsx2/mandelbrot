@@ -35,7 +35,7 @@ struct Viewport {
     template<ComplexConcept T>
     auto get_corner_relative() const -> T;
     template<ComplexConcept T>
-    auto generate_probes(sycl::queue& q, sycl::buffer<T, 2>& probes) const -> void;
+    auto generate_probes(sycl::queue& q, std::span<T> probes, sycl::range<2> range) const -> void;
 };
 auto required_precision(MultiFloat zoom_factor) -> std::size_t;
 auto required_iterations(MultiFloat zoom_factor, double modifier = 250.0, double factor = 50.0, double exponent = 1.5) -> unsigned;
@@ -58,11 +58,10 @@ auto Viewport::get_corner_relative() const -> T {
 }
 
 template<ComplexConcept T>
-auto Viewport::generate_probes(sycl::queue& q, sycl::buffer<T, 2>& probes) const -> void {
+auto Viewport::generate_probes(sycl::queue& q, std::span<T> probes, sycl::range<2> range) const -> void {
     using CT = ComplexValueTypeT<T>;
-    auto range {probes.get_range()};
-    auto cols {range.get(1)};
-    auto rows {range.get(0)};
+    auto cols {range[0]};
+    auto rows {range[1]};
     auto delta {get_pixel_delta<T>(dimensions, Resolution{cols, rows})};
     auto corner {get_corner_relative<T>()};
     if (cols % 2)
@@ -70,16 +69,12 @@ auto Viewport::generate_probes(sycl::queue& q, sycl::buffer<T, 2>& probes) const
     if (rows % 2)
         corner.imag() += delta.imag() / static_cast<CT>(2.0);
 
-    q.submit([&](sycl::handler& h) {
-        sycl::accessor acc(probes, h, sycl::write_only);
-
-        h.parallel_for(range, [=](sycl::id<2> id) {
-            acc[id] = T{
-                corner.real() + delta.real() * static_cast<CT>(id[1]), // col
-                corner.imag() + delta.imag() * static_cast<CT>(id[0])  // row 
-            };
-        });
-    });
+    q.parallel_for(range, [=](sycl::id<2> id) {
+        probes[id[0] + id[1] * cols] = T{
+            corner.real() + delta.real() * static_cast<CT>(id[1]),
+            corner.imag() + delta.imag() * static_cast<CT>(id[0])
+        };
+    }).wait();
 }
 
 }   // namespace wacfrac
