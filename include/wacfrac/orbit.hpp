@@ -30,33 +30,7 @@ inline void compute_next_perturbation(T& z, T& dz, unsigned& n, const T& dc, std
 
 template <ComplexConcept T = DoubleComplex>
 SYCL_EXTERNAL
-inline void compute_next_perturbation(sycl::accessor<T, 1, sycl::access_mode::read> ref, T& z, T& dz, unsigned& n, const T& dc, unsigned& ref_n) {
-    dz = static_cast<ComplexValueTypeT<T>>(2.0) * dz * ref[ref_n] + dz * dz + dc;
-    ++ref_n;
-    ++n;
-}
-
-template <ComplexConcept T = DoubleComplex>
-SYCL_EXTERNAL
 inline void rebase_perturbation(T& z, T& dz, std::span<const T> ref, unsigned& ref_n) {
-    if (ref_n >= ref.size()) {
-        dz = z;
-        ref_n = 0;
-        return;
-    }
-
-    z = {ref[ref_n] + dz};
-
-    using std::norm;
-    if (norm(z) < norm(dz)) {
-        dz = z;
-        ref_n = 0;
-    }
-}
-
-template <ComplexConcept T = DoubleComplex>
-SYCL_EXTERNAL
-inline void rebase_perturbation(sycl::accessor<T, 1, sycl::access_mode::read> ref, T& z, T& dz, unsigned& ref_n) {
     if (ref_n >= ref.size()) {
         dz = z;
         ref_n = 0;
@@ -108,20 +82,6 @@ auto escape_perturbed(const T& dc, std::span<const T> ref, unsigned max_n, doubl
         [&](T& z, unsigned& n){
             compute_next_perturbation(z, dz, n, dc, ref, ref_n);
             rebase_perturbation(z, dz, ref, ref_n);
-        });
-}
-
-template <ComplexConcept T>
-SYCL_EXTERNAL
-auto escape_perturbed(sycl::accessor<T, 1, sycl::access_mode::read> ref, const T& dc, unsigned max_n, double escape_radius) -> std::pair<Complex<float>, unsigned> {
-    unsigned ref_n {0u};
-    T dz {0.0};
-    T z {0.0};
-
-    return escape_generic<T>(ref[ref_n] + dz, max_n, escape_radius,
-        [&](T& z, unsigned& n){
-            compute_next_perturbation(ref, z, dz, n, dc, ref_n);
-            rebase_perturbation(ref, z, dz, ref_n);
         });
 }
 

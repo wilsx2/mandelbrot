@@ -9,20 +9,6 @@
 
 namespace wacfrac {
 
-struct Colorizer {
-    bool discrete;
-    std::span<const Pixel> palette;
-    unsigned max_n;
-
-    template<typename Z, typename N>
-    SYCL_EXTERNAL
-    auto colorize(Z z, N n) const -> Pixel {
-        if (discrete)
-            return colorize_discrete(n, max_n, palette);
-        return colorize_continuous(z, n, max_n, palette);
-    }
-};
-
 template <typename T>
 struct NumericTypeTag { using type = T; };
 
@@ -34,6 +20,32 @@ decltype(auto) with_numeric_type(NumericType type, F&& f) {
         case NumericType::DoubleExp: return f(NumericTypeTag<wacfrac::DoubleExpComplex>{});
         case NumericType::Auto:      return f(NumericTypeTag<wacfrac::SingleComplex>{});
     }
+}
+
+template<typename T>
+auto compute_arena_size(unsigned max_n, RenderType render_type, const bla::Config& bla_config,
+                        std::pair<std::size_t, std::size_t> probe_grid) -> std::size_t {
+    using BlaT = bla::Bla<T>;
+    auto probe_count = probe_grid.first * probe_grid.second;
+
+    if (render_type == RenderType::Direct)
+        return 0;
+
+    std::size_t bytes = sizeof(T) * max_n;
+
+    if (render_type == RenderType::BLA) {
+        auto last_level = max_n < 3 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(max_n)));
+        auto n = max_n - 1;
+        auto approx_count = bla::ColumnInfo::compute_start(n, bla_config.first_level, last_level);
+
+        bytes += sizeof(T) * probe_count;
+        bytes += sizeof(bla::ColumnInfo) * n;
+        bytes += sizeof(BlaT) * (n - 1) * 2;
+        bytes += sizeof(BlaT) * approx_count;
+        bytes += sizeof(unsigned) * (probe_count + 2);
+    }
+
+    return bytes;
 }
 
 template<typename T>
@@ -100,16 +112,24 @@ auto Renderer::bla_render_pass(T start, T delta, std::span<const T> ref, bla::Ap
     }).wait();
 }
 
-constexpr auto A_GIGABYTE {1'000'000'000ull};
-constexpr auto ARENA_SIZE {A_GIGABYTE};
 Renderer::Renderer(RendererConfig config)
-    : conf {std::move(config)} // WARN: Bad. Pass by copy first? Why?
+    : conf {std::move(config)}
     , pixels {conf.queue, conf.resolution.area()}
-    , arena {conf.queue, ARENA_SIZE} // WARN: We can trivially compute ideal arena size. Hint: Its under a Gig
+    , arena {conf.queue, 0}
 {
     if (conf.palette.size() == 0) {
         conf.palette = {conf.queue, std::span(ULTRA)};
     }
+
+    auto hint_max_n = required_iterations(
+        MultiFloat(10.0),
+        conf.iteration_parameters.modifier,
+        conf.iteration_parameters.factor,
+        conf.iteration_parameters.exponent);
+    auto initial_size = compute_arena_size<DoubleExpComplex>(
+        static_cast<unsigned>(hint_max_n), RenderType::BLA, conf.bla_config, conf.probe_grid);
+    if (initial_size > 0)
+        arena.grow(initial_size);
 
     logging::info("Renderer Config: device={} resolution={}x{} focus={}x{} escape_radius={} palette size={}\
                     discrete={} iteration_params={} + {} * exp^{} first_bla_level={},\
@@ -125,6 +145,11 @@ Renderer::Renderer(RendererConfig config)
 
 auto Renderer::cache_references(ReferenceSet&& refs) -> void {
     ref_cache = std::move(refs);
+}
+
+auto Renderer::reserve(unsigned max_n) -> void {
+    auto needed = compute_arena_size<DoubleExpComplex>(max_n, RenderType::BLA, conf.bla_config, conf.probe_grid);
+    arena.grow(needed);
 }
 
 auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
@@ -212,6 +237,9 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
     auto start = std::chrono::steady_clock::now();
     with_numeric_type(num_type, [&]<typename T>(NumericTypeTag<T>){
         using CT = ComplexValueTypeT<T>;
+
+        auto needed = compute_arena_size<T>(max_n, render_type, conf.bla_config, conf.probe_grid);
+        arena.grow(needed);
 
         auto delta {get_pixel_delta<T>(view.dimensions, conf.resolution)};
         logging::debug("delta c: ({}, {})", static_cast<double>(delta.real()), static_cast<double>(delta.imag()));

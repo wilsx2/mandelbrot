@@ -45,7 +45,6 @@ SYCL_EXTERNAL
 inline auto colorize_continuous(Complex<float> z, unsigned n, unsigned max_n, std::span<const Pixel> palette) -> Pixel
 {
     using namespace std;
-    using namespace std;
     if (n == max_n)
         return palette.back();
     auto cont_n {n - ::log(std::log(abs(z))) / ::log(2.0)};

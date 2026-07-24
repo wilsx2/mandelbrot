@@ -5,14 +5,12 @@
 #include "wacfrac/types.hpp"
 #include <argumentum/argparse.h>
 #include <array>
-#include <boost/optional.hpp>
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
 #include <memory>
 #include <sstream>
 #include <string>
-#include <vector>
 #include <ranges>
 
 namespace wacfrac {
@@ -66,7 +64,6 @@ static void parse_multicomplex(MultiComplex& target, const std::string& value){
 }
 
 static void parse_palette_string(DeviceBuffer<Pixel>& target, const std::string& value) {
-    ProcessingContext ctx;
     std::string normalized(value);
     std::transform(normalized.begin(), normalized.end(), normalized.begin(),
         [](unsigned char c) { return std::isspace(c) ? ' ' : c; });
@@ -81,7 +78,6 @@ static void parse_palette_string(DeviceBuffer<Pixel>& target, const std::string&
 }
 
 struct RendererOptions : public RendererConfig {
-    bool prefer_cpu {false};
     unsigned log_level {2};
 
     void add_parameters(argumentum::ParameterConfig& args) {
@@ -141,9 +137,6 @@ struct RendererOptions : public RendererConfig {
             .help("First BLA level (0 = auto)");
     }
 };
-
-constexpr double DIRECT_THRESHOLD = 1e13;
-constexpr double PERTURB_THRESHOLD = 1e25;
 
 struct ImageOptions : public ImageConfig, public argumentum::CommandOptions {
     using CommandOptions::CommandOptions;

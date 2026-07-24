@@ -6,8 +6,6 @@
 #include <cstdint>
 #include <limits>
 #include <cstring>
-#include <iomanip>
-#include <sstream>
 #if defined(__cpp_impl_three_way_comparison) && __has_include(<compare>)
     #include <compare>
 #endif
@@ -216,15 +214,6 @@ struct FloatExp {
         return *this;
     }
 
-    [[nodiscard]]
-    SYCL_EXTERNAL
-    inline FloatExp mul2() const noexcept {
-        FloatExp r;
-        r.val = val;
-        r.exp = exp + 1;
-        return r;
-    }
-
     private:
     SYCL_EXTERNAL
     inline int compare(const FloatExp& a) const noexcept {
@@ -248,11 +237,6 @@ struct FloatExp {
         if (val != 0 && !isinf(val) && exp != a.exp)
             return false;
         return val == a.val;
-    }
-
-    SYCL_EXTERNAL
-    inline bool operator !=(const FloatExp& a) const noexcept {
-        return !(*this == a);
     }
 
     SYCL_EXTERNAL
@@ -297,21 +281,6 @@ struct FloatExp {
         if (exp < E(INT_MIN))
             return double(val) * 0.0;
         return ldexp(double(val), int(exp));
-    }
-
-    inline std::string toString(int digits = 0) const noexcept {
-        using namespace std;
-        using std::abs;
-        if (isnan(val)) return "nan";
-        if (isinf(val)) return val > 0 ? "+inf" : "-inf";
-        M lf = log10(abs(val)) + M(exp) * log10(M(2));
-        E e10 = E(floor(lf));
-        M d10 = pow(M(10), lf - e10) * M((val > 0) - (val < 0));
-        if (val == 0) { d10 = 0; e10 = 0; }
-        std::ostringstream os;
-        os << std::setprecision(digits ? digits : (std::numeric_limits<M>::digits10 + 1))
-           << std::fixed << d10 << 'E' << e10;
-        return os.str();
     }
 };
 
@@ -364,11 +333,6 @@ inline FloatExp<M, E> operator -(const FloatExp<M, E>& b, M a) noexcept {
 }
 
 template<std::floating_point M, std::integral E>
-inline std::ostream& operator <<(std::ostream& os, const FloatExp<M, E>& b) noexcept {
-    return os << b.toString();
-}
-
-template<std::floating_point M, std::integral E>
 SYCL_EXTERNAL
 inline FloatExp<M, E> abs(FloatExp<M, E> a) noexcept {
     return a.val < 0 ? -a : a;
@@ -382,50 +346,6 @@ inline FloatExp<M, E> sqrt(FloatExp<M, E> a) noexcept {
         sqrt((a.exp & 1) ? M(2) * a.val : a.val),
         (a.exp & 1) ? (a.exp - 1) / 2 : a.exp / 2
     );
-}
-
-template<std::floating_point M, std::integral E>
-SYCL_EXTERNAL
-inline FloatExp<M, E> sqr(FloatExp<M, E> a) noexcept {
-    return a * a;
-}
-
-template<typename T>
-SYCL_EXTERNAL
-inline T pow(T x, uint64_t n) noexcept {
-    switch (n) {
-        case 0: return T(1);
-        case 1: return x;
-        case 2: return x * x;
-        case 3: return x * x * x;
-        case 4: { T t = x * x; return t * t; }
-        case 5: { T t = x * x; return t * t * x; }
-        case 6: { T t = x * x; return t * t * t; }
-        case 7: { T t = x * x; return t * t * t * x; }
-        case 8: { T t = x * x; t = t * t; return t * t; }
-        default: {
-            T y(1);
-            while (n > 1) {
-                if (n & 1) y *= x;
-                x = x * x;
-                n >>= 1;
-            }
-            return x * y;
-        }
-    }
-}
-
-template<std::floating_point M, std::integral E>
-SYCL_EXTERNAL
-inline FloatExp<M, E> nextafter(FloatExp<M, E> a, FloatExp<M, E> b) noexcept {
-    using std::nextafter;
-    if (a == b) return b;
-    if (a < b) {
-        a.val = nextafter(a.val, M(1) / M(0));
-    } else {
-        a.val = nextafter(a.val, -M(1) / M(0));
-    }
-    return FloatExp(a.val, a.exp);
 }
 
 } // namespace wacfrac

@@ -2,21 +2,10 @@
 
 #include "wacfrac/types.hpp"
 #include <cstddef>
-#include <vector>
 
 namespace wacfrac {
 
 auto find_nucleus(MultiComplex c, std::size_t period, unsigned max_iterations) -> MultiComplex;
-
-template<ComplexConcept T, typename F = double>
-auto is_reference_degenerate(const std::vector<T>& ref, F tolerance = 1e-3) -> bool {
-    using CT = ComplexValueTypeT<T>;
-    return std::ranges::all_of(ref, [tolerance](auto z) {
-        using std::abs;
-        using boost::multiprecision::abs;
-        return abs(z) < CT(tolerance);
-    });
-}
 
 // https://fractalforums.org/index.php?topic=3805.msg24312#msg24312
 struct PeriodFinder {

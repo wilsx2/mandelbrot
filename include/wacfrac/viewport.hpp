@@ -1,17 +1,14 @@
 #pragma once
 
 #include "wacfrac/rendering.hpp"
-#include <vector>
 #include <wacfrac/types.hpp>
 #include <wacfrac/resolution.hpp>
 #include <wacfrac/complex_concept.hpp>
 #include <wacfrac/log.hpp>
-#include "wacfrac/context.hpp"
 #include <wacfrac/reference.hpp>
 #include <sycl/sycl.hpp>
 #include <boost/multiprecision/detail/default_ops.hpp>
 #include <cstddef>
-#include <limits>
 
 namespace wacfrac
 {
@@ -22,11 +19,8 @@ struct Viewport {
 
     Viewport() = default;
     Viewport(const MultiComplex& center, const MultiComplex& dimensions);
-    Viewport(MultiComplex&& center, MultiComplex&& dimensions);
     Viewport(const MultiComplex& center, const MultiFloat& zoom, const Resolution& res);
     void precision(std::size_t value);
-    auto zoomed(MultiFloat scale) const -> Viewport;
-    auto sample(std::size_t x, std::size_t y, std::size_t width, std::size_t height) const -> MultiComplex;
     auto compute_max_dc(MultiComplex c) const -> MultiComplex;
     auto required_precision() const -> std::size_t;
     auto required_iterations(double modifier = 250.0, double factor = 50.0, double exponent = 1.5) const -> unsigned;

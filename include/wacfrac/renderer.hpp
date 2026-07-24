@@ -1,13 +1,11 @@
 #pragma once
 #include "wacfrac/bla.hpp"
-#include <cstddef>
 #include "wacfrac/buffer.hpp"
 #include "wacfrac/reference.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/color.hpp"
 #include <sycl/sycl.hpp>
-#include <boost/optional.hpp>
 #include <span>
 
 namespace wacfrac {
@@ -23,7 +21,6 @@ struct IterationParameters {
 
 struct RendererConfig {
     sycl::queue queue {sycl::default_selector_v};
-    ProcessingContext ctx {};
     Resolution resolution {500, 500};
     MultiComplex focus {-0.5, 0.0};
     double escape_radius {4.0};
@@ -44,9 +41,6 @@ struct ImageConfig {
 };
 
 struct Renderer {
-    template<typename T>
-    using Buffer = wacfrac::Buffer<T>;
-
     RendererConfig conf;
     ReferenceSet ref_cache;
     DeviceBuffer<Pixel> pixels;
@@ -54,6 +48,7 @@ struct Renderer {
 
     Renderer(RendererConfig config);
     auto cache_references(ReferenceSet&& refs) -> void;
+    auto reserve(unsigned max_n) -> void;
     auto render(const ImageConfig& img_conf) -> std::span<const Pixel>;
 
     template<typename T>

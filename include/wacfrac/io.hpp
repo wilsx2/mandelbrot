@@ -1,19 +1,11 @@
 #pragma once
 
 #include "wacfrac/color.hpp"
-#include "wacfrac/log.hpp"
 #include "wacfrac/resolution.hpp"
-#include <cstddef>
 #include "wacfrac/types.hpp"
-#include <algorithm>
-#include <generator>
-#include <concepts>
-#include <cstdlib>
+#include <cstddef>
 #include <filesystem>
-#include <fstream>
-#include <ranges>
-#include <sstream>
-#include <wacfrac/rendering.hpp>
+#include <generator>
 #include <span>
 #include <string>
 #include <string_view>

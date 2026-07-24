@@ -1,5 +1,4 @@
 #include "wacfrac/cli_options.hpp"
-#include "wacfrac/context.hpp"
 #include "wacfrac/viewport.hpp"
 #include "wacfrac/reference.hpp"
 #include "wacfrac/io.hpp"
@@ -20,8 +19,6 @@ void save_render(wacfrac::Renderer& renderer, const wacfrac::ImageOptions& img_o
 }
 
 void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) {
-    wacfrac::ProcessingContext ctx;
-
     if (!std::filesystem::create_directory(vid_opts.directory)) {
         wacfrac::logging::error("Directory '{}' failed to create", vid_opts.directory);
     }
@@ -36,6 +33,8 @@ void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) 
     wacfrac::MultiFloat::default_precision(static_cast<unsigned>(precision));
     wacfrac::MultiComplex::default_precision(static_cast<unsigned>(precision));
     wacfrac::Viewport final_view {renderer.conf.focus, vid_opts.final_scale, renderer.conf.resolution};
+
+    renderer.reserve(static_cast<unsigned>(max_iterations));
 
     {
         wacfrac::ReferenceSet refs {renderer.conf.queue, max_iterations};

@@ -54,7 +54,6 @@ if (NOT Argumentum_FOUND)
     )
     FetchContent_MakeAvailable(argumentum)
 endif()
-find_package(benchmark REQUIRED)
 find_package(TBB REQUIRED)
 
 find_package(GMP REQUIRED)
@@ -85,14 +84,6 @@ target_link_libraries(libwacfrac PUBLIC
 )
 target_compile_options(libwacfrac PRIVATE -fsycl)
 target_link_options(libwacfrac PRIVATE -fsycl)
-
-# Benchmarks
-# add_executable(benchmark src/benchmark.cpp)
-# set_property(TARGET benchmark PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-# target_link_libraries(benchmark PRIVATE
-#     libwacfrac
-#     benchmark::benchmark_main
-# )
 
 # Application
 add_executable(wacfrac src/main.cpp)

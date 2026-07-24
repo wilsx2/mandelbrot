@@ -1,9 +1,6 @@
 #include <sstream>
-#include <vector>
 #include <wacfrac/color.hpp>
 #include <wacfrac/log.hpp>
-#include <wacfrac/orbit.hpp>
-#include <cmath>
 
 namespace wacfrac
 {

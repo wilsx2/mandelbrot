@@ -1,5 +1,4 @@
 #include "wacfrac/viewport.hpp"
-#include "wacfrac/log.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/types.hpp"
 #include <cmath>
@@ -8,10 +7,6 @@ namespace wacfrac
 {
 
 Viewport::Viewport(const MultiComplex& center, const MultiComplex& dimensions)
-    : center(center)
-    , dimensions(dimensions)
-{}
-Viewport::Viewport(MultiComplex&& center, MultiComplex&& dimensions)
     : center(center)
     , dimensions(dimensions)
 {}
@@ -29,17 +24,6 @@ Viewport::Viewport(const MultiComplex& center, const MultiFloat& zoom, const Res
 void Viewport::precision(std::size_t value) {
     center.precision(static_cast<unsigned>(value));
     dimensions.precision(static_cast<unsigned>(value));
-}
-
-auto Viewport::zoomed(MultiFloat factor) const -> Viewport {
-    logging::debug( "Zooming Viewport by factor {} (new dimensions: {})", factor, (dimensions / factor));
-    return {center, dimensions / factor};
-}
-
-auto Viewport::sample(std::size_t x, std::size_t y, std::size_t width, std::size_t height) const -> MultiComplex {
-    auto re = (MultiFloat(x, dimensions.precision()) / MultiFloat(width, dimensions.precision())  - 0.5) * dimensions.real() + center.real();
-    auto im = (MultiFloat(y, dimensions.precision()) / MultiFloat(height, dimensions.precision()) - 0.5) * dimensions.imag() + center.imag();
-    return MultiComplex(re, im);
 }
 
 auto Viewport::compute_max_dc(MultiComplex c) const -> MultiComplex {

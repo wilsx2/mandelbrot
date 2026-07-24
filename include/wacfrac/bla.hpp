@@ -1,18 +1,16 @@
 #pragma once
 
-#include "wacfrac/context.hpp"
 #include "wacfrac/complex_concept.hpp"
-#include <sycl/memory_enums.hpp>
-#include <sycl/queue.hpp>
 #include <wacfrac/orbit.hpp>
+#include <wacfrac/buffer.hpp>
 #include <wacfrac/types.hpp>
 #include <wacfrac/log.hpp>
+#include <sycl/sycl.hpp>
 #include <optional>
 #include <ranges>
 #include <cmath>
 #include <cstddef>
 #include <span>
-#include <atomic>
 
 namespace wacfrac::bla {
 

@@ -15,13 +15,11 @@ namespace wacfrac
 {
 
 // Numeric Types
-using SingleExp = FloatExp<float,  int64_t>;
 using DoubleExp = FloatExp<double, int64_t>;
 
 // Complex Types
 using SingleComplex = Complex<float>;
 using DoubleComplex = Complex<double>;
-using SingleExpComplex = Complex<SingleExp>;
 using DoubleExpComplex = Complex<DoubleExp>;
 
 using MultiFloat   = boost::multiprecision::mpfr_float;
