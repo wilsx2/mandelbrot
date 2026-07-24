@@ -123,9 +123,9 @@ auto Renderer::bla_render_pass(T start, T delta, std::span<const T> ref, bla::Ap
 constexpr auto A_GIGABYTE {1'000'000'000ull};
 constexpr auto ARENA_SIZE {A_GIGABYTE};
 Renderer::Renderer(RendererConfig config)
-    : conf(std::move(config))
-    , pixels(this->conf.ctx.template make_buffer<Pixel>(this->conf.resolution.area()))
-    , arena_buffer(this->conf.ctx.template make_buffer<std::byte>(ARENA_SIZE))
+    : conf {std::move(config)} // WARN: Bad. Pass by copy first? Why?
+    , pixels {this->conf.ctx.template make_buffer<Pixel>(this->conf.resolution.area())}
+    , arena {this->conf.queue, ARENA_SIZE} // WARN: We can trivially compute ideal arena size. Hint: Its under a Gig
 {
     if (conf.palette.size() == 0) {
         conf.palette = conf.ctx.make_buffer(std::span(ULTRA));
@@ -242,8 +242,6 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
 
             direct_render_pass(start, delta, max_n);
         } else {
-            Arena arena {arena_buffer.as_span()};
-
             auto start {view.get_corner_relative<T>()};
             logging::debug("start, relative: ({}, {})", static_cast<double>(start.real()), static_cast<double>(start.imag()));
 
@@ -251,7 +249,7 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
             std::span<const T> ref {[&](){
                 if (ref_cache.max_n() >= max_n)
                     return ref_cache.template select<T>();
-                auto buf {arena.alloc<T>(max_n)};
+                auto buf {arena.allocate<T>(max_n)};
                 auto n {compute_reference_mt<T>(buf, c_ref, conf.escape_radius)};
                 return buf.subspan(0, n);
             }()};
@@ -265,7 +263,7 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
                 if (img_conf.epsilon != 0.0) {
                     bla_calculator.compute_manual(static_cast<CT>(img_conf.epsilon), ref, max_dc);
                 } else {
-                    auto probes {arena.alloc<T>(conf.probe_grid.first * conf.probe_grid.second)};
+                    auto probes {arena.allocate<T>(conf.probe_grid.first * conf.probe_grid.second)};
                     {
                         auto buff {sycl::buffer<T, 2>(probes.data(), sycl::range(conf.probe_grid.first, conf.probe_grid.second))};
                         view.generate_probes<T>(conf.queue, buff);
@@ -275,6 +273,8 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
                 auto bla = bla_calculator.get_approximator();
                 bla_render_pass(start, delta, ref, bla, max_n);
             }
+
+            arena.reset();
         }
     });
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(

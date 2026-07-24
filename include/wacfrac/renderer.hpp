@@ -1,6 +1,7 @@
 #pragma once
 #include "wacfrac/bla.hpp"
 #include <cstddef>
+#include "wacfrac/buffer.hpp"
 #include "wacfrac/reference.hpp"
 #include "wacfrac/types.hpp"
 #include "wacfrac/resolution.hpp"
@@ -50,7 +51,7 @@ struct Renderer {
     ReferenceSet ref_cache;
     Buffer<Pixel> pixels;
     Buffer<DoubleExpComplex> pixel_orbits;
-    Buffer<std::byte> arena_buffer;
+    DeviceArena arena;
 
     Renderer(RendererConfig config);
     auto cache_references(ReferenceSet&& refs) -> void;

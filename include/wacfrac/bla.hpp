@@ -137,23 +137,23 @@ template <ComplexConcept T>
 class Calculator {
     public:
     using CT = ComplexValueTypeT<T>;
-    Calculator(const Config& params, Arena& arena, ProcessingContext& ctx)
+    Calculator(const Config& params, DeviceArena& arena, ProcessingContext& ctx)
         : _ctx{ctx}
         , _params(params)
         , _arena{arena}
         , _last_level{0}
-        , _skipped_atom{nullptr}
-        , _tolerance_failed_atom{nullptr}
+        , _total_skipped{nullptr}
+        , _tolerence_failed{nullptr}
     { }
     auto allocate_buffers(std::size_t ref_size) -> void {
         _last_level = ref_size < 3 ? std::size_t{0} : static_cast<std::size_t>(std::log2(static_cast<double>(ref_size)));
         auto max_n {ref_size - 1};
-        _columns         = _arena.alloc<ColumnInfo>(max_n);
-        _current_working = _arena.alloc<Bla<T>>(max_n - 1);
-        _next_working    = _arena.alloc<Bla<T>>(max_n - 1);
+        _columns         = _arena.allocate<ColumnInfo>(max_n);
+        _current_working = _arena.allocate<Bla<T>>(max_n - 1);
+        _next_working    = _arena.allocate<Bla<T>>(max_n - 1);
         initialize_columns(max_n);
         auto last_i {ColumnInfo::compute_start(max_n, _params.first_level, _last_level)};
-        _approximations  = _arena.alloc<Bla<T>>(last_i);
+        _approximations  = _arena.allocate<Bla<T>>(last_i);
     }
     auto compute_manual(CT epsilon, std::span<const T> ref, T max_dc) -> void {
         if (ref.size() < 3)
@@ -202,13 +202,13 @@ class Calculator {
             }
 
             compute_skipped_iterations(probes, ref, escape_radius, _params.tolerance);
-            if (_tolerance_failed_atom->load()) {
+            if (*_tolerence_failed) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} too high", iter, middle);
                 upper_exp = middle;
                 continue;
             }
 
-            auto avg_skipped = _skipped_atom->load() / static_cast<double>(probes.size());
+            auto avg_skipped = *_total_skipped / static_cast<double>(probes.size());
             if (avg_skipped >= prev_avg_skipped) {
                 logging::trace( "BLA search iter {}: epsilon=10^{} avg_skipped={} (improving)", iter, middle, avg_skipped);
                 prev_exp = epsilon;
@@ -314,7 +314,7 @@ class Calculator {
     }
     auto compute_probe_escape_time(std::span<const T> probes, std::span<const T> ref, double escape_radius) -> void {
         if (probes.size() > _true_escape_times.size()) {
-            _true_escape_times = _arena.alloc<unsigned>(probes.size());
+            _true_escape_times = _arena.allocate<unsigned>(probes.size());
         }
 
         auto escape_times = _true_escape_times;
@@ -333,26 +333,26 @@ class Calculator {
             });
     }
     auto compute_skipped_iterations(std::span<const T> probes, std::span<const T> ref, double escape_radius, double tolerance) -> void {
-        if (_skipped_atom == nullptr)
-            _skipped_atom = _arena.alloc<std::atomic<unsigned>>();
-        if (_tolerance_failed_atom == nullptr)
-            _tolerance_failed_atom = _arena.alloc<std::atomic<bool>>();
+        if (_total_skipped == nullptr)
+            _total_skipped = _arena.allocate<unsigned>();
+        if (_tolerence_failed == nullptr)
+            _tolerence_failed = _arena.allocate<bool>();
 
-        _skipped_atom->store(0u);
-        _tolerance_failed_atom->store(false);
+        *_total_skipped = 0u;
+        *_tolerence_failed = false;
 
-        auto approximator = get_approximator();
-        auto escape_times = _true_escape_times;
-        auto tolerance_failed = _tolerance_failed_atom;
-        auto total_skipped = _skipped_atom;
+        auto approximator {get_approximator()};
+        auto escape_times {_true_escape_times};
+        std::atomic_ref tolerance_atom {*_tolerence_failed};
+        std::atomic_ref skipped_atom {*_total_skipped};
         _ctx.parallel_for(probes.size(),
             [probes,
              ref,
              escape_radius,
              tolerance,
              escape_times,
-             tolerance_failed,
-             total_skipped,
+             tolerance_atom,
+             skipped_atom,
              approximator]
             (int tid){
                 if (tid >= probes.size())
@@ -367,24 +367,24 @@ class Calculator {
 
                 using std::abs;
                 if (abs(static_cast<double>(approx_escape_time) / static_cast<double>(escape_times[tid]) - 1.0) > tolerance) {
-                    tolerance_failed->store(true, std::memory_order_seq_cst);
+                    tolerance_atom.store(true, std::memory_order_seq_cst);
                     return;
                 }
-                total_skipped->fetch_add(skipped, std::memory_order_seq_cst);
+                skipped_atom.fetch_add(skipped, std::memory_order_seq_cst);
             });
     }
 
     ProcessingContext _ctx;
     Config _params;
-    Arena& _arena;
+    DeviceArena& _arena;
     std::size_t _last_level;
     std::span<ColumnInfo> _columns;
     std::span<Bla<T>>     _current_working;
     std::span<Bla<T>>     _next_working;
     std::span<Bla<T>>     _approximations;
     std::span<unsigned>   _true_escape_times;
-    std::atomic<unsigned>* _skipped_atom;
-    std::atomic<bool>* _tolerance_failed_atom;
+    unsigned* _total_skipped;
+    bool* _tolerence_failed;
 };
 
 template <ComplexConcept T, typename Ref, typename Approx>
