@@ -15,15 +15,6 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-if(NOT DEFINED VCPKG_TARGET_TRIPLET)
-    if(WIN32)
-        set(VCPKG_TARGET_TRIPLET "x64-windows")
-    else()
-        set(VCPKG_TARGET_TRIPLET "x64-linux")
-    endif()
-endif()
-list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}")
-
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
@@ -43,6 +34,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
 endif()
 
 # Packages
+find_package(GMP REQUIRED)
+find_package(MPFR REQUIRED)
+find_package(MPC REQUIRED)
 find_package(Boost CONFIG REQUIRED COMPONENTS log log_setup)
 find_package(Argumentum CONFIG QUIET)
 if (NOT Argumentum_FOUND)
@@ -54,11 +48,6 @@ if (NOT Argumentum_FOUND)
     )
     FetchContent_MakeAvailable(argumentum)
 endif()
-find_package(TBB REQUIRED)
-
-find_package(GMP REQUIRED)
-find_package(MPFR REQUIRED)
-find_package(MPC REQUIRED)
 
 # Static Library
 add_library(libwacfrac STATIC
@@ -74,13 +63,12 @@ target_include_directories(libwacfrac PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 target_link_libraries(libwacfrac PUBLIC
-    Boost::headers
-    Boost::log
-    Boost::log_setup
-    TBB::tbb
     MPC::mpc
     MPFR::mpfr
     GMP::gmp
+    Boost::headers
+    Boost::log
+    Boost::log_setup
 )
 target_compile_options(libwacfrac PRIVATE -fsycl)
 target_link_options(libwacfrac PRIVATE -fsycl)
