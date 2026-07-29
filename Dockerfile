@@ -61,6 +61,7 @@ ENV SYCL_CACHE_PERSITENT=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     ocl-icd-libopencl1 \ 
+    intel-opencl-icd \
     clinfo \ 
     ffmpeg \
     libhwloc-dev \
@@ -78,17 +79,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmpc3
 
 ## Install OpenCL runtime
-### Add Intel repo
-RUN wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
-    | gpg --dearmor | tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+RUN mkdir /tmp/neo && cd /tmp/neo && \
+    wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.17193.4/intel-igc-core_1.0.17193.4_amd64.deb && \
+    wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.17193.4/intel-igc-opencl_1.0.17193.4_amd64.deb && \
+    wget https://github.com/intel/compute-runtime/releases/download/24.26.30049.6/intel-level-zero-gpu_1.3.30049.6_amd64.deb && \
+    wget https://github.com/intel/compute-runtime/releases/download/24.26.30049.6/intel-opencl-icd_24.26.30049.6_amd64.deb && \
+    wget https://github.com/intel/compute-runtime/releases/download/24.26.30049.6/libigdgmm12_22.3.20_amd64.deb && \
+    dpkg -i *.deb && rm -rf /tmp/neo
 
-RUN echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
-    | tee /etc/apt/sources.list.d/oneAPI.list
-
-### Instillation
-RUN apt update && apt install -y --no-install-recommends intel-oneapi-runtime-opencl \
-    && rm -rf /var/lib/apt/lists/*
-
+## Copy binary and needed libraries
 COPY ./examples/ ~/
 COPY --from=builder /opt/intel/dpcpp/lib /usr/local/lib/
 COPY --from=builder /app/build/wacfrac /usr/local/bin/wacfrac
