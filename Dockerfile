@@ -1,41 +1,14 @@
-# Builder: CUDA UR
-FROM nvidia/cuda:13.3.0-cudnn-devel-ubuntu24.04 AS ur-builder
-
-RUN apt-get update && apt-get install -y \
-    git \
-    cmake \
-    ninja-build \
-    libhwloc-dev \
-    python3 \ 
-    python3-pip \
-    python3-venv
-
-RUN git clone https://github.com/oneapi-src/unified-runtime.git
-
-WORKDIR /unified-runtime
-
-RUN python3 -m venv .venv
-SHELL ["/bin/bash", "-c"]
-RUN source .venv/bin/activate  \
-    && pip install -r third_party/requirements.txt \
-    && pip install lit filecheck \ 
-    && cmake -B build -G Ninja -DUR_BUILD_ADAPTER_CUDA=true \
-    && cmake --build build
-
-# Builder: wacfrac
-FROM intel/oneapi:2026.1.0-devel-ubuntu24.04 AS builder
-
-ARG CUDA_VERSION=13-3
-ARG SYCL_CUDA_ARCH=sm_80;sm_86;sm_89;sm_90;sm_120
+# Builder
+FROM nvidia/cuda:12.8.1-devel-ubuntu24.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-## Copy CUDA adapter
-COPY --from=ur-builder /unified-runtime/build/lib/libur_adapter_cuda.so* /opt/intel/oneapi/compiler/latest/lib/
-RUN find . -name "libur_adapter_cuda.so*"
-ENV LD_LIBRARY_PATH=/opt/intel/oneapi/compiler/latest/lib:/opt/intel/oneapi/umf/1,1/lib:${LD_LIBRARY_PATH}
+## Download SYCL binaries
+ENV DPCPP_DIR=/opt/intel/dpcpp
+RUN mkdir -p $DPCPP_DIR
+WORKDIR $DPCPP_DIR
 
-## Deps
+## Install all Deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     g++-14 \
@@ -54,25 +27,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libmpc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-## CUDA Toolkit (compiler)
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb && \
-    dpkg -i cuda-keyring_1.1-1_all.deb && \
-    rm cuda-keyring_1.1-1_all.deb && \
-    apt-get update && \
-    apt-get install -y cuda-toolkit-${CUDA_VERSION};
-ENV CUDA_PATH=/usr/local/cuda
-ENV PATH=${CUDA_PATH}/bin:${PATH}
-ENV LD_LIBRARY_PATH=${CUDA_PATH}/lib64:${LD_LIBRARY_PATH}
+### Download SYCL Compiler release
+RUN wget https://github.com/intel/llvm/releases/download/v7.0.0/sycl_linux.tar.gz
+RUN tar -xvf sycl_linux.tar.gz
+RUN rm sycl_linux.tar.gz
+
+### Update ENV
+WORKDIR /
+ENV PATH=$DPCPP_DIR/bin:$PATH
+ENV LD_LIBRARY_PATH=$DPCPP_DIR/lib:$LD_LIBRARY_PATH
 
 ## Build
+ARG BUILD_TYPE=Release
+COPY . /app
 WORKDIR /app
-COPY . .
 RUN cmake -B build \
         -G Ninja \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_C_COMPILER=icx \
-        -DCMAKE_CXX_COMPILER=icpx \
-        -DENABLE_CUDA_BACKEND=${INSTALL_CUDA} \
+        -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+        -DCMAKE_C_COMPILER=clang \
+        -DCMAKE_CXX_COMPILER=clang++ \
+        -DENABLE_CUDA_BACKEND=ON \
         -DSYCL_CUDA_ARCH=${SYCL_CUDA_ARCH} && \
     cmake --build build --parallel
 
@@ -81,8 +55,13 @@ FROM nvidia/cuda:12.8.0-runtime-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# NOTE: Some of these libraries may be statically linked
+ENV SYCL_CACHE_PERSITENT=1
+
+## Install deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    ocl-icd-libopencl1 \ 
+    clinfo \ 
     ffmpeg \
     libhwloc-dev \
     libboost-log1.83.0 \ 
@@ -96,17 +75,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libboost-serialization1.83.0 \
     libgmp10 \
     libmpfr6 \
-    libmpc3 \
+    libmpc3
+
+## Install OpenCL runtime
+### Add Intel repo
+RUN wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+    | gpg --dearmor | tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+
+RUN echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
+    | tee /etc/apt/sources.list.d/oneAPI.list
+
+### Instillation
+RUN apt update && apt install -y --no-install-recommends intel-oneapi-runtime-opencl \
     && rm -rf /var/lib/apt/lists/*
 
-## Copy Shared Objects
-COPY --from=builder /opt/intel/oneapi/compiler/latest/lib /opt/intel/oneapi/compiler/latest/lib
-COPY --from=builder /opt/intel/oneapi/umf/1.1/lib /opt/intel/oneapi/umf/1.1/lib
-RUN ldconfig
-    ENV LD_LIBRARY_PATH=/opt/intel/oneapi/compiler/latest/lib:/opt/intel/oneapi/umf/1.1/lib:${LD_LIBRARY_PATH}
-
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
-
+COPY ./examples/ ~/
+COPY --from=builder /opt/intel/dpcpp/lib /usr/local/lib/
 COPY --from=builder /app/build/wacfrac /usr/local/bin/wacfrac
+ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
+RUN ldconfig
+
+WORKDIR /~
 ENTRYPOINT ["wacfrac"]

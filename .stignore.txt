@@ -1,8 +1,0 @@
-.stfolder
-build
-output
-.vs
-.vs\*
-out
-!vcpkg.json
-vcpkg*s

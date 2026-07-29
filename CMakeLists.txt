@@ -33,7 +33,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
 endif()
  
 # SYCL / CUDA backend configuration
-option(ENABLE_CUDA_BACKEND "Build with SYCL CUDA backend" OFF)
+option(ENABLE_CUDA_BACKEND "Build with SYCL CUDA backend" ON)
 set(SYCL_CUDA_ARCH "sm_80" CACHE STRING "Target CUDA SM architectures (semicolon seperated)")
 set(SYCL_TARGETS "spir64")
 if(ENABLE_CUDA_BACKEND)

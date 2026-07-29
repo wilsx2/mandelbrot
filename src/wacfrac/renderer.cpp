@@ -286,6 +286,7 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
         std::chrono::steady_clock::now() - start
     );
 
+    conf.queue.wait();
     logging::info("Image render took {}ms", elapsed.count());
     return pixels.as_span();
 }

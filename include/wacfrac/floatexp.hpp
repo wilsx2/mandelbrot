@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sycl/sycl.hpp>
 #include <cmath>
 #include <concepts>
 #include <climits>
@@ -265,22 +266,24 @@ struct FloatExp {
 
     SYCL_EXTERNAL
     inline operator float() const noexcept {
-        using std::ldexp;
+	using sycl::ldexp;
         if (exp > E(INT_MAX))
-            return float(val) / 0.0f;
+            return static_cast<float>(val) / 0.0f;
         if (exp < E(INT_MIN))
-            return float(val) * 0.0f;
-        return ldexp(float(val), int(exp));
+            return static_cast<float>(val) * 0.0f;
+        return ldexp(static_cast<float>(val),
+                     static_cast<int>(exp));
     }
 
     SYCL_EXTERNAL
     inline operator double() const noexcept {
-        using std::ldexp;
+	using sycl::ldexp;
         if (exp > E(INT_MAX))
-            return double(val) / 0.0;
+            return static_cast<double>(val) / 0.0;
         if (exp < E(INT_MIN))
-            return double(val) * 0.0;
-        return ldexp(double(val), int(exp));
+            return static_cast<double>(val) * 0.0;
+        return ldexp(static_cast<double>(val),
+                     static_cast<int>(exp));
     }
 };
 
