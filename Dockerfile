@@ -1,108 +1,112 @@
-# Builder
-FROM ubuntu:24.04 AS builder
+# Builder: CUDA UR
+FROM nvidia/cuda:13.3.0-cudnn-devel-ubuntu24.04 AS ur-builder
 
-ARG INSTALL_CUDA=false
+RUN apt-get update && apt-get install -y \
+    git \
+    cmake \
+    ninja-build \
+    libhwloc-dev \
+    python3 \ 
+    python3-pip \
+    python3-venv
+
+RUN git clone https://github.com/oneapi-src/unified-runtime.git
+
+WORKDIR /unified-runtime
+
+RUN python3 -m venv .venv
+SHELL ["/bin/bash", "-c"]
+RUN source .venv/bin/activate  \
+    && pip install -r third_party/requirements.txt \
+    && pip install lit filecheck \ 
+    && cmake -B build -G Ninja -DUR_BUILD_ADAPTER_CUDA=true \
+    && cmake --build build
+
+# Builder: wacfrac
+FROM intel/oneapi:2026.1.0-devel-ubuntu24.04 AS builder
+
+ARG CUDA_VERSION=13-3
+ARG SYCL_CUDA_ARCH=sm_80;sm_86;sm_89;sm_90;sm_120
+
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends wget gpg ca-certificates \
-    && wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
-       | gpg --dearmor | tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null \
-    && echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
-       | tee /etc/apt/sources.list.d/oneAPI.list \
-    && apt-get update
+## Copy CUDA adapter
+COPY --from=ur-builder /unified-runtime/build/lib/libur_adapter_cuda.so* /opt/intel/oneapi/compiler/latest/lib/
+RUN find . -name "libur_adapter_cuda.so*"
+ENV LD_LIBRARY_PATH=/opt/intel/oneapi/compiler/latest/lib:/opt/intel/oneapi/umf/1,1/lib:${LD_LIBRARY_PATH}
 
-RUN apt-get install -y intel-oneapi-compiler-dpcpp-cpp \
-    && apt-get install -y --no-install-recommends \
+## Deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
     g++-14 \
     cmake \
     ninja-build \
     git \
     pkg-config \
-    libgmp-dev \
-    libmpfr-dev \
-    libmpc-dev \
-    libboost-all-dev \
-    libtbb-dev \
     curl \
     zip \
     unzip \
     tar \
+    ffmpeg \
+    libboost-all-dev \
+    libgmp-dev \
+    libmpfr-dev \
+    libmpc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install NVIDIA CUDA toolkit (optional)
-RUN if [ "$INSTALL_CUDA" = "true" ]; then \
-        wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb \
-        && dpkg -i cuda-keyring_1.1-1_all.deb \
-        && apt-get update \
-        && apt-get install -y --no-install-recommends cuda-toolkit-12-6 \
-        && rm -rf /var/lib/apt/lists/* \
-        && rm cuda-keyring_1.1-1_all.deb; \
-    fi
+## CUDA Toolkit (compiler)
+RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    rm cuda-keyring_1.1-1_all.deb && \
+    apt-get update && \
+    apt-get install -y cuda-toolkit-${CUDA_VERSION};
+ENV CUDA_PATH=/usr/local/cuda
+ENV PATH=${CUDA_PATH}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_PATH}/lib64:${LD_LIBRARY_PATH}
 
-ENV PATH=/usr/local/cuda/bin:${PATH} \
-    LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH} \
-    CUDA_PATH=/usr/local/cuda
-
+## Build
 WORKDIR /app
 COPY . .
-
-RUN . /opt/intel/oneapi/setvars.sh \
-    && SYCL_TARGETS="spir64" \
-    && if [ "$INSTALL_CUDA" = "true" ]; then SYCL_TARGETS="${SYCL_TARGETS},nvptx64-nvidia-cuda"; fi \
-    && cmake -B build -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER=/opt/intel/oneapi/compiler/latest/bin/icx \
-    -DCMAKE_CXX_COMPILER=/opt/intel/oneapi/compiler/latest/bin/icpx \
-    -DCMAKE_CXX_FLAGS="-fsycl -fsycl-targets=${SYCL_TARGETS} -w" \
-    && cmake --build build --parallel
-
-RUN mkdir -p /usr/local/cuda/lib64
+RUN cmake -B build \
+        -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_C_COMPILER=icx \
+        -DCMAKE_CXX_COMPILER=icpx \
+        -DENABLE_CUDA_BACKEND=${INSTALL_CUDA} \
+        -DSYCL_CUDA_ARCH=${SYCL_CUDA_ARCH} && \
+    cmake --build build --parallel
 
 # Runtime
-FROM ubuntu:24.04
+FROM nvidia/cuda:12.8.0-runtime-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends wget gpg ca-certificates \
-    && wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
-       | gpg --dearmor | tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null \
-    && echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" \
-       | tee /etc/apt/sources.list.d/oneAPI.list \
-    && apt-get update
-
+# NOTE: Some of these libraries may be statically linked
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    intel-oneapi-runtime-dpcpp-cpp \
-    intel-oneapi-runtime-opencl \
-    intel-opencl-icd \
-    libze-intel-gpu1 \
-    libze1 \
+    ffmpeg \
+    libhwloc-dev \
+    libboost-log1.83.0 \ 
+    libboost-thread1.83.0 \
+    libboost-filesystem1.83.0 \
+    libboost-chrono1.83.0 \
+    libboost-atomic1.83.0 \
+    libboost-regex1.83.0 \
+    libboost-container1.83.0 \
+    libboost-date-time1.83.0 \
+    libboost-serialization1.83.0 \
     libgmp10 \
     libmpfr6 \
     libmpc3 \
-    libstdc++6 \
-    ffmpeg \
-    libboost-log1.83.0 \
-    libboost-chrono1.83.0 \
-    libboost-thread1.83.0 \
-    libboost-filesystem1.83.0 \
-    libboost-atomic1.83.0 \
-    libboost-regex1.83.0 \
-    libboost-date-time1.83.0 \
-    libboost-container1.83.0 \
-    libboost-serialization1.83.0 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN wget -q "https://github.com/oneapi-src/level-zero/releases/download/v1.28.2/level-zero_1.28.2+u24.04_amd64.deb" \
-    && dpkg -i --force-overwrite level-zero_1.28.2+u24.04_amd64.deb \
-    && rm level-zero_1.28.2+u24.04_amd64.deb
+## Copy Shared Objects
+COPY --from=builder /opt/intel/oneapi/compiler/latest/lib /opt/intel/oneapi/compiler/latest/lib
+COPY --from=builder /opt/intel/oneapi/umf/1.1/lib /opt/intel/oneapi/umf/1.1/lib
+RUN ldconfig
+    ENV LD_LIBRARY_PATH=/opt/intel/oneapi/compiler/latest/lib:/opt/intel/oneapi/umf/1.1/lib:${LD_LIBRARY_PATH}
 
-# CUDA only (optional)
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
-ENV NVIDIA_VISIBLE_DEVICES=all \
-    NVIDIA_DRIVER_CAPABILITIES=compute,utility
-COPY --from=builder /usr/local/cuda/lib64/ /usr/local/cuda/lib64/
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-COPY --from=builder /opt/intel/oneapi/umf/1.1/lib/ /opt/intel/oneapi/redist/lib/
 COPY --from=builder /app/build/wacfrac /usr/local/bin/wacfrac
-
 ENTRYPOINT ["wacfrac"]

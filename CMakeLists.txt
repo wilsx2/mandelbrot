@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
 project(wacfrac LANGUAGES C CXX)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(ProcessorCount)
@@ -32,12 +31,32 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
         $<$<COMPILE_LANGUAGE:CXX>:-mtune=native>
     )
 endif()
+ 
+# SYCL / CUDA backend configuration
+option(ENABLE_CUDA_BACKEND "Build with SYCL CUDA backend" OFF)
+set(SYCL_CUDA_ARCH "sm_80" CACHE STRING "Target CUDA SM architectures (semicolon seperated)")
+set(SYCL_TARGETS "spir64")
+if(ENABLE_CUDA_BACKEND)
+    list(APPEND SYCL_TARGETS "nvptx64-nvidia-cuda")
+endif()
+list(JOIN SYCL_TARGETS "," SYCL_TARGETS_STR)
 
+set(SYCL_FLAGS -fsycl "-fsycl-targets=${SYCL_TARGETS_STR}")
+if(ENABLE_CUDA_BACKEND)
+    foreach(arch ${SYCL_CUDA_ARCH})
+        list(APPEND SYCL_FLAGS -Xsycl-target-backend=nvptx64-nvidia-cuda --cuda-gpu-arch=${arch})
+    endforeach()
+    message(STATUS "SYCL CUDA backend enabled, targeting: ${SYCL_CUDA_ARCH}")
+else()
+    message(STATUS "SYCL CUDA backend disabled, building for ${SYCL_TARGETS_STR} only")
+endif()
+ 
 # Packages
 find_package(GMP REQUIRED)
 find_package(MPFR REQUIRED)
 find_package(MPC REQUIRED)
 find_package(Boost CONFIG REQUIRED COMPONENTS log log_setup)
+ 
 find_package(Argumentum CONFIG QUIET)
 if (NOT Argumentum_FOUND)
     include(FetchContent)
@@ -48,7 +67,7 @@ if (NOT Argumentum_FOUND)
     )
     FetchContent_MakeAvailable(argumentum)
 endif()
-
+ 
 # Static Library
 add_library(libwacfrac STATIC
     src/wacfrac/analysis.cpp
@@ -70,8 +89,8 @@ target_link_libraries(libwacfrac PUBLIC
     Boost::log
     Boost::log_setup
 )
-target_compile_options(libwacfrac PRIVATE -fsycl)
-target_link_options(libwacfrac PRIVATE -fsycl)
+target_compile_options(libwacfrac PRIVATE ${SYCL_FLAGS})
+target_link_options(libwacfrac PRIVATE ${SYCL_FLAGS})
 
 # Application
 add_executable(wacfrac src/main.cpp)
@@ -79,5 +98,5 @@ target_link_libraries(wacfrac PRIVATE
     libwacfrac
     Argumentum::argumentum
 )
-target_compile_options(wacfrac PRIVATE -fsycl)
-target_link_options(wacfrac PRIVATE -fsycl)
+target_compile_options(wacfrac PRIVATE ${SYCL_FLAGS})
+target_link_options(wacfrac PRIVATE ${SYCL_FLAGS})

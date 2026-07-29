@@ -9,6 +9,7 @@
 #include <random>
 #include <span>
 #include <vector>
+#include <cmath>
 
 namespace wacfrac
 {
@@ -34,31 +35,33 @@ auto write_ppm(std::filesystem::path filename, Resolution res, std::span<const P
 auto total_frames(MultiFloat initial, MultiFloat target, MultiFloat zoom_per_second, float frames_per_second) -> std::size_t {
     using boost::multiprecision::log;
     using boost::multiprecision::exp;
-    using boost::multiprecision::ceil;
     using boost::multiprecision::abs;
 
     auto zoom_per_frame {exp(abs(log(zoom_per_second)) / frames_per_second)};
     auto total {abs(log(initial / target))};
-    return static_cast<std::size_t>(ceil(total / log(zoom_per_frame)));
+    auto result = total / log(zoom_per_frame);
+    // Use standard ceil for host-side computation
+    return static_cast<std::size_t>(std::ceil(static_cast<double>(result)));
 }
 
 auto frame_zooms(MultiFloat initial, MultiFloat target, MultiFloat zoom_per_second, float frames_per_second)
--> std::generator<MultiFloat> {
+-> std::vector<MultiFloat> {
     using boost::multiprecision::log;
     using boost::multiprecision::exp;
-    using boost::multiprecision::ceil;
     using boost::multiprecision::abs;
 
+    std::vector<MultiFloat> zooms;
     auto zoom_per_frame {exp(abs(log(zoom_per_second)) / frames_per_second)};
     auto zoom_in = initial > target;
     while ((zoom_in && initial >= target) || (!zoom_in && initial <= target)) {
-        co_yield initial;
+        zooms.push_back(initial);
         if (zoom_in) {
             initial /= zoom_per_frame;
         } else {
             initial *= zoom_per_frame;
         }
     }
+    return zooms;
 }
 
 auto file_suffix(std::size_t value, std::size_t max) -> std::string {

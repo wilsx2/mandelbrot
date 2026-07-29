@@ -5,7 +5,7 @@
 #include "wacfrac/types.hpp"
 #include <cstddef>
 #include <filesystem>
-#include <generator>
+#include <vector>
 #include <span>
 #include <string>
 #include <string_view>
@@ -18,7 +18,7 @@ auto write_ppm(std::filesystem::path filename, Resolution res, std::span<const P
 
 // video
 auto total_frames(MultiFloat initial, MultiFloat target, MultiFloat zoom_per_second, float frames_per_second) -> std::size_t;
-auto frame_zooms(MultiFloat initial, MultiFloat target, MultiFloat zoom_per_second, float frames_per_second) -> std::generator<MultiFloat>;
+auto frame_zooms(MultiFloat initial, MultiFloat target, MultiFloat zoom_per_second, float frames_per_second) -> std::vector<MultiFloat>;
 auto file_suffix(std::size_t value, std::size_t max) -> std::string; // {:0{}d}
 auto file_suffix_format(std::size_t max) -> std::string;
 
