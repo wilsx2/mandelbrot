@@ -9,7 +9,7 @@ notes
 [X] Flag to always copy last frame to a single path
 [X] Time video render completion
 [X] Fix color load
-[ ] Fix jitter when switching from direct to perturbed rendering, perhaps from float to double, perhaps by less permissive underflow
+[X] Fix jitter when switching from direct to perturbed rendering, perhaps from float to double, perhaps by less permissive underflow
 [ ] Cleanup (<> or "" on includes, casts, trailing return, names of things, refactoring, etc)
 
 1.0 release

@@ -177,10 +177,17 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
             }
             return view.get_corner_relative<T>();
         }()};
+
         auto delta {get_pixel_delta<T>(view.dimensions, conf.resolution)};
-        volatile CT next_real {static_cast<CT>(start.real() + delta.real())};
-        volatile CT next_imag {static_cast<CT>(start.imag() + delta.imag())};
-        return start.real() - next_real == 0.0 || start.imag() - next_imag == 0.0;
+
+        constexpr CT eps = std::numeric_limits<CT>::epsilon();
+        auto is_too_close = [](CT val, CT step) {
+            if (val == 0.0) return false;
+            return std::abs(step) < std::abs(val) * eps * CT(10.0);
+        };
+
+        return is_too_close(start.real(), delta.real()) || 
+            is_too_close(start.imag(), delta.imag());
     }};
 
     auto render_type {[&](){

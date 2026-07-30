@@ -3,7 +3,7 @@
 do_render() {
     local output_file="renders/$1"
     if [ ! -f "$output_file.png" ]; then
-        ../build/wacfrac -c "$(bash colors/$2 $3)" -f $(cat poi/$4) -r 3840 2160 -N 250 50 2 image -z $5 -o $output_file.ppm
+        ../build/wacfrac -c "$(bash colors/$2.sh $3)" -f $(cat poi/$4) -r 3840 2160 -N 250 50 2 image -z $5 -o $output_file.ppm
         ffmpeg -i $output_file.ppm $output_file.png
         rm $output_file.ppm
     fi
