@@ -1,67 +1,45 @@
-[X] Basic Plotting
-    [X] Make an image
-    [X] Plot a Mandelbrot
-    [X] Zoom Parameter
-    [X] Argument Parsing
-[X] Scripting
-    [x] Python Bindings
-[X] Precision
-    [X] Calculate orbit of arbitrary precision w/ GMP
-[X] Colorization
-    [X] Palette Application
-    [X] LCH
-    [X] Continuous
-[X] Refactoring
-    [X] Abandon unfortunate render_config system
-    [X] Colorize w/ special color for non-escaping
-    [X] CamelCase classes and UPPER_SNAKE_CASE constants
-    [X] print to log
-[X] Fast Math
-    [X] Google Benchmark
-    [X] Perturbation Theory
-    [X] SA
-    [X] BLA
-    [X] FloatExp backend (eww)
-        [X] Class
-        [X] Templatize perturbation type
-    [/] ? Use reference period to accelerate calculation (currently just adds computation time and does nothing)
-    [X] ? Fix BLA epsilon search. It's cooked. Way too high. No range.
-    [X] Only one precision type (ref vs compute)
-[X] Update benchmarks
-    [X] All types
-    [X] Period finding
-    [X] Nucleus finding
-    [X] Reference orbit
-    [X] Colorization
-    [X] Coefficient calculation
-        [X] SA
-        [X] BLA
-    [X] E2E
-[/] Optimize CPU-bound tasks
-    [/] Period finding
-    [/] Nucleus finding
-    [X] Reference orbit
-    [ ] Coefficient calculation
-[ ] Interactivity
-    [X] Interchangable Escape Time Algorithms
-    [X] Color Palette Parameter and Generator
-    [X] Logging
-    [X] Zoom renderer
-    [X] Remove python bindings
-    [ ] Parameterize all the things (CLI, or go back to bindings)
-        [X] Escape Radius
-        [ ] Log Level
-        [X] Modes
-        [ ] Colors
-        [X] Numbers
-        [X] Types
-    [ ] Composition w/ ffmpeg
-        [ ] Encoding
-        [ ] Videos (segmented)
-        [ ] Tiled images
-[ ] Parallelism
-    [ ] CUDA for per-pixel calculations
-    [ ] ? BLA coefficients w/ CUDA ?
-    [ ] OpenMP for references and approximation coefficients
+NOTE: feh updates if you write to an image.
+
+1.0 project
+[ ] Fix Segfault when using perturbed rendering with CUDA backend
+[ ] Check math on coloring function
+[ ] Cleaner CLI
+    [ ] All flags after command
+    [ ] Parse file contents as arguments
+[ ] Flag to always copy last frame to a single path
+[ ] Time video render completion
+
+1.0 release
+[ ] KF vs WF benchmarks
+    [ ] .kfs parser or script
+    [ ] Resolve differences in zoom
+    [ ] Time renders
+[ ] Examples
+    [ ] 'pastel' scripts over saved palettes (10)
+    [ ] Image render (redo)
+    [ ] Video render (10 min, 60fps, HD)
+[ ] README
+    [ ] Overview
+    [ ] Renders
+    [ ] Features
+    [ ] Benchmarks
+    [ ] Building
+    [ ] Docker-ing
+    [ ] Usage (more descriptive)
+    [ ] License
+[ ] Article/Documentation
+    ...
+    [ ] References/Bibliography
+[ ] Post on LinkedIn with relevant excerpts from Article and README
+
+2.0 project
 [ ] Distribute (OpenMPI)
+    ...
 [ ] Cloud Compute
+    ...
+
+2.0 release
+[ ] Update README
+    ...
+[ ] Example Renders (w/ speeds)
+    ...
