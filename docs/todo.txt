@@ -8,9 +8,9 @@ notes
 [ ] Cleaner CLI
     [X] All flags after command
     [ ] Parse file contents as arguments
+[X] Flag to always copy last frame to a single path
 [ ] Fix color load
 [ ] Fix jitter when switching from direct to perturbed rendering, perhaps from float to double, perhaps by less permissive underflow
-[X] Flag to always copy last frame to a single path
 [ ] Time video render completion
 [ ] Cleanup (<> or "" on includes, casts, trailing return, names of things, refactoring, etc)
 

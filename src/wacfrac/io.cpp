@@ -72,12 +72,16 @@ auto file_suffix_format(std::size_t max) -> std::string {
 }
 
 auto concatenate_images(std::filesystem::path output, std::string_view pattern, float fps) -> bool {
+    logging::info("Concatenating images of pattern \"{}\" into {} ({} fps)", pattern, output, fps);
+
     return std::system(std::format(
-        "ffmpeg -y -framerate {} -i {} -c:v libx264 -pix_fmt yuv420p {}", // TODO: Pipe into my stdout
+        "ffmpeg -y -framerate {} -i {} -c:v libx264 -pix_fmt yuv420p {} > /dev/null 2>&1",
         fps, pattern, output.string()
     ).c_str()) == EXIT_SUCCESS;
 }
 auto concatenate_videos(std::filesystem::path output, std::string_view pattern) -> bool {
+    logging::info("Concatenating videos of pattern \"{}\" into {}", pattern, output);
+
     auto star = pattern.find('*');
     if (star == std::string_view::npos)
         return false;
@@ -101,7 +105,7 @@ auto concatenate_videos(std::filesystem::path output, std::string_view pattern) 
     file.close();
 
     auto result = std::system(std::format(
-        "ffmpeg -f concat -safe 0 -i \"{}\" -c copy \"{}\"",
+        "ffmpeg -y -f concat -safe 0 -i \"{}\" -c copy \"{}\" > /dev/null 2>&1",
         tmp.string(), output.string()
     ).c_str()) == EXIT_SUCCESS;
 

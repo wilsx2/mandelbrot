@@ -3,6 +3,7 @@
 #include "wacfrac/reference.hpp"
 #include "wacfrac/io.hpp"
 #include "wacfrac/log.hpp"
+#include <chrono>
 #include <sycl/sycl.hpp>
 #include <print>
 #include <cstdlib>
@@ -52,6 +53,9 @@ void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) 
     auto scales {wacfrac::frame_zooms(
         vid_opts.initial_scale, vid_opts.final_scale,
         vid_opts.zoom_per_second, static_cast<float>(vid_opts.frames_per_second))};
+
+
+    auto start = std::chrono::steady_clock::now();
     for (auto&& [frame, scale] : std::views::enumerate(std::move(scales))) {
         auto segment = frame / vid_opts.segment_size;
         auto frame_filename {"frame_" + wacfrac::file_suffix(frame % vid_opts.segment_size, vid_opts.segment_size) + ".ppm"};
@@ -93,6 +97,7 @@ void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) 
             wacfrac::logging::debug( "Frame #{} has already been rendered; skipping", frame);
         }
     }
+
     auto status {wacfrac::concatenate_videos("final.mp4", "segment_*.mp4")};
     if (status) {
         for (auto& entry : std::filesystem::directory_iterator("."))
@@ -103,6 +108,11 @@ void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) 
     } else {
         wacfrac::logging::error("Final video failed to compose");
     }
+
+    auto elapsed = std::chrono::duration_cast<std::chrono::minutes>(
+        std::chrono::steady_clock::now() - start
+    );
+    wacfrac::logging::info("Video render took {} minutes", elapsed.count());
 }
 
 } // namespace
