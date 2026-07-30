@@ -207,6 +207,7 @@ struct VideoConfig {
     MultiFloat initial_scale {0.4};
     MultiFloat final_scale {1e1};
     double zoom_per_second {2.0};
+    bool do_preview {false};
 };
 
 struct VideoOptions : public VideoConfig, public RenderSubcommand {
@@ -236,6 +237,9 @@ struct VideoOptions : public VideoConfig, public RenderSubcommand {
         args.add_parameter(this->segment_size, "--segment-size", "-S")
             .nargs(1).absent(this->segment_size)
             .help("Frames in each video segment from which the final video is composed");
+        args.add_parameter(this->do_preview, "--preview", "-p")
+            .nargs(0).absent(this->do_preview)
+            .help("Mirror most recent frame to */preview.ppm");
     }
 };
 

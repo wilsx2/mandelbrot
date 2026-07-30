@@ -64,6 +64,11 @@ void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) 
                 frame_opts.filepath = "frame_" + wacfrac::file_suffix(frame % vid_opts.segment_size, vid_opts.segment_size) + ".ppm";
                 frame_opts.scale = scale;
                 save_render(renderer, frame_opts);
+
+                if (vid_opts.do_preview) {
+                    std::filesystem::copy(frame_opts.filepath, "preview.ppm",
+                                          std::filesystem::copy_options::overwrite_existing);
+                }
             } else {
                 wacfrac::logging::debug( "Frame #{} has already been rendered; skipping", frame);
             }
