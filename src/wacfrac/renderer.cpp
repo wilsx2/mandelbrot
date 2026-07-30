@@ -258,6 +258,8 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel> {
                 if (ref_cache.max_n() >= max_n)
                     return ref_cache.template select<T>();
                 auto buf {arena.allocate<T>(max_n)};
+
+                conf.queue.wait();
                 auto n {compute_reference_mt<T>(buf, c_ref, conf.escape_radius)};
                 return buf.subspan(0, n);
             }()};

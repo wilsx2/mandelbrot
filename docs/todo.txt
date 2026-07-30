@@ -1,13 +1,16 @@
-NOTE: feh updates if you write to an image.
+notes
+- feh updates if you write to an image.
+- BLA epsilon search every frame is far from ideal
 
 1.0 project
-[ ] Fix Segfault when using perturbed rendering with CUDA backend
+[X] Fix Segfault when using perturbed rendering with CUDA backend
 [ ] Check math on coloring function
 [ ] Cleaner CLI
     [ ] All flags after command
     [ ] Parse file contents as arguments
 [ ] Flag to always copy last frame to a single path
 [ ] Time video render completion
+[ ] Cleanup (<> or "" on includes, casts, trailing return, names of things, refactoring, etc)
 
 1.0 release
 [ ] KF vs WF benchmarks
