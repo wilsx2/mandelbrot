@@ -18,7 +18,7 @@ notes
     [ ] Resolve differences in zoom
     [ ] Time renders
 [ ] Examples
-    [ ] 'pastel' scripts over saved palettes (5)
+    [X] 'pastel' scripts over saved palettes
     [ ] Image renders (redo)
     [ ] Video render (10 min, 60fps, HD)
 [ ] README
