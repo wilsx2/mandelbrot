@@ -34,7 +34,7 @@ endif()
 
 # SYCL / CUDA backend configuration
 option(ENABLE_CUDA_BACKEND "Build with SYCL CUDA backend" ON)
-set(SYCL_CUDA_ARCH "sm_80" CACHE STRING "Target CUDA SM architectures (semicolon seperated)")
+set(SYCL_CUDA_ARCH "sm_80" CACHE STRING "Target CUDA SM architectures (semicolon separated)")
 set(SYCL_TARGETS "spir64")
 if(ENABLE_CUDA_BACKEND)
     list(APPEND SYCL_TARGETS "nvptx64-nvidia-cuda")

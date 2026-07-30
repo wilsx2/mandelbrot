@@ -55,7 +55,7 @@ FROM nvidia/cuda:12.8.0-runtime-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-ENV SYCL_CACHE_PERSITENT=1
+ENV SYCL_CACHE_PERSISTENT=1
 
 ## Install deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -94,5 +94,5 @@ COPY --from=builder /app/build/wacfrac /usr/local/bin/wacfrac
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
 RUN ldconfig
 
-WORKDIR /~
+WORKDIR /root
 ENTRYPOINT ["wacfrac"]
