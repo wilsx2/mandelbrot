@@ -77,10 +77,11 @@ static void parse_palette_string(DeviceBuffer<Pixel>& target, const std::string&
     }
 }
 
-struct RendererOptions : public RendererConfig {
+struct RenderSubcommand : public RendererConfig, public argumentum::CommandOptions {
+    using CommandOptions::CommandOptions;
     unsigned log_level {2};
 
-    void add_parameters(argumentum::ParameterConfig& args) {
+    void add_parameters(argumentum::ParameterConfig& args) override {
         args.add_parameter(this->resolution, "--resolution", "-r")
             .nargs(2).absent(this->resolution)
             .action(make_nargs2_parser([](auto& target, const std::array<std::string, 2>& parts){
@@ -138,12 +139,13 @@ struct RendererOptions : public RendererConfig {
     }
 };
 
-struct ImageOptions : public ImageConfig, public argumentum::CommandOptions {
-    using CommandOptions::CommandOptions;
+struct ImageOptions : public ImageConfig, public RenderSubcommand {
+    using RenderSubcommand::RenderSubcommand;
 
     std::string filepath {"mandelbrot.ppm"};
 
     void add_parameters(argumentum::ParameterConfig& args) override {
+        RenderSubcommand::add_parameters(args);
         args.add_parameter(filepath, "--output", "-o")
             .nargs(1).absent(filepath)
             .help("Path to output file");
@@ -207,12 +209,13 @@ struct VideoConfig {
     double zoom_per_second {2.0};
 };
 
-struct VideoOptions : public VideoConfig, public argumentum::CommandOptions {
-    using CommandOptions::CommandOptions;
+struct VideoOptions : public VideoConfig, public RenderSubcommand {
+    using RenderSubcommand::RenderSubcommand;
 
     std::string directory {"mandelbrot"};
 
     void add_parameters(argumentum::ParameterConfig& args) override {
+        RenderSubcommand::add_parameters(args);
         args.add_parameter(directory, "--output", "-o")
             .nargs(1).absent(directory)
             .help("Path to the directory where video frames will be written to");

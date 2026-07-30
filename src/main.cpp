@@ -109,9 +109,6 @@ int main(int argc, char* argv[])
     auto params = parser.params();
     parser.config().program(argv[0]).description("Mandelbrot Set Plotter");
 
-    wacfrac::RendererOptions renderer_opts;
-    renderer_opts.add_parameters(params);
-
     params.add_command<wacfrac::ImageOptions>("image");
     params.add_command<wacfrac::VideoOptions>("video");
 
@@ -128,13 +125,14 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    wacfrac::logging::log_level() = renderer_opts.log_level;
-
-    wacfrac::Renderer renderer {std::move(renderer_opts)};
     if (auto* img_opts = dynamic_cast<wacfrac::ImageOptions*>(cmd.get())) {
+        wacfrac::logging::log_level() = img_opts->log_level;
+        wacfrac::Renderer renderer {std::move(*img_opts)};
         save_render(renderer, *img_opts);
     }
     if (auto* vid_opts = dynamic_cast<wacfrac::VideoOptions*>(cmd.get())) {
+        wacfrac::logging::log_level() = vid_opts->log_level;
+        wacfrac::Renderer renderer {std::move(*vid_opts)};
         render_video(renderer, *vid_opts);
     }
 }

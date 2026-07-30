@@ -6,7 +6,7 @@ notes
 [X] Fix Segfault when using perturbed rendering with CUDA backend
 [ ] Check math on coloring function
 [ ] Cleaner CLI
-    [ ] All flags after command
+    [X] All flags after command
     [ ] Parse file contents as arguments
 [ ] Flag to always copy last frame to a single path
 [ ] Time video render completion

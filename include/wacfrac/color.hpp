@@ -42,21 +42,21 @@ inline auto colorize_discrete(unsigned n, unsigned max_n, std::span<const Pixel>
 }
 
 SYCL_EXTERNAL
-inline auto colorize_continuous(Complex<float> z, unsigned n, unsigned max_n, std::span<const Pixel> palette) -> Pixel
-{
+inline auto colorize_continuous(Complex<float> z, unsigned n, unsigned max_n, std::span<const Pixel> palette) -> Pixel {
     using namespace std;
     if (n == max_n)
         return palette.back();
-    auto cont_n {n - ::log(std::log(abs(z))) / ::log(2.0)};
+    auto cont_n {static_cast<float>(n + 1.f - ::log(::log(abs(z))) / ::log(2.f))};
+
     auto n1     {static_cast<unsigned>(::floor(cont_n))};
     auto n2     {static_cast<unsigned>(::ceil(cont_n))};
     auto color1 {palette[n1 % palette.size()]};
     auto color2 {palette[n2 % palette.size()]};
-    auto progress {::fmod(cont_n, 1.0)};
+    auto progress {::fmod(cont_n, 1.f)};
     return {
-        static_cast<uint8_t>(color2.r * progress + color1.r * (1.0 - progress)),
-        static_cast<uint8_t>(color2.g * progress + color1.g * (1.0 - progress)),
-        static_cast<uint8_t>(color2.b * progress + color1.b * (1.0 - progress))
+        static_cast<uint8_t>(color2.r * progress + color1.r * (1.f - progress)),
+        static_cast<uint8_t>(color2.g * progress + color1.g * (1.f - progress)),
+        static_cast<uint8_t>(color2.b * progress + color1.b * (1.f - progress))
     };
 }
 
