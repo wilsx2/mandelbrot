@@ -13,12 +13,12 @@ class DeviceBuffer {
     public:
     DeviceBuffer() = default;
     DeviceBuffer(sycl::queue& q, std::size_t count, sycl::usm::alloc kind = sycl::usm::alloc::shared)
-        : _queue{&q}
+        : _queue{q}
         , _data(sycl::malloc<T>(count, q, kind))
         , _size(count)
     {}
     DeviceBuffer(sycl::queue& q, std::span<const T> data, sycl::usm::alloc kind = sycl::usm::alloc::shared)
-        : _queue{&q}
+        : _queue{q}
         , _data(sycl::malloc<T>(data.size(), q, kind))
         , _size(data.size())
     {
@@ -27,31 +27,25 @@ class DeviceBuffer {
     DeviceBuffer(const DeviceBuffer&) = delete;
     DeviceBuffer& operator=(const DeviceBuffer&) = delete;
     DeviceBuffer(DeviceBuffer&& other)
-        : _queue(std::exchange(other._queue, nullptr))
+        : _queue(std::move(other._queue))
         , _data(std::exchange(other._data, nullptr))
-        , _size(std::exchange(other._size, 0)) 
+        , _size(std::exchange(other._size, 0))
     {}
-    DeviceBuffer& operator= (DeviceBuffer&& other){
-        _queue = std::exchange(other._queue, nullptr);
+    DeviceBuffer& operator= (DeviceBuffer&& other) {
+        if (_data) sycl::free(_data, _queue);
+        _queue = std::move(other._queue);
         _data = std::exchange(other._data, nullptr);
         _size = std::exchange(other._size, 0);
         return *this;
     }
     ~DeviceBuffer() {
-        if (_data && _queue) {
-            sycl::free(_data, *_queue);
-        }
+        if (_data)
+            sycl::free(_data, _queue);
     }
     auto as_span() const { return std::span<T>(_data, _size); }
-    auto data() const {
-        return _data;
-    }
-    auto size() const {
-        return _size;
-    }
-    auto get_queue() {
-        return _queue;
-    }
+    auto data() const { return _data; }
+    auto size() const { return _size; }
+    auto& queue() { return _queue; }
     decltype(auto) operator[](std::size_t idx) const {
         return _data[idx]; // WARN: Permits out of bounds access with no exception
     }
@@ -67,7 +61,7 @@ class DeviceBuffer {
     }
 
     private:
-    sycl::queue* _queue = nullptr;
+    sycl::queue _queue{};
     T* _data = nullptr; // NOTE: Raw pointer. No unique_ptr with a custom deleter for this guy; I'm a rebel.
     std::size_t _size = 0;
 };
@@ -76,20 +70,19 @@ class DeviceArena {
     public:
     DeviceArena() = default;
     DeviceArena(sycl::queue& q, std::size_t size, sycl::usm::alloc kind = sycl::usm::alloc::shared)
-        : _queue{&q}
+        : _queue{q}
         , _data{static_cast<std::byte*>(sycl::malloc(size, q, kind))}
         , _capacity{size}
         , _used{0}
         , _kind{kind}
     {}
     ~DeviceArena() {
-        if (_data && _queue) {
-            sycl::free(_data, *_queue);
-        }
+        if (_data)
+            sycl::free(_data, _queue);
     }
     DeviceArena(DeviceArena&) = delete;
     DeviceArena(DeviceArena&& other)
-        : _queue{std::exchange(other._queue, nullptr)}
+        : _queue{std::move(other._queue)}
         , _data{std::exchange(other._data, nullptr)}
         , _capacity{std::exchange(other._capacity, 0)}
         , _used{std::exchange(other._used, 0)}
@@ -98,8 +91,8 @@ class DeviceArena {
     void reset() { _used = 0; }
     void grow(std::size_t new_capacity) {
         if (new_capacity <= _capacity) return;
-        if (_data && _queue) sycl::free(_data, *_queue);
-        _data = static_cast<std::byte*>(sycl::malloc(new_capacity, *_queue, _kind));
+        if (_data) sycl::free(_data, _queue);
+        _data = static_cast<std::byte*>(sycl::malloc(new_capacity, _queue, _kind));
         _capacity = new_capacity;
         _used = 0;
     }
@@ -133,7 +126,7 @@ class DeviceArena {
         return (n + alignment - 1) & ~(alignment - 1);
     }
 
-    sycl::queue* _queue = nullptr;
+    sycl::queue _queue{};
     std::byte* _data = nullptr;
     std::size_t _capacity = 0;
     std::size_t _used = 0;

@@ -22,7 +22,7 @@ void parse_palette_string(DeviceBuffer<Pixel>& target, const std::string& value)
     auto view {normalized | std::views::split(' ') | std::views::transform([](auto subrange) {
             return parse_color(std::string_view(&*subrange.begin(), subrange.size()));
         }) | std::views::enumerate};
-    target = {*target.get_queue(), static_cast<std::size_t>(std::ranges::distance(view))};
+    target = {target.queue(), static_cast<std::size_t>(std::ranges::distance(view))};
     for (auto&& [idx, pixel] : view) {
         target[idx] = pixel;
     }
@@ -46,52 +46,41 @@ auto parse_render_type(const std::string& value) -> RenderType {
     return RenderType::Auto;
 }
 
-void process_renderer_custom(argparse::ArgumentParser& p, RendererConfig& r) {
-    if (p.is_used("--resolution")) {
-        auto res = p.get<std::vector<std::string>>("--resolution");
-        r.resolution = {std::stoul(res[0]), std::stoul(res[1])};
-    }
-    if (p.is_used("--focus")) {
-        auto foc = p.get<std::vector<std::string>>("--focus");
-        r.focus = MultiComplex(foc[0], foc[1], DEFAULT_MP_PRECISION);
-    }
-    if (p.is_used("--color-palette")) {
-        parse_palette_string(r.palette, p.get<std::string>("--color-palette"));
-    }
-    if (p.is_used("--iteration-parameters")) {
-        auto ip = p.get<std::vector<std::string>>("--iteration-parameters");
-        r.iteration_parameters = {std::stod(ip[0]), std::stod(ip[1]), std::stod(ip[2])};
-    }
-    if (p.is_used("--probes")) {
-        auto pr = p.get<std::vector<std::string>>("--probes");
-        r.probe_grid = {std::stoul(pr[0]), std::stoul(pr[1])};
-    }
-}
-
 } // anonymous namespace
 
 auto parse_arguments(int argc, char* argv[]) -> std::optional<CliOptions> {
     argparse::ArgumentParser program("wacfrac", "0.1.0");
 
     CliOptions opts;
+    std::vector<std::string> resolution_strs;
+    std::vector<std::string> focus_strs;
+    std::vector<std::string> iteration_params_strs;
+    std::vector<std::string> probes_strs;
 
     argparse::ArgumentParser image_cmd("image");
     argparse::ArgumentParser video_cmd("video");
 
     // Shared params
-    auto add_renderer_params = [&opts](argparse::ArgumentParser& p) {
+    auto add_renderer_params = [&](argparse::ArgumentParser& p) {
         auto& r = opts.renderer;
         p.add_argument("--resolution", "-r")
             .nargs(2)
+            .store_into(resolution_strs)
             .help("Width and height of output image");
         p.add_argument("--focus", "-f")
             .nargs(2)
+            .store_into(focus_strs)
             .help("Coordinates to zoom in on");
         p.add_argument("--escape-radius", "-e")
             .scan<'g', double>()
+            .default_value(r.escape_radius)
             .store_into(r.escape_radius)
             .help("Escape radius");
         p.add_argument("--color-palette", "-c")
+            .action([&](const std::string& v) {
+                parse_palette_string(r.palette, v);
+                return v;
+            })
             .help("Hex formatted colors mapped to escape time");
         p.add_argument("--discrete-coloring", "-d")
             .flag()
@@ -99,20 +88,25 @@ auto parse_arguments(int argc, char* argv[]) -> std::optional<CliOptions> {
             .help("Disable smooth/continuous coloring");
         p.add_argument("--iteration-parameters", "-N")
             .nargs(3)
+            .store_into(iteration_params_strs)
             .help("func max_iterations(mod, fact, exp) = mod + fact * exponential_scale^exp");
         p.add_argument("--probes", "-P")
             .nargs(2)
+            .store_into(probes_strs)
             .help("Probe grid dimensions (rows cols)");
         p.add_argument("--tolerance", "-T")
             .scan<'g', double>()
+            .default_value(r.bla_config.tolerance)
             .store_into(r.bla_config.tolerance)
             .help("Epsilon search tolerance");
         p.add_argument("--lower-exp", "-l")
             .scan<'g', double>()
+            .default_value(r.bla_config.lower_exp)
             .store_into(r.bla_config.lower_exp)
             .help("Lower exponent for epsilon search");
         p.add_argument("--upper-exp", "-u")
             .scan<'g', double>()
+            .default_value(r.bla_config.upper_exp)
             .store_into(r.bla_config.upper_exp)
             .help("Upper exponent for epsilon search");
         p.add_argument("--first-level", "-L")
@@ -196,9 +190,20 @@ auto parse_arguments(int argc, char* argv[]) -> std::optional<CliOptions> {
         return std::nullopt;
     }
 
+    if (!resolution_strs.empty())
+        opts.renderer.resolution = {std::stoul(resolution_strs[0]), std::stoul(resolution_strs[1])};
+    if (!focus_strs.empty())
+        opts.renderer.focus = MultiComplex(focus_strs[0], focus_strs[1], DEFAULT_MP_PRECISION);
+    if (!iteration_params_strs.empty())
+        opts.renderer.iteration_parameters = {
+            std::stod(iteration_params_strs[0]),
+            std::stod(iteration_params_strs[1]),
+            std::stod(iteration_params_strs[2])};
+    if (!probes_strs.empty())
+        opts.renderer.probe_grid = {std::stoul(probes_strs[0]), std::stoul(probes_strs[1])};
+
     if (program.is_subcommand_used(image_cmd)) {
         opts.mode = CliOptions::Mode::Image;
-        process_renderer_custom(image_cmd, opts.renderer);
         opts.image.numeric_type = image_cmd.get<NumericType>("--numeric-type");
         opts.image.render_type = image_cmd.get<RenderType>("--render-type");
         opts.image.precision = image_cmd.get<std::size_t>("--precision");
@@ -206,7 +211,6 @@ auto parse_arguments(int argc, char* argv[]) -> std::optional<CliOptions> {
         opts.image.scale = image_cmd.get<MultiFloat>("--zoom-scale");
     } else if (program.is_subcommand_used(video_cmd)) {
         opts.mode = CliOptions::Mode::Video;
-        process_renderer_custom(video_cmd, opts.renderer);
         opts.renderer.bla_config.first_level = video_cmd.get<std::size_t>("--first-level");
         opts.video.segment_size = video_cmd.get<std::size_t>("--segment-size");
         opts.video.initial_scale = video_cmd.get<MultiFloat>("--initial-scale");

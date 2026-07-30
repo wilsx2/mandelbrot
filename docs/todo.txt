@@ -8,7 +8,7 @@ notes
 [X] All flags after command
 [X] Flag to always copy last frame to a single path
 [X] Time video render completion
-[ ] Fix color load
+[X] Fix color load
 [ ] Fix jitter when switching from direct to perturbed rendering, perhaps from float to double, perhaps by less permissive underflow
 [ ] Cleanup (<> or "" on includes, casts, trailing return, names of things, refactoring, etc)
 
@@ -18,8 +18,8 @@ notes
     [ ] Resolve differences in zoom
     [ ] Time renders
 [ ] Examples
-    [ ] 'pastel' scripts over saved palettes (10)
-    [ ] Image render (redo)
+    [ ] 'pastel' scripts over saved palettes (5)
+    [ ] Image renders (redo)
     [ ] Video render (10 min, 60fps, HD)
 [ ] README
     [ ] Overview
