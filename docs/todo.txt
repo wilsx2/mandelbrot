@@ -5,13 +5,11 @@ notes
 1.0 project
 [X] Fix Segfault when using perturbed rendering with CUDA backend
 [/] Check math on coloring function
-[ ] Cleaner CLI
-    [X] All flags after command
-    [ ] Parse file contents as arguments
+[X] All flags after command
 [X] Flag to always copy last frame to a single path
+[X] Time video render completion
 [ ] Fix color load
 [ ] Fix jitter when switching from direct to perturbed rendering, perhaps from float to double, perhaps by less permissive underflow
-[ ] Time video render completion
 [ ] Cleanup (<> or "" on includes, casts, trailing return, names of things, refactoring, etc)
 
 1.0 release

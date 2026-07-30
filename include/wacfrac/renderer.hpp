@@ -32,6 +32,7 @@ struct RendererConfig {
 };
 
 struct ImageConfig {
+    std::string filepath {"mandelbrot.ppm"};
     MultiFloat scale {0.4};
     unsigned max_iterations {0u};
     std::size_t precision {0};

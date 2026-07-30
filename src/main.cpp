@@ -11,15 +11,15 @@
 
 namespace {
 
-void save_render(wacfrac::Renderer& renderer, const wacfrac::ImageOptions& img_opts) {
-    if (wacfrac::write_ppm(img_opts.filepath, renderer.conf.resolution, renderer.render(img_opts))) {
-        wacfrac::logging::info("Image written to {}", img_opts.filepath);
+void save_render(wacfrac::Renderer& renderer, const wacfrac::ImageConfig& img_conf) {
+    if (wacfrac::write_ppm(img_conf.filepath, renderer.conf.resolution, renderer.render(img_conf))) {
+        wacfrac::logging::info("Image written to {}", img_conf.filepath);
     } else {
         wacfrac::logging::error("Image write failed");
     }
 }
 
-void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) {
+void render_video(wacfrac::Renderer& renderer, wacfrac::VideoConfig& vid_opts) {
     if (!std::filesystem::create_directory(vid_opts.directory)) {
         wacfrac::logging::error("Directory '{}' failed to create", vid_opts.directory);
     }
@@ -64,7 +64,7 @@ void render_video(wacfrac::Renderer& renderer, wacfrac::VideoOptions& vid_opts) 
         if (!std::filesystem::exists(segment_filename)) {
             if (!std::filesystem::exists(frame_filename)) {
                 wacfrac::logging::info("Frame #{}/{} being rendered", frame, total_frames);
-                wacfrac::ImageOptions frame_opts {""};
+                wacfrac::ImageConfig frame_opts;
                 frame_opts.filepath = "frame_" + wacfrac::file_suffix(frame % vid_opts.segment_size, vid_opts.segment_size) + ".ppm";
                 frame_opts.scale = scale;
                 save_render(renderer, frame_opts);
@@ -120,34 +120,17 @@ int main(int argc, char* argv[])
 {
     wacfrac::logging::init(0);
 
-    auto parser = argumentum::argument_parser{};
-    auto params = parser.params();
-    parser.config().program(argv[0]).description("Mandelbrot Set Plotter");
-
-    params.add_command<wacfrac::ImageOptions>("image");
-    params.add_command<wacfrac::VideoOptions>("video");
-
-    auto parse_result = parser.parse_args(argc, argv);
+    auto parse_result = wacfrac::parse_arguments(argc, argv);
     if (!parse_result)
         return EXIT_FAILURE;
 
-    std::shared_ptr<argumentum::CommandOptions> cmd;
-    for (auto& pcmd : parse_result.commands)
-        if (pcmd) { cmd = pcmd; break; }
-    if (!cmd) {
-        wacfrac::logging::error(
-            "No render mode specified. Use either image or video");
-        return EXIT_FAILURE;
-    }
+    wacfrac::logging::log_level() = parse_result->log_level;
 
-    if (auto* img_opts = dynamic_cast<wacfrac::ImageOptions*>(cmd.get())) {
-        wacfrac::logging::log_level() = img_opts->log_level;
-        wacfrac::Renderer renderer {std::move(*img_opts)};
-        save_render(renderer, *img_opts);
-    }
-    if (auto* vid_opts = dynamic_cast<wacfrac::VideoOptions*>(cmd.get())) {
-        wacfrac::logging::log_level() = vid_opts->log_level;
-        wacfrac::Renderer renderer {std::move(*vid_opts)};
-        render_video(renderer, *vid_opts);
+    if (parse_result->mode == wacfrac::CliOptions::Mode::Image) {
+        wacfrac::Renderer renderer {std::move(parse_result->renderer)};
+        save_render(renderer, parse_result->image);
+    } else {
+        wacfrac::Renderer renderer {std::move(parse_result->renderer)};
+        render_video(renderer, parse_result->video);
     }
 }

@@ -24,7 +24,6 @@ auto parse_color(std::string_view string) -> Pixel {
         static_cast<uint8_t>((hex_color >> 8) & 0xFF),
         static_cast<uint8_t>(hex_color & 0xFF)
     };
-    logging::debug( "Parsed color '{}' as rgb({},{},{})", color.r, color.g, color.b);
     return color;
 }
 

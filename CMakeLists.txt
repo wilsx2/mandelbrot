@@ -57,16 +57,13 @@ find_package(MPFR REQUIRED)
 find_package(MPC REQUIRED)
 find_package(Boost CONFIG REQUIRED COMPONENTS log log_setup)
  
-find_package(Argumentum CONFIG QUIET)
-if (NOT Argumentum_FOUND)
-    include(FetchContent)
-    set(ARGUMENTUM_BUILD_STATIC_LIBS ON)
-    FetchContent_Declare(argumentum
-        GIT_REPOSITORY https://github.com/mmahnic/argumentum.git
-        GIT_TAG v0.3.2
-    )
-    FetchContent_MakeAvailable(argumentum)
-endif()
+include(FetchContent)
+FetchContent_Declare(
+    argparse
+    GIT_REPOSITORY https://github.com/p-ranav/argparse.git
+    v3.2
+)
+FetchContent_MakeAvailable(argparse)
  
 # Static Library
 add_library(libwacfrac STATIC
@@ -93,10 +90,10 @@ target_compile_options(libwacfrac PRIVATE ${SYCL_FLAGS})
 target_link_options(libwacfrac PRIVATE ${SYCL_FLAGS})
 
 # Application
-add_executable(wacfrac src/main.cpp)
+add_executable(wacfrac src/main.cpp src/cli_options.cpp)
 target_link_libraries(wacfrac PRIVATE
     libwacfrac
-    Argumentum::argumentum
+    argparse
 )
 target_compile_options(wacfrac PRIVATE ${SYCL_FLAGS})
 target_link_options(wacfrac PRIVATE ${SYCL_FLAGS})
