@@ -20,6 +20,7 @@ public:
           _data(sycl::malloc<T>(count, q, kind)),
           _size(count)
     {
+        q.wait();
     }
     DeviceBuffer(sycl::queue& q, std::span<const T> data, sycl::usm::alloc kind = sycl::usm::alloc::shared)
         : _queue{q},

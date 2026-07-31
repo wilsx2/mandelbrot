@@ -32,7 +32,7 @@ struct RendererConfig {
     IterationParameters iteration_parameters {250.0, 50.0, 1.5};
     bla::Config bla_config {};
     std::pair<std::size_t, std::size_t> probe_grid{64, 64};
-    unsigned bla_threshold {10'000u};
+    unsigned bla_threshold {25'000u};
     double underflow_radius {32.0};
 };
 

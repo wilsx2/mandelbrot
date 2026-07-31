@@ -133,11 +133,11 @@ auto parse_arguments(int argc, char* argv[]) -> std::optional<CliOptions>
             })
             .default_value(r.bla_config.first_level)
             .help("First BLA level (0 = auto)");
-        p.add_argument("--significant-iterations", "-S")
+        p.add_argument("--significant-iterations", "-I")
             .default_value(r.bla_threshold)
             .store_into(r.bla_threshold)
             .help("The iteration count after which BLA rendering is used.");
-        p.add_argument("--underflow-radius", "-u")
+        p.add_argument("--underflow-radius", "-U")
             .default_value(r.underflow_radius)
             .store_into(r.underflow_radius)
             .help("Proportionate to how cautious the renderer will be about underflowing fixed-precision numbers");
