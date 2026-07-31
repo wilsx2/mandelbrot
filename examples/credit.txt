@@ -1,7 +1,0 @@
-Palettes made with "pastel": https://github.com/sharkdp/pastel
-
-"big_bang" sourced from Maths Town: https://www.maths.town/videos/eye-of-the-universe-video/
-"real_line" sourced from Maths Town: https://www.maths.town/videos/on-the-real-number-line-video/
-"infinite_trip" sourced from Maths Town: https://www.maths.town/videos/a-trip-to-infinity-video/
-"Sx16" sourced from DinkydauSet: https://www.deviantart.com/dinkydauset/art/SSSSSSSSSSSSSSSS-384940293
-"trees" sourced from DinkydauSet: https://www.deviantart.com/dinkydauset/art/Evolution-of-trees-402876071

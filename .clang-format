@@ -8,18 +8,7 @@ FixNamespaceComments: true
 PointerAlignment: Left
 ReferenceAlignment: Left
 DerivePointerAlignment: false
-BreakBeforeBraces: Custom
-BraceWrapping:
-  AfterClass: true
-  AfterControlStatement: true
-  AfterEnum: true
-  AfterFunction: true
-  AfterNamespace: true
-  AfterStruct: true
-  AfterUnion: true
-  BeforeCatch: true
-  BeforeElse: true
-  BeforeLambdaBody: false
+BreakBeforeBraces: Linux
 AllowShortLambdasOnASingleLine: Empty
 AllowShortFunctionsOnASingleLine: InlineOnly
 AllowShortIfStatementsOnASingleLine: Never
