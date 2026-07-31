@@ -118,18 +118,18 @@ auto Renderer::reserve(unsigned max_n) -> void
     arena.grow(needed);
 }
 
-auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel>
+auto Renderer::apply_heuristics(ImageConfig& img_conf, Viewport& view) -> void
 {
-    auto max_n{img_conf.max_iterations != 0
-                   ? img_conf.max_iterations
-                   : required_iterations(img_conf.scale, conf.iteration_parameters.modifier,
-                                         conf.iteration_parameters.factor, conf.iteration_parameters.exponent)};
-    auto precision{img_conf.precision != 0 ? img_conf.precision : required_precision(img_conf.scale)};
-    MultiFloat::default_precision(static_cast<unsigned>(precision));
-    MultiComplex::default_precision(static_cast<unsigned>(precision));
+    img_conf.max_iterations =
+        (img_conf.max_iterations != 0
+             ? img_conf.max_iterations
+             : required_iterations(img_conf.scale, conf.iteration_parameters.modifier, conf.iteration_parameters.factor,
+                                   conf.iteration_parameters.exponent));
+    img_conf.precision = img_conf.precision != 0 ? img_conf.precision : required_precision(img_conf.scale);
+    MultiFloat::default_precision(static_cast<unsigned>(img_conf.precision));
+    MultiComplex::default_precision(static_cast<unsigned>(img_conf.precision));
 
-    Viewport view{conf.focus, img_conf.scale, conf.resolution};
-    view.precision(precision);
+    view.precision(img_conf.precision);
 
     auto underflows{[&]<typename T>(RenderType rt) {
         using CT = ComplexValueTypeT<T>;
@@ -152,40 +152,40 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel>
         return is_too_close(start.real(), delta.real()) || is_too_close(start.imag(), delta.imag());
     }};
 
-    auto render_type{[&]() {
+    img_conf.render_type = [&]() {
         if (img_conf.render_type != RenderType::Auto) {
             return img_conf.render_type;
         }
 
         if (underflows.template operator()<Complex<float>>(RenderType::Direct)) {
             constexpr auto SIGNIFICANT_ITERATIONS{50'000};
-            if (max_n >= SIGNIFICANT_ITERATIONS) {
+            if (img_conf.max_iterations >= SIGNIFICANT_ITERATIONS) {
                 return RenderType::BLA;
             }
             return RenderType::Perturbed;
         }
         return RenderType::Direct;
-    }()};
+    }();
 
-    auto num_type{[&]() {
+    img_conf.numeric_type = [&]() {
         if (img_conf.numeric_type != NumericType::Auto) {
             return img_conf.numeric_type;
         }
 
-        if (underflows.template operator()<Complex<float>>(render_type)) {
-            if (underflows.template operator()<Complex<double>>(render_type)) {
+        if (underflows.template operator()<Complex<float>>(img_conf.render_type)) {
+            if (underflows.template operator()<Complex<double>>(img_conf.render_type)) {
                 return NumericType::DoubleExp;
             }
             return NumericType::Double;
         }
         return NumericType::Float;
-    }()};
+    }();
 
     logging::info(
-        "Render Config: zoom={} max_iterations={} precision={} numeric_type={} render_type={}", img_conf.scale, max_n,
-        precision,
+        "Image Config: zoom={} max_iterations={} precision={} numeric_type={} render_type={}", img_conf.scale,
+        img_conf.max_iterations, img_conf.precision,
         [&]() {
-            switch (num_type) {
+            switch (img_conf.numeric_type) {
             case NumericType::Float:
                 return "float";
             case NumericType::Double:
@@ -198,7 +198,7 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel>
             return "???";
         }(),
         [&]() {
-            switch (render_type) {
+            switch (img_conf.render_type) {
             case RenderType::Direct:
                 return "direct";
             case RenderType::Perturbed:
@@ -210,20 +210,26 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel>
             }
             return "???";
         }());
+}
 
+auto Renderer::render(ImageConfig img_conf) -> std::span<const Pixel>
+{
+    Viewport view{conf.focus, img_conf.scale, conf.resolution};
+    apply_heuristics(img_conf, view);
     auto start = std::chrono::steady_clock::now();
-    with_numeric_type(num_type, [&]<typename T>(NumericTypeTag<T>) {
+
+    with_numeric_type(img_conf.numeric_type, [&]<typename T>(NumericTypeTag<T>) {
         using CT = ComplexValueTypeT<T>;
 
-        auto needed = compute_arena_size<T>(max_n, render_type, conf.bla_config, conf.probe_grid);
+        auto esc_rad{conf.escape_radius};
+        auto max_n{img_conf.max_iterations};
+        auto needed = compute_arena_size<T>(max_n, img_conf.render_type, conf.bla_config, conf.probe_grid);
         arena.grow(needed);
 
         auto delta{get_pixel_delta<T>(view.dimensions, conf.resolution)};
         logging::debug("delta c: ({}, {})", static_cast<double>(delta.real()), static_cast<double>(delta.imag()));
 
-        auto esc_rad{conf.escape_radius};
-
-        if (render_type == RenderType::Direct) {
+        if (img_conf.render_type == RenderType::Direct) {
             auto start{view.get_corner_absolute<T>()};
             logging::debug("start, absolute: ({}, {})", static_cast<double>(start.real()),
                            static_cast<double>(start.imag()));
@@ -247,11 +253,11 @@ auto Renderer::render(const ImageConfig& img_conf) -> std::span<const Pixel>
                 return buf.subspan(0, n);
             }()};
 
-            if (render_type == RenderType::Perturbed) {
+            if (img_conf.render_type == RenderType::Perturbed) {
                 render_pass(start, delta, max_n, [=](sycl::id<2> id) {
                     return escape_perturbed(sample_c_value(id, start, delta), ref, max_n, esc_rad);
                 });
-            } else if (render_type == RenderType::BLA) {
+            } else if (img_conf.render_type == RenderType::BLA) {
                 using CT = ComplexValueTypeT<T>;
                 auto max_dc{to_complex<T>(view.compute_max_dc(c_ref))};
                 bla::Calculator<T> bla_calculator{conf.queue, arena, conf.bla_config};

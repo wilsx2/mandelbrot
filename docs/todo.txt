@@ -1,7 +1,3 @@
-notes
-- feh updates if you write to an image.
-- BLA epsilon search every frame is far from ideal
-
 1.0 project
 [X] Fix Segfault when using perturbed rendering with CUDA backend
 [/] Check math on coloring function

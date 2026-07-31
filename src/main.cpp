@@ -13,7 +13,7 @@
 namespace
 {
 
-void save_render(wacfrac::Renderer& renderer, const wacfrac::ImageConfig& img_conf)
+void save_render(wacfrac::Renderer& renderer, wacfrac::ImageConfig& img_conf)
 {
     if (wacfrac::write_ppm(img_conf.filepath, renderer.conf.resolution, renderer.render(img_conf))) {
         wacfrac::logging::info("Image written to {}", img_conf.filepath);

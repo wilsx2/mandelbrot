@@ -2,9 +2,9 @@
 
 #include "wacfrac/color.hpp"
 
-#include <boost/regex.hpp>
 #include <algorithm>
 #include <argparse/argparse.hpp>
+#include <boost/regex.hpp>
 #include <cctype>
 #include <iostream>
 #include <ranges>

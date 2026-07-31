@@ -1,4 +1,5 @@
 #include "wacfrac/io.hpp"
+
 #include "wacfrac/log.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/types.hpp"
@@ -15,8 +16,8 @@
 namespace wacfrac
 {
 
-
-auto get_file_contents(std::filesystem::path filepath) -> std::string {
+auto get_file_contents(std::filesystem::path filepath) -> std::string
+{
     std::ifstream file(filepath);
     if (!file.is_open()) {
         logging::error("File {} failed to open", filepath.string());

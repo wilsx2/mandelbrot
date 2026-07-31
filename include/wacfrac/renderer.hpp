@@ -5,6 +5,7 @@
 #include "wacfrac/reference.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/types.hpp"
+#include "wacfrac/viewport.hpp"
 
 #include <span>
 #include <sycl/sycl.hpp>
@@ -44,7 +45,8 @@ struct ImageConfig {
 };
 
 struct Renderer {
-    RendererConfig conf;
+public:
+    RendererConfig conf; // TODO: make private
     ReferenceSet ref_cache;
     DeviceBuffer<Pixel> pixels;
     DeviceArena arena;
@@ -52,8 +54,10 @@ struct Renderer {
     Renderer(RendererConfig config);
     auto cache_references(ReferenceSet&& refs) -> void;
     auto reserve(unsigned max_n) -> void;
-    auto render(const ImageConfig& img_conf) -> std::span<const Pixel>;
+    auto render(ImageConfig img_conf) -> std::span<const Pixel>;
 
+private:
+    auto apply_heuristics(ImageConfig& img_conf, Viewport& view) -> void;
     template <typename T, typename F> auto render_pass(T start, T delta, unsigned max_n, F pixel_escape) -> void;
 };
 
