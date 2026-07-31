@@ -1,5 +1,4 @@
 #include "wacfrac/io.hpp"
-
 #include "wacfrac/log.hpp"
 #include "wacfrac/resolution.hpp"
 #include "wacfrac/types.hpp"
@@ -15,6 +14,18 @@
 
 namespace wacfrac
 {
+
+
+auto get_file_contents(std::filesystem::path filepath) -> std::string {
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        logging::error("File {} failed to open", filepath.string());
+        return "";
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
 
 auto write_ppm(std::filesystem::path filename, Resolution res, std::span<const Pixel> pixels) -> bool
 {

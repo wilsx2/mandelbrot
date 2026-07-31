@@ -11,14 +11,11 @@ notes
 [X] Fix color load
 [X] Fix jitter when switching from direct to perturbed rendering, perhaps from float to double, perhaps by less permissive underflow
 [X] Cleanup (<> or "" on includes, casts, trailing return, names of things, refactoring, etc)
+[ ] Fix auto detect (underflow detection)
 [ ] Significant Iterations parameter
 
 1.0 release
 [ ] Rebuild Docker Image
-[ ] KF vs WF benchmarks
-    [ ] .kfs parser or script
-    [ ] Resolve differences in zoom
-    [ ] Time renders
 [ ] Examples
     [X] 'pastel' scripts over saved palettes
     [X] Image renders (redo)
@@ -27,7 +24,6 @@ notes
     [ ] Overview
     [ ] Renders
     [ ] Features
-    [ ] Benchmarks
     [ ] Building
     [ ] Docker-ing
     [ ] Usage (more descriptive)

@@ -2,6 +2,7 @@
 
 #include "wacfrac/color.hpp"
 
+#include <boost/regex.hpp>
 #include <algorithm>
 #include <argparse/argparse.hpp>
 #include <cctype>
@@ -82,6 +83,10 @@ auto parse_arguments(int argc, char* argv[]) -> std::optional<CliOptions>
     // Shared params
     auto add_renderer_params = [&](argparse::ArgumentParser& p) {
         auto& r = opts.renderer;
+        p.add_argument("--log-level")
+            .scan<'u', unsigned>()
+            .store_into(opts.log_level)
+            .help("Log level: 0=Trace, 1=Debug, 2=Info, 3=Warning, 4=Error, 5=Fatal");
         p.add_argument("--resolution", "-r")
             .nargs(2)
             .store_into(resolution_strs)
@@ -128,10 +133,6 @@ auto parse_arguments(int argc, char* argv[]) -> std::optional<CliOptions>
             })
             .default_value(r.bla_config.first_level)
             .help("First BLA level (0 = auto)");
-        p.add_argument("--log-level")
-            .scan<'u', unsigned>()
-            .store_into(opts.log_level)
-            .help("Log level: 0=Trace, 1=Debug, 2=Info, 3=Warning, 4=Error, 5=Fatal");
     };
     add_renderer_params(image_cmd);
     add_renderer_params(video_cmd);

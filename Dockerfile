@@ -87,6 +87,11 @@ RUN mkdir /tmp/neo && cd /tmp/neo && \
     wget https://github.com/intel/compute-runtime/releases/download/24.26.30049.6/libigdgmm12_22.3.20_amd64.deb && \
     dpkg -i *.deb && rm -rf /tmp/neo
 
+## Install Pastel
+RUN mkdir /tmp/pastel && cd /tmp/pastel && \
+    wget https://github.com/sharkdp/pastel/releases/download/v0.12.0/pastel-musl_0.12.0_amd64.deb && \
+    dpkg -i *.deb && rm -rf /tmp/pastel
+
 ## Copy binary and needed libraries
 COPY ./examples/ ~/
 COPY --from=builder /opt/intel/dpcpp/lib /usr/local/lib/
