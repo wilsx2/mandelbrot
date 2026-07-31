@@ -114,6 +114,7 @@ public:
           _dexp_ref{q, max_n},
           _size{0u}
     {
+        q.wait();
     }
     ReferenceSet& operator=(ReferenceSet&& other) = default;
 

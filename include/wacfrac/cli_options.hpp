@@ -12,7 +12,7 @@ namespace wacfrac
 struct VideoConfig {
     std::string directory{"mandelbrot"};
     double frames_per_second{24.0};
-    std::size_t segment_size{64};
+    std::size_t segment_size{512};
     MultiFloat initial_scale{0.4};
     MultiFloat final_scale{1e1};
     double zoom_per_second{2.0};

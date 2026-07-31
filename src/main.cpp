@@ -88,7 +88,8 @@ void render_video(wacfrac::Renderer& renderer, wacfrac::VideoConfig& vid_opts)
                             std::filesystem::remove(entry.path());
                     wacfrac::logging::info("Segment #{} composed", segment);
                 } else {
-                    wacfrac::logging::error("Segment #{} failed to compose", segment);
+                    wacfrac::logging::fatal("Segment #{} failed to compose", segment);
+                    return;
                 }
             }
         } else {
@@ -103,7 +104,8 @@ void render_video(wacfrac::Renderer& renderer, wacfrac::VideoConfig& vid_opts)
                 std::filesystem::remove(entry.path());
         wacfrac::logging::info("Video render complete");
     } else {
-        wacfrac::logging::error("Final video failed to compose");
+        wacfrac::logging::fatal("Final video failed to compose");
+        return;
     }
 
     auto elapsed = std::chrono::duration_cast<std::chrono::minutes>(std::chrono::steady_clock::now() - start);

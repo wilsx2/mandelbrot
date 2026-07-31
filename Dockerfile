@@ -93,11 +93,11 @@ RUN mkdir /tmp/pastel && cd /tmp/pastel && \
     dpkg -i *.deb && rm -rf /tmp/pastel
 
 ## Copy binary and needed libraries
-COPY ./examples/ ~/
+COPY ./scripts/ /~/
 COPY --from=builder /opt/intel/dpcpp/lib /usr/local/lib/
 COPY --from=builder /app/build/wacfrac /usr/local/bin/wacfrac
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
 RUN ldconfig
 
-WORKDIR /root
+WORKDIR /~
 ENTRYPOINT ["wacfrac"]
