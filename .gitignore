@@ -1,0 +1,10 @@
+.*
+*~
+*.ppm
+build
+output
+mandelbrot
+!.gitignore
+!.dockerignore
+!.clang-format
+!.clangd.in

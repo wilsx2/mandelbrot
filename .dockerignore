@@ -1,0 +1,8 @@
+Dockerfile
+.*
+*~
+*.ppm
+scripts/fmt.sh
+build
+output
+mandelbrot
