@@ -3,7 +3,7 @@ BasedOnStyle: LLVM
 IndentWidth: 4
 AccessModifierOffset: -4
 ColumnLimit: 120
-NamespaceIndentation: All
+NamespaceIndentation: None
 FixNamespaceComments: true
 PointerAlignment: Left
 ReferenceAlignment: Left

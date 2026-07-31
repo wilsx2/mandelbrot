@@ -11,25 +11,25 @@
 namespace wacfrac::logging
 {
 
-    void init(int level)
-    {
-        static bool initialized = false;
-        if (initialized)
-            return;
-        initialized = true;
-        log_level() = level;
+void init(int level)
+{
+    static bool initialized = false;
+    if (initialized)
+        return;
+    initialized = true;
+    log_level() = level;
 
-        auto sink = boost::make_shared<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>>();
+    auto sink = boost::make_shared<boost::log::sinks::synchronous_sink<boost::log::sinks::text_ostream_backend>>();
 
-        sink->locked_backend()->add_stream(boost::make_shared<std::ostream>(std::cout.rdbuf()));
+    sink->locked_backend()->add_stream(boost::make_shared<std::ostream>(std::cout.rdbuf()));
 
-        sink->set_formatter(
-            boost::log::expressions::stream
-            << "[" << boost::log::expressions::format_date_time<boost::posix_time::ptime>("TimeStamp", "%H:%M:%S")
-            << "] " << boost::log::expressions::smessage);
+    sink->set_formatter(boost::log::expressions::stream
+                        << "["
+                        << boost::log::expressions::format_date_time<boost::posix_time::ptime>("TimeStamp", "%H:%M:%S")
+                        << "] " << boost::log::expressions::smessage);
 
-        boost::log::core::get()->add_sink(sink);
-        boost::log::add_common_attributes();
-    }
+    boost::log::core::get()->add_sink(sink);
+    boost::log::add_common_attributes();
+}
 
 } // namespace wacfrac::logging
