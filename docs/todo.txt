@@ -7,8 +7,8 @@
 [X] Fix color load
 [X] Fix jitter when switching from direct to perturbed rendering, perhaps from float to double, perhaps by less permissive underflow
 [X] Cleanup (<> or "" on includes, casts, trailing return, names of things, refactoring, etc)
-[ ] Fix auto detect (underflow detection)
-[ ] Significant Iterations parameter
+[X] Significant Iterations parameter
+[X] Fix auto detect (underflow detection)
 
 1.0 release
 [ ] Rebuild Docker Image

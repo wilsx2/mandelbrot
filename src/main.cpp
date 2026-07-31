@@ -25,8 +25,7 @@ void save_render(wacfrac::Renderer& renderer, wacfrac::ImageConfig& img_conf)
 void render_video(wacfrac::Renderer& renderer, wacfrac::VideoConfig& vid_opts)
 {
     if (!std::filesystem::create_directory(vid_opts.directory)) {
-        wacfrac::logging::error("Directory '{}' failed to create", vid_opts.directory);
-        return;
+        wacfrac::logging::warning("Directory '{}' failed to create", vid_opts.directory);
     }
     std::filesystem::current_path(vid_opts.directory);
 

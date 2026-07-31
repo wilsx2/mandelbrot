@@ -24,14 +24,16 @@ struct IterationParameters {
 
 struct RendererConfig {
     sycl::queue queue{sycl::default_selector_v};
-    Resolution resolution{500, 500};
+    Resolution resolution{512, 512};
     MultiComplex focus{-0.5, 0.0};
     double escape_radius{4.0};
     DeviceBuffer<Pixel> palette{queue, std::span(wacfrac::ULTRA)};
     bool discrete_coloring{false};
-    IterationParameters iteration_parameters{};
-    bla::Config bla_config;
+    IterationParameters iteration_parameters {250.0, 50.0, 1.5};
+    bla::Config bla_config {};
     std::pair<std::size_t, std::size_t> probe_grid{64, 64};
+    unsigned bla_threshold {10'000u};
+    double underflow_radius {32.0};
 };
 
 struct ImageConfig {

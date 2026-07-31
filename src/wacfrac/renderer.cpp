@@ -6,6 +6,8 @@
 #include "wacfrac/rendering.hpp"
 #include "wacfrac/viewport.hpp"
 
+#include <cmath>
+#include <limits>
 #include <sycl/access/access.hpp>
 #include <sycl/accessor.hpp>
 #include <utility>
@@ -142,11 +144,18 @@ auto Renderer::apply_heuristics(ImageConfig& img_conf, Viewport& view) -> void
 
         auto delta{get_pixel_delta<T>(view.dimensions, conf.resolution)};
 
-        constexpr CT eps = std::numeric_limits<CT>::epsilon();
-        auto is_too_close = [](CT val, CT step) {
-            if (val == 0.0)
-                return false;
-            return std::abs(step) < std::abs(val) * eps * CT(10.0);
+        auto is_too_close = [&](CT val, CT step) {
+            if (step == CT(0))
+                return true;
+
+            CT dir {step > CT(0) ? std::numeric_limits<CT>::infinity()
+                              : -std::numeric_limits<CT>::infinity()};
+            CT next {std::nextafter(val, dir)};
+            CT local_epsilon {std::abs(next - val)};
+            if (local_epsilon == CT(0)) {
+                local_epsilon = std::numeric_limits<CT>::denorm_min();
+            }
+            return std::abs(step) / local_epsilon <= static_cast<CT>(conf.underflow_radius);
         };
 
         return is_too_close(start.real(), delta.real()) || is_too_close(start.imag(), delta.imag());
@@ -158,8 +167,7 @@ auto Renderer::apply_heuristics(ImageConfig& img_conf, Viewport& view) -> void
         }
 
         if (underflows.template operator()<Complex<float>>(RenderType::Direct)) {
-            constexpr auto SIGNIFICANT_ITERATIONS{50'000};
-            if (img_conf.max_iterations >= SIGNIFICANT_ITERATIONS) {
+            if (img_conf.max_iterations >= conf.bla_threshold) {
                 return RenderType::BLA;
             }
             return RenderType::Perturbed;
