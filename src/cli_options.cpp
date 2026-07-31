@@ -69,7 +69,7 @@ auto parse_render_type(const std::string& value) -> RenderType
 
 auto parse_arguments(int argc, char* argv[]) -> std::optional<CliOptions>
 {
-    argparse::ArgumentParser program("wacfrac", "0.1.0");
+    argparse::ArgumentParser program("wacfrac", "1.2.0");
 
     CliOptions opts;
     std::vector<std::string> resolution_strs;
