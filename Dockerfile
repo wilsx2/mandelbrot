@@ -61,7 +61,6 @@ ENV SYCL_CACHE_PERSISTENT=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     ocl-icd-libopencl1 \ 
-    intel-opencl-icd \
     clinfo \ 
     ffmpeg \
     libhwloc-dev \
@@ -83,7 +82,7 @@ RUN mkdir /tmp/neo && cd /tmp/neo && \
     wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.17193.4/intel-igc-core_1.0.17193.4_amd64.deb && \
     wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.17193.4/intel-igc-opencl_1.0.17193.4_amd64.deb && \
     wget https://github.com/intel/compute-runtime/releases/download/24.26.30049.6/intel-level-zero-gpu_1.3.30049.6_amd64.deb && \
-    wget https://github.com/intel/compute-runtime/releases/download/24.26.30049.6/intel-opencl-icd_24.26.30049.6_amd64.deb && \
+    wget https://github.com/intel/compute-runtime/es/download/24.26.30049.6/intel-opencl-icd_24.26.30049.6_amd64.deb && \
     wget https://github.com/intel/compute-runtime/releases/download/24.26.30049.6/libigdgmm12_22.3.20_amd64.deb && \
     dpkg -i *.deb && rm -rf /tmp/neo
 
@@ -93,11 +92,11 @@ RUN mkdir /tmp/pastel && cd /tmp/pastel && \
     dpkg -i *.deb && rm -rf /tmp/pastel
 
 ## Copy binary and needed libraries
-COPY ./scripts/ /~/
+COPY ./scripts/ ~/
 COPY --from=builder /opt/intel/dpcpp/lib /usr/local/lib/
 COPY --from=builder /app/build/wacfrac /usr/local/bin/wacfrac
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
 RUN ldconfig
 
-WORKDIR /~
-ENTRYPOINT ["wacfrac"]
+WORKDIR ~
+ENTRYPOINT ["bash"]

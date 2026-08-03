@@ -11,31 +11,42 @@
 [X] Fix auto detect (underflow detection)
 
 1.0 release
-[ ] Rebuild Docker Image
-[ ] Examples
+[X] Rebuild Docker Image
+[X] Examples
     [X] 'pastel' scripts over saved palettes
     [X] Image renders (redo)
-    [ ] Video render (10 min, 60fps, HD)
+    [X] Video render (10 min, 60fps, HD)
 [ ] README
-    [ ] Overview
-    [ ] Renders
-    [ ] Features
-    [ ] Building
-    [ ] Docker-ing
-    [ ] Usage (more descriptive)
-    [ ] License
+    [X] Overview (uses numerical techniques such as perturbation theory and bilinear approximation to perform fast and precise calculations)
+    [X] Renders
+    [X] Docker-ing
+    [X] Usage (more descriptive)
+    [X] Building
+    [X] License
+[ ] Gather performance data
+    [ ] Data logging and production automation (python hooks? JSON output?)
+    [ ] Analysis / graphing (Python)
+    [ ] Add benchmarks to README
 [ ] Article/Documentation
     ...
     [ ] References/Bibliography
 [ ] Post on LinkedIn with relevant excerpts from Article and README
 
-2.0 project
+2.0
+[ ] Defer FloatExp recalculation
+[ ] Reduce BLA work
+    [ ] Cache previous BLA, check validity before recompute
+    [ ] Use previous BLA epsilon as a basis for next search
+[ ] Saturation w/ Work Queue
+    ...
+[ ] Concurrent Encoding
+    ...
+[ ] ? Pipeline GPU & CPU work
+    ...
 [ ] Distribute (OpenMPI)
     ...
 [ ] Cloud Compute
     ...
-
-2.0 release
 [ ] Update README
     ...
 [ ] Example Renders (w/ speeds)
