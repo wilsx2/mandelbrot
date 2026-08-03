@@ -7,9 +7,29 @@ techniques massively in parallel for high speed renders with extreme precision.
 
 ## Examples
 
-![Screenshot A](./images/ihmolayt.png) ![Screenshot B](./images/ghlayshur.png) ![Screenshot C](./images/toughreghnt.png)
+![Screenshot](./images/center.png)
+![Screenshot](./images/ihmolayt.png)
+![Screenshot](./images/toughreghnt.png)
+![Screenshot](./images/ghlayshur.png)
+![Screenshot](./images/blaughsum.png)
+![Screenshot](./images/luv.png)
+![Screenshot](./images/pghyuke.png)
+![Screenshot](./images/shanel.png)
+![Screenshot](./images/wheb.png)
 
-*From left to right: fire palette at 1e10 zoom, toyblue palette at 3e2 zoom, and seafoam palette at 1e10 zoom.*
+*From top to bottom:*
+
+| Render | Palette | Location | Zoom |
+| --- | --- | --- | --- |
+| center | ultra | center of the set | 0.4 |
+| ghlayshur | toyblue | infinite_trip | 3e2 |
+| ihmolayt | fire | trees | 1e10 |
+| toughreghnt | seafoam | big_bang | 1e10 |
+| wheb | snow | Sx16 | 9e10 |
+| blaughsum | brain | trees | 1e20 |
+| shanel | cottoncandy | infinite_trip | 1.1e50 |
+| luv | lipstick | infinite_trip | 1e70 |
+| pghyuke | rainbow | big_bang | 1e150 |
 
 ## Features
 
