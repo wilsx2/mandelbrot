@@ -16,33 +16,33 @@
     [X] 'pastel' scripts over saved palettes
     [X] Image renders (redo)
     [X] Video render (10 min, 60fps, HD)
-[ ] README
+[X] README
     [X] Overview (uses numerical techniques such as perturbation theory and bilinear approximation to perform fast and precise calculations)
     [X] Renders
     [X] Docker-ing
     [X] Usage (more descriptive)
     [X] Building
     [X] License
-[ ] Gather performance data
-    [ ] Data logging and production automation (python hooks? JSON output?)
-    [ ] Analysis / graphing (Python)
-    [ ] Add benchmarks to README
+[X] Gather performance data
+    [X] Gather
+    [X] Add benchmarks to README
 [ ] Article/Documentation
     ...
     [ ] References/Bibliography
+[ ] Put up wacfrac:latest
 [ ] Post on LinkedIn with relevant excerpts from Article and README
 
 2.0
-[ ] Defer FloatExp recalculation
 [ ] Reduce BLA work
     [ ] Cache previous BLA, check validity before recompute
     [ ] Use previous BLA epsilon as a basis for next search
+[ ] Defer FloatExp recalculation
+[ ] Resolve BLA center glitch (glimpse into incorrect render at high epsilons)
 [ ] Saturation w/ Work Queue
     ...
-[ ] Concurrent Encoding
+[ ] GPU accelerated encoding
     ...
-[ ] ? Pipeline GPU & CPU work
-    ...
+[ ] Structured logging
 [ ] Distribute (OpenMPI)
     ...
 [ ] Cloud Compute

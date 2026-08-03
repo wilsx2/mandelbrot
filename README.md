@@ -54,6 +54,23 @@ techniques massively in parallel for high speed renders with extreme precision.
   for long-running jobs.
 - **Docker images** available on Docker Hub for reproducable distribution.
 
+## Benchmarks
+
+Benchmarks were taken focused on the big_bang POI with otherwise default parameters.
+The italic column indicates the fastest render mode.
+The bold column indicates the mode automatically selected when none is specified.
+Showing wall time as reported by the 'time' utility. 'user' time would bias benchmarks
+heavily towards GPUs.
+
+| Zoom | Processor | Direct Mode | Perturbed Mode | Approximate Mode |
+| --- | --- | --- | --- | --- |
+| 1e10 |  Intel i7, 8th Gen | 0.357s | 0.601s | 1.304s |
+| 1e250 | Intel i7, 8th Gen | N/A | *45.612s* | **1m 48.047** |
+| 1e500 | Intel i7, 8th Gen | N/A | 16m 16.793s | ***6m 22.969s*** |
+| 1e10 | NVIDIA GeForce RTX 3060 | 0.334s | ***0.259s*** | 0.321s |
+| 1e250 | NVIDIA GeForce RTX 3060 | N/A | 3.2480 | ***2.313s*** |
+| 1e500 | NVIDIA GeForce RTX 3060 | N/A | 29.793s | ***23.302s*** |
+
 ## Deployment
 
 wacfrac can be found built with all its dependencies on [Docker Hub](https://hub.docker.com/r/wilsx2/wacfrac).
@@ -78,7 +95,7 @@ Note: wacfrac has been tested on Intel iGPUs, AMD iGPUs, and a NVIDIA RTX 3060.
 Discrete Intel GPUs are supported but untested, while AMD hardware is unsupported.
 
 It is recommended you create a link between your container and the host so you
-can easily access your renders. We recommend using [feh](https://feh.finalrewind.org/) to view them.
+can easily access your renders.
 
 ```bash
 docker run [GPU flags] --mount type=bind,src=./output,dst=~/output -it wilsx2/wacfrac:latest
