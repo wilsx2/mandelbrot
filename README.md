@@ -8,14 +8,14 @@ techniques massively in parallel for high speed renders with extreme precision.
 ## Examples
 
 ![Screenshot](./images/center.png)
-![Screenshot](./images/ihmolayt.png)
-![Screenshot](./images/toughreghnt.png)
 ![Screenshot](./images/ghlayshur.png)
+![Screenshot](./images/toughreghnt.png)
+![Screenshot](./images/ihmolayt.png)
+![Screenshot](./images/wheb.png)
 ![Screenshot](./images/blaughsum.png)
+![Screenshot](./images/shanel.png)
 ![Screenshot](./images/luv.png)
 ![Screenshot](./images/pghyuke.png)
-![Screenshot](./images/shanel.png)
-![Screenshot](./images/wheb.png)
 
 *From top to bottom:*
 
@@ -23,8 +23,8 @@ techniques massively in parallel for high speed renders with extreme precision.
 | --- | --- | --- | --- |
 | center | ultra | center of the set | 0.4 |
 | ghlayshur | toyblue | infinite_trip | 3e2 |
-| ihmolayt | fire | trees | 1e10 |
 | toughreghnt | seafoam | big_bang | 1e10 |
+| ihmolayt | fire | trees | 1e10 |
 | wheb | snow | Sx16 | 9e10 |
 | blaughsum | brain | trees | 1e20 |
 | shanel | cottoncandy | infinite_trip | 1.1e50 |
