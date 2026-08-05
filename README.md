@@ -64,7 +64,7 @@ heavily towards GPUs.
 
 | Zoom | Processor | Direct Mode | Perturbed Mode | Approximate Mode |
 | --- | --- | --- | --- | --- |
-| 1e10 |  Intel i7, 8th Gen | 0.357s | 0.601s | 1.304s |
+| 1e10 |  Intel i7, 8th Gen | *0.357s* | **0.601s** | 1.304s |
 | 1e250 | Intel i7, 8th Gen | N/A | *45.612s* | **1m 48.047** |
 | 1e500 | Intel i7, 8th Gen | N/A | 16m 16.793s | ***6m 22.969s*** |
 | 1e10 | NVIDIA GeForce RTX 3060 | 0.334s | ***0.259s*** | 0.321s |
