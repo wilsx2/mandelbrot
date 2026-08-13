@@ -47,7 +47,7 @@ techniques massively in parallel for high speed renders with extreme precision.
   - *Bilinear approximation (BLA)* which batches many thousands of iterations into
     a single compution, retaining visual accuracy and greatly accelerating renders.
 - **Docker images** available on Docker Hub for reproducable distribution.
-Read about the implementation details and reasoning behind these features [here](docs/document.pdf).
+Read about the implementation details and reasoning behind these features [here](https://williamaconner.com/2026/08/05/mandelbrot-set.html).
 
 ## Benchmarks
 
