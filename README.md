@@ -46,12 +46,6 @@ techniques massively in parallel for high speed renders with extreme precision.
     otherwise be necessary.
   - *Bilinear approximation (BLA)* which batches many thousands of iterations into
     a single compution, retaining visual accuracy and greatly accelerating renders.
-- **Automatic tuning**. Approximation parameters, iteration count, precision,
-  numeric type (float/double/dexp), and render strategy are dynamically derived
-  from the zoom level, so defaults work everywhere and video rendering is possible.
-- **Fault-tolerant video mode.** Zoom animations are fault tolerant through progressive
-  encoding. Finished frames and segments are skipped on re-runs. Especially important
-  for long-running jobs.
 - **Docker images** available on Docker Hub for reproducable distribution.
 Read about the implementation details and reasoning behind these features [here](docs/document.pdf).
 

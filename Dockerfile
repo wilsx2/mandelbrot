@@ -79,11 +79,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ## Install OpenCL runtime
 RUN mkdir /tmp/neo && cd /tmp/neo && \
-    wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.17193.4/intel-igc-core_1.0.17193.4_amd64.deb && \
-    wget https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.17193.4/intel-igc-opencl_1.0.17193.4_amd64.deb && \
-    wget https://github.com/intel/compute-runtime/releases/download/24.26.30049.6/intel-level-zero-gpu_1.3.30049.6_amd64.deb && \
-    wget https://github.com/intel/compute-runtime/es/download/24.26.30049.6/intel-opencl-icd_24.26.30049.6_amd64.deb && \
-    wget https://github.com/intel/compute-runtime/releases/download/24.26.30049.6/libigdgmm12_22.3.20_amd64.deb && \
+    wget https://github.com/intel/intel-graphics-compiler/releases/download/v2.38.2/intel-igc-core-2_2.38.2+22051_amd64.deb &&\
+    wget https://github.com/intel/intel-graphics-compiler/releases/download/v2.38.2/intel-igc-opencl-2_2.38.2+22051_amd64.deb &&\
+    wget https://github.com/intel/compute-runtime/releases/download/26.27.39122.11/intel-ocloc-dbgsym_26.27.39122.11-0_amd64.ddeb &&\
+    wget https://github.com/intel/compute-runtime/releases/download/26.27.39122.11/intel-ocloc_26.27.39122.11-0_amd64.deb &&\
+    wget https://github.com/intel/compute-runtime/releases/download/26.27.39122.11/intel-opencl-icd-dbgsym_26.27.39122.11-0_amd64.ddeb &&\
+    wget https://github.com/intel/compute-runtime/releases/download/26.27.39122.11/intel-opencl-icd_26.27.39122.11-0_amd64.deb &&\
+    wget https://github.com/intel/compute-runtime/releases/download/26.27.39122.11/libigdgmm12_22.10.0_amd64.deb &&\
+    wget https://github.com/intel/compute-runtime/releases/download/26.27.39122.11/libze-intel-gpu1-dbgsym_26.27.39122.11-0_amd64.ddeb &&\
+    wget https://github.com/intel/compute-runtime/releases/download/26.27.39122.11/libze-intel-gpu1_26.27.39122.11-0_amd64.deb && \
     dpkg -i *.deb && rm -rf /tmp/neo
 
 ## Install Pastel
