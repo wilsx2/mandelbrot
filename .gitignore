@@ -4,6 +4,7 @@
 build
 output
 mandelbrot
+
 !.gitignore
 !.dockerignore
 !.clang-format

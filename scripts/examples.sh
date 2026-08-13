@@ -11,11 +11,11 @@ do_render() {
 }
 
 do_render center ultra 24 center 0.4
-do_render toughreghnt seafoam 128 big_bang 1e10
-do_render ihmolayt fire 128 trees 1e10
-do_render wheb snow 64 Sx16 9e10
-do_render ghlayshur toyblue 128 infinite_trip 3e2
-do_render shanel cottoncandy 128 infinite_trip 1.1e50
-do_render luv lipstick 1024 infinite_trip 1e70
-do_render blaughsum brain 256 trees 1e20
-do_render pghyuke rainbow 1024 big_bang 1e150
+do_render torrent seafoam 128 big_bang 1e10
+do_render immolate fire 128 trees 1e10
+do_render web snow 64 Sx16 9e10
+do_render glacier toyblue 128 infinite_trip 3e2
+do_render channel cottoncandy 128 infinite_trip 1.1e50
+do_render love lipstick 1024 infinite_trip 1e70
+do_render blossom brain 256 trees 1e20
+do_render nexus rainbow 1024 big_bang 1e150

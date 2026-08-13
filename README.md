@@ -8,28 +8,28 @@ techniques massively in parallel for high speed renders with extreme precision.
 ## Examples
 
 ![Screenshot](./images/center.png)
-![Screenshot](./images/ghlayshur.png)
-![Screenshot](./images/toughreghnt.png)
-![Screenshot](./images/ihmolayt.png)
-![Screenshot](./images/wheb.png)
-![Screenshot](./images/blaughsum.png)
-![Screenshot](./images/shanel.png)
-![Screenshot](./images/luv.png)
-![Screenshot](./images/pghyuke.png)
+![Screenshot](./images/glacier.png)
+![Screenshot](./images/torrent.png)
+![Screenshot](./images/immolate.png)
+![Screenshot](./images/web.png)
+![Screenshot](./images/blossom.png)
+![Screenshot](./images/channel.png)
+![Screenshot](./images/love.png)
+![Screenshot](./images/nexus.png)
 
 *From top to bottom:*
 
 | Render | Palette | Location | Zoom |
 | --- | --- | --- | --- |
 | center | ultra | center of the set | 0.4 |
-| ghlayshur | toyblue | infinite_trip | 3e2 |
-| toughreghnt | seafoam | big_bang | 1e10 |
-| ihmolayt | fire | trees | 1e10 |
-| wheb | snow | Sx16 | 9e10 |
-| blaughsum | brain | trees | 1e20 |
-| shanel | cottoncandy | infinite_trip | 1.1e50 |
-| luv | lipstick | infinite_trip | 1e70 |
-| pghyuke | rainbow | big_bang | 1e150 |
+| glacier | toyblue | infinite_trip | 3e2 |
+| torrent | seafoam | big_bang | 1e10 |
+| immolate | fire | trees | 1e10 |
+| web | snow | Sx16 | 9e10 |
+| blossom | brain | trees | 1e20 |
+| channel | cottoncandy | infinite_trip | 1.1e50 |
+| love | lipstick | infinite_trip | 1e70 |
+| nexus | rainbow | big_bang | 1e150 |
 
 ## Features
 
@@ -53,10 +53,11 @@ techniques massively in parallel for high speed renders with extreme precision.
   encoding. Finished frames and segments are skipped on re-runs. Especially important
   for long-running jobs.
 - **Docker images** available on Docker Hub for reproducable distribution.
+Read about the implementation details and reasoning behind these features [here](docs/document.pdf).
 
 ## Benchmarks
 
-Benchmarks were taken focused on the big_bang POI with otherwise default parameters.
+Benchmarks were taken focused on the big bang POI with otherwise default parameters.
 The italic column indicates the fastest render mode.
 The bold column indicates the mode automatically selected when none is specified.
 Showing wall time as reported by the 'time' utility. 'user' time would bias benchmarks
